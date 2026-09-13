@@ -714,6 +714,10 @@
     "616.64": {
      "failed": 0,
      "worked": 1
+    },
+    "616.92": {
+     "failed": 1,
+     "worked": 0
     }
    },
    "name": "DRAGON BALL: Sparking! ZERO",
@@ -723,7 +727,7 @@
      "worked": 1
     },
     "standalone": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    }
@@ -812,6 +816,6 @@
    }
   }
  },
- "generated": "2026-09-13T17:49:43Z",
- "reports": 67
+ "generated": "2026-09-13T17:57:00Z",
+ "reports": 68
 }
