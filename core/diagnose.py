@@ -315,6 +315,23 @@ _OUR_MARKS = ("dlss5-feed.addon64", "dlss5-feed.addon32",
               "dlss5-feed.log", "OptiScaler.ini", "nvngx_dlssnr.dll")
 
 
+def _launcher_installed(install_dir: Path, exe: str) -> bool:
+    """Did this install go in front of a launcher rather than the game?
+
+    The manifest keeps the executable's NAME, which is all this needs: a
+    launcher starts the game as a separate process, so nothing beside it is
+    ever loaded, and the folder looks exactly like a game that ignores its
+    proxy. Read before either of those guesses is offered (#191).
+    """
+    if not exe:
+        return False
+    try:
+        from . import pe
+        return pe.launcher_like(Path(exe))
+    except Exception:
+        return False
+
+
 def _route_from_files(install_dir: Path) -> str:
     """Which route installed here, read off the folder.
 
@@ -1130,6 +1147,32 @@ def _explain_no_log(install_dir: Path, man: dict, rep: Report,
                 "none in the folder. Nothing the game itself writes has "
                 "changed since the install either. All the files are still in "
                 "place.")
+    # Before the guesses: an executable that is a launcher explains all of
+    # them, and it is the one cause in this branch that can be read off the
+    # install itself rather than guessed at (#191).
+    if _launcher_installed(install_dir, str(man.get("exe") or "")):
+        real = None
+        try:
+            from . import pe as _pe
+            real = _pe.real_exe_for(install_dir / Path(str(man["exe"])).name)
+        except Exception:
+            real = None
+        rep.add(BAD, f"{exe} is a launcher, not the {app} itself.",
+                f"A launcher starts the {app} as a separate program and then "
+                f"hands over, so nothing put beside it is ever loaded by the "
+                f"{app} - which is why every file here is in place and no log "
+                f"was written. "
+                + (f"{real.name} in this folder looks like the executable "
+                   f"that draws: pick it in the game's details and install "
+                   f"again."
+                   if real is not None else
+                   f"Point the tool at the executable the {app} itself runs "
+                   f"from - usually under a Binaries or Bin folder - and "
+                   f"install there."))
+        rep.verdict = (f"The install went beside a launcher, not the {app} - "
+                       f"install again beside the executable that draws.")
+        rep.never_ran = True
+        return rep
     rep.add(INFO,
             f"The likeliest reason: it launches something other than {exe}."
             if _ran_what else

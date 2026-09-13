@@ -289,13 +289,12 @@
  "191": {
   "findings": [
    "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than GTAVLauncher.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: GTAVLauncher.exe is a launcher, not the game itself."
   ],
   "never_ran": true,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install went beside a launcher, not the game - install again beside the executable that draws."
  },
  "194": {
   "findings": [

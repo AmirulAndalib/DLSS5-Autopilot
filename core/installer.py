@@ -975,6 +975,31 @@ def _cached_zip_members(pattern: str) -> list[str] | None:
         return None
 
 
+def launcher_warning(g: games.Game) -> str:
+    """Said before and after an install that is going in front of a launcher.
+
+    A launcher starts the game in a new process and then hands over: the
+    files go beside a program that never draws a frame, nothing loads, and
+    the report comes back "it never started" with every file present -
+    GTAVLauncher.exe was the whole of #191, and there is no way to tell it
+    from a game that ignores its proxy once the install is done. So it is
+    said at the one moment it can still be acted on.
+    """
+    exe = getattr(g, "exe", None)
+    if exe is None or not pe.launcher_like(exe):
+        return ""
+    real = pe.real_exe_for(exe, list(getattr(g, "candidates", None) or []))
+    return (f"{exe.name} looks like a launcher, not the game. A launcher "
+            f"starts the game as a separate program, and nothing installed "
+            f"beside it is loaded by the game."
+            + (f" {real.name} in this folder looks like the one that draws: "
+               f"pick it in the game's details and install again."
+               if real else
+               " Find the executable the game itself runs from - it is "
+               "usually under a Binaries or Bin folder - and install "
+               "there."))
+
+
 def preview(g: games.Game, opt: Options) -> Preview:
     """Everything install() would write, back up, remove or touch outside
     the game folder - without a single network request or write.
@@ -990,6 +1015,9 @@ def preview(g: games.Game, opt: Options) -> Preview:
     root = g.install_dir
     if g.exe_warning:
         pv.warnings.append(games.XBOX_EXE_CHOSEN)
+    note = launcher_warning(g)
+    if note:
+        pv.warnings.append(note)
 
     ok, why = check_supported(g)
     if not ok:
@@ -2153,6 +2181,10 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
     except (OSError, ValueError):
         pass
 
+    lw = launcher_warning(g)
+    if lw:
+        rep.warnings.append(lw)
+        log(f"      !! {lw.split('.')[0]}")
     hw = hook_warning(root, opt.path)
     if hw:
         rep.warnings.append(hw)

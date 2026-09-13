@@ -662,6 +662,42 @@ _TRIAL = re.compile(r"[\s._-]*(trial|demo)$")
 # that starts the game, and ReShade in front of it hooks nothing (#152).
 _LAUNCHER = re.compile(r"[\s._-]*launcher$")
 
+# A name that is a launcher whatever else is in the folder. #152's rule only
+# demoted one whose stripped name had an exact sibling - "UBOAT Launcher" ->
+# "UBOAT" - so GTAVLauncher.exe beside GTA5.exe kept its place and the whole
+# install went in front of a process that draws nothing (#191). These are
+# the shapes that start the game in a NEW process: whatever is put in front
+# of them is loaded by the launcher and unloaded when it hands over.
+_LAUNCHER_NAME = re.compile(
+    r"launcher([\s._-]|$)"                     # GTAVLauncher, UBOAT Launcher
+    r"|^launch([\s._-]|$)"                     # Launch, Launch Game
+    r"|^start_protected_game$"                 # Easy Anti-Cheat's bootstrapper
+    r"|^(eos|epic|ea|origin|uplay|ubisoft)[\s._-]?(launch|start)",
+    re.I)
+
+
+def launcher_like(exe: Path) -> bool:
+    """Is this executable a launcher rather than the thing that draws?"""
+    return bool(_LAUNCHER_NAME.search(Path(exe).stem))
+
+
+def real_exe_for(exe: Path, candidates: list[Path] | None = None) -> Path | None:
+    """The executable that actually renders, when `exe` is a launcher.
+
+    None when `exe` does not look like a launcher, or when there is nothing
+    better in the folder to name - a launcher-only folder (the game lives
+    somewhere else entirely) must not be answered with a guess.
+    """
+    exe = Path(exe)
+    if not launcher_like(exe):
+        return None
+    if candidates is None:
+        root = exe.parent
+        candidates = find_game_exes(root)
+    better = [p for p in candidates
+              if p != exe and not launcher_like(p) and looks_like_game(p)]
+    return better[0] if better else None
+
 
 def find_game_exes(folder: Path) -> list[Path]:
     """Candidate game executables, most likely first."""
@@ -682,6 +718,14 @@ def find_game_exes(folder: Path) -> list[Path]:
         for pat in (_TRIAL, _LAUNCHER):
             base = pat.sub("", p.stem.lower())
             if base != p.stem.lower() and (p.parent, base) in stems:
+                score[p] -= 600
+    # And a launcher whose game is not named after it: GTAVLauncher.exe
+    # beside GTA5.exe (#191). Only when something else here could be the
+    # game - a folder holding nothing but a launcher still has to offer it,
+    # or the game cannot be picked at all.
+    if any(not launcher_like(p) for p in cands):
+        for p in cands:
+            if launcher_like(p):
                 score[p] -= 600
     scored = sorted(cands, key=lambda p: score[p], reverse=True)
     # Drop obvious helpers, but never return nothing if that is all there is.
