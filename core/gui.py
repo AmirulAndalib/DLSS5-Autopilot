@@ -25,7 +25,7 @@ from . import (anticheat, autotune, community, components, diagnose, dlss,
                dxvk, feedcfg, reengine, wincrash,
                games, gpu, library, pe, profiles, video,
                installer, log, net, optiscaler, prefs, reshade_ini, selfupdate,
-               sources, update)
+               sources, update, watch)
 from . import mfg as _mfg
 
 APP = "dlss5 autopilot"
@@ -2185,6 +2185,7 @@ class App:
                 swapped = False
             self.remix_swap.set(swapped)
         self.game = g
+        self._watch_this_game(g)
         self._paint_rail()
         ok, why = installer.check_supported(g)
         self.protected_details.pack_forget()
@@ -2850,6 +2851,33 @@ class App:
         # question, and only worth reading once the first one is answered.
         self._autotune(rep)
         self._windows_crash(rep)
+
+    def _watch_this_game(self, g) -> None:
+        r"""Watch a folder we have installed into, so the next launch is seen.
+
+        Everything the diagnosis used to guess at - which executable really
+        started, whether our proxy was loaded, whether something else got
+        that name first - Windows answers while the game is up, and nobody
+        is at this window then. So the watching happens while they play and
+        the answer is read back afterwards, when they press "did it work?".
+
+        Only folders this tool has installed into, only while the window is
+        open, and only the process table - it reads, and writes nothing into
+        any game folder.
+        """
+        if g is None:
+            return
+        try:
+            root = g.install_dir
+            man = installer._previous_manifest(root) or {}
+            if not man:
+                return                       # nothing installed here to watch
+            if getattr(self, "_watcher", None) is None:
+                self._watcher = watch.Recorder()
+            self._watcher.add(root, list(man.get("files") or []),
+                              exe=str(man.get("exe") or ""))
+        except Exception:
+            pass                             # never take the window down
 
     def _forget_last_session(self) -> None:
         """Whatever the last diagnosis found belonged to the game it read.
@@ -4548,6 +4576,10 @@ class App:
         self.pblbl.config(text="")
         self._log("")
         self._log(f"> done - {len(rep.written)} files written", "ok")
+        # From here until the game is seen once, the process table is
+        # watched: what loads into the game is the evidence every "it never
+        # started" report was missing, and it only exists while it runs.
+        self._watch_this_game(self.game)
         for n in rep.notes:
             self._log(f"    {n}")
         for w in rep.warnings:
@@ -4689,6 +4721,9 @@ class App:
         self._log("")
         self._log("> played it? come back and press 'did it work?' - it reads the "
                   "logs and tells you what happened.", "head")
+        self._log("   leave this window open while you play: it watches for the "
+                  "game to start and notes which of these files it loads, which "
+                  "is what 'did it work?' cannot see once the game has closed.")
         self.btn_remove.config(state="normal")
         self.status.config(text="install complete")
 

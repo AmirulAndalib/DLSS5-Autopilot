@@ -8116,6 +8116,84 @@ check("a process that is up proves the game was started, whatever else",
       _lsrc.count("never_ran = False") >= 4)
 
 
+# --- what was loaded is written down while the game runs, and read after ---
+_wdir = Path(tempfile.mkdtemp(prefix="watched_"))
+(_wdir / "dlss5-autopilot.json").write_text(json.dumps(
+    {"version": 1, "complete": True, "exe": "Game.exe", "bitness": 64,
+     "api": "DX12", "proxy": "dxgi.dll", "path": "feeder",
+     "files": ["dxgi.dll"]}), encoding="utf8")
+for _n in ("dxgi.dll", "ReShade.ini", "nvngx_dlssnr.dll"):
+    (_wdir / _n).write_bytes(b"MZ")
+_sh = _wdir / "reshade-shaders" / "Shaders"
+_sh.mkdir(parents=True, exist_ok=True)
+(_sh / "DLSS5_Feed.fx").write_bytes(b"x")
+(_sh / "lumenite_Kernel.fx").write_bytes(b"x")
+
+
+def _with_sighting(rec):
+    """Run the diagnosis over that folder with one remembered sighting."""
+    import json as _j
+    watch.RECORD.parent.mkdir(parents=True, exist_ok=True)
+    _old = watch.RECORD.read_text(encoding="utf8") if watch.RECORD.is_file() else None
+    watch.RECORD.write_text(_j.dumps(
+        {os.path.normcase(str(_wdir)): rec}), encoding="utf8")
+    try:
+        return diagnose.analyse(_wdir)
+    finally:
+        if _old is None:
+            watch.RECORD.unlink(missing_ok=True)
+        else:
+            watch.RECORD.write_text(_old, encoding="utf8")
+
+
+_now = time.time()
+check("a protected process that ran still proves the game was started",
+      "protected process" in _with_sighting(
+          {"at": _now, "name": "Game.exe", "refused": "the process is protected",
+           "ours": [], "elsewhere": [], "missing": []}).verdict)
+check("...and it is never 'not started since the install' after that",
+      not _with_sighting(
+          {"at": _now, "name": "Game.exe", "refused": "the process is protected",
+           "ours": [], "elsewhere": [], "missing": []}).never_ran)
+check("a different executable that ran is named, with the one installed beside",
+      all(w in _with_sighting(
+          {"at": _now, "name": "Game-Win64-Shipping.exe",
+           "exe": r"D:\G\Binaries\Win64\Game-Win64-Shipping.exe", "refused": "",
+           "ours": [], "elsewhere": [], "missing": ["dxgi.dll"]}).verdict
+          for w in ("Game-Win64-Shipping.exe", "Game.exe")))
+check("a DLL of that name loaded from elsewhere is the answer, not a guess",
+      "another folder" in _with_sighting(
+          {"at": _now, "name": "Game.exe", "refused": "", "ours": [],
+           "elsewhere": [r"C:\Windows\System32\dxgi.dll"],
+           "missing": []}).verdict)
+check("ours loaded and still no log is its own answer",
+      "ReShade is not initialising" in _with_sighting(
+          {"at": _now, "name": "Game.exe", "refused": "", "ours": ["dxgi.dll"],
+           "elsewhere": [], "missing": []}).verdict)
+check("nothing of ours loaded sends them to the proxy-name dropdown",
+      "proxy name" in _with_sighting(
+          {"at": _now, "name": "Game.exe", "refused": "", "ours": [],
+           "elsewhere": [], "missing": ["dxgi.dll"]}).verdict)
+check("a sighting from BEFORE this install is not evidence about it",
+      "Not started since the install" in _with_sighting(
+          {"at": _now - 86400, "name": "Game.exe", "refused": "", "ours": [],
+           "elsewhere": [], "missing": ["dxgi.dll"]}).verdict)
+check("and the report carries what ran and what it loaded",
+      "**What ran, and what it loaded**" in diagnose._loaded_block(_wdir)
+      if watch.last_sighting(_wdir, 0) else
+      diagnose._loaded_block(_wdir) == "")
+shutil.rmtree(_wdir, ignore_errors=True)
+
+check("the window watches a game it has installed into, and says so",
+      "Recorder" in src_of(_gui.App._watch_this_game)
+      and "leave this window open while you play" in src_of(_gui.App._finish_ok))
+check("...and only where there is an install to watch",
+      "_previous_manifest" in src_of(_gui.App._watch_this_game)
+      and "if not man" in src_of(_gui.App._watch_this_game))
+check("the watcher writes nothing into a game folder",
+      "LOCALAPPDATA" in src_of(watch).split("RECORD =")[1][:200])
+
+
 section("RESULT")
 _REACHED_RESULT = True
 if FAILS:

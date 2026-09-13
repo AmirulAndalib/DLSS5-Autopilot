@@ -335,7 +335,18 @@ def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
     except Exception:
         return False
     if not seen:
-        return False
+        # The game has closed. Whatever the watcher wrote down while it WAS
+        # running is the same evidence, dated - most people play first and
+        # press the button afterwards, so this is the common path, not the
+        # fallback. A sighting older than the install describes an install
+        # that is not the one being read.
+        try:
+            return _remembered_evidence(install_dir, man, rep,
+                                        watch.last_sighting(
+                                            install_dir,
+                                            _installed_at(install_dir)))
+        except Exception:
+            return False
     s = seen[0]
     app = "app" if man.get("kind") == "video" else "game"
     running = Path(s.proc.path).name
@@ -408,6 +419,122 @@ def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
             f"{man.get('proxy') or 'proxy DLL'} at all. Try another name in "
             f"the 'reshade loads as' dropdown on the install page.")
     rep.verdict = (f"{running} is running and has loaded nothing from this "
+                   f"folder - try another proxy name.")
+    rep.never_ran = False
+    return True
+
+
+def _loaded_block(install_dir: Path | None) -> str:
+    """What the game had loaded when it last ran, for the report.
+
+    A report that says "every file is present and there is no log" leaves
+    the reader with the same three guesses the person got. This line says
+    which executable actually ran and whether our files were in it - the
+    thing nobody could see, and the reason the biggest class of report was
+    unanswerable.
+    """
+    if install_dir is None:
+        return ""
+    try:
+        from . import watch
+        seen = watch.last_sighting(install_dir, _installed_at(install_dir))
+    except Exception:
+        return ""
+    if not seen:
+        return ""
+    when = datetime.fromtimestamp(seen.get("at", 0)).strftime("%d %b %H:%M")
+    out = [f"\n**What ran, and what it loaded** (seen at {when})",
+           f"- process: {seen.get('name') or '?'}"]
+    if seen.get("refused"):
+        out.append(f"- DLL list: refused - {seen['refused']}")
+    else:
+        out.append(f"- DLLs in the process: {seen.get('modules', 0)}")
+        out.append("- ours, loaded: "
+                   + (", ".join(seen.get("ours") or []) or "none"))
+        if seen.get("elsewhere"):
+            out.append("- same name, loaded from elsewhere: "
+                       + ", ".join(seen["elsewhere"]))
+        if seen.get("missing"):
+            out.append("- ours, not loaded: " + ", ".join(seen["missing"]))
+    return "\n".join(out) + "\n"
+
+
+def _remembered_evidence(install_dir: Path, man: dict, rep: Report,
+                         seen: dict) -> bool:
+    """The same answers, from what the watcher saw while the game was up.
+
+    Dated, and said as the past tense it is: "when the game last ran" rather
+    than "is running". A record from before this install is refused by
+    watch.last_sighting, so anything that arrives here describes this one.
+    """
+    if not seen:
+        return False
+    when = datetime.fromtimestamp(seen.get("at", 0)).strftime("%d %b %H:%M")
+    running = str(seen.get("name") or "the game")
+    app = "app" if man.get("kind") == "video" else "game"
+    recorded = Path(str(man.get("exe") or "")).name
+
+    if seen.get("refused"):
+        rep.add(WARN, f"{running} ran at {when}, and would not say what it "
+                      f"had loaded.",
+                f"{str(seen['refused']).capitalize()}. So the {app} HAS been "
+                f"started since the install - what could not be read is "
+                f"whether the files here were in it. Anti-cheat and ReShade "
+                f"add-ons do not coexist; if this game has anti-cheat, that "
+                f"is the answer.")
+        rep.verdict = (f"{running} ran at {when} and wrote no log - it is a "
+                       f"protected process, so nothing of ours could be read "
+                       f"in it.")
+        rep.never_ran = False
+        return True
+
+    if recorded and running.lower() != recorded.lower():
+        rep.add(BAD, f"At {when} the {app} ran from {running}, not "
+                     f"{recorded}.",
+                f"{seen.get('exe') or running} is what started. The install "
+                f"went beside {recorded}, and a process only loads what is "
+                f"beside the executable it started from. Point the tool at "
+                f"{running} and install again.")
+        rep.verdict = (f"The {app} runs from {running}, and the install went "
+                       f"beside {recorded} - install again there.")
+        rep.never_ran = False
+        return True
+
+    if seen.get("elsewhere"):
+        names = ", ".join(sorted({Path(p).name for p in seen["elsewhere"]}))
+        rep.add(BAD, f"At {when} the {app} had {names} loaded from somewhere "
+                     f"else, not from this folder.",
+                "It had: " + "; ".join(list(seen["elsewhere"])[:3])
+                + ". A DLL already loaded under that name is never loaded a "
+                  "second time, so the one written here is ignored. Remove "
+                  "the other one, or install under a different name in the "
+                  "'reshade loads as' dropdown.")
+        rep.verdict = (f"The {app} loads {names} from another folder - ours "
+                       f"is never reached.")
+        rep.never_ran = False
+        return True
+
+    if seen.get("ours"):
+        rep.add(WARN, f"At {when} our files WERE loaded in {running}, and "
+                      f"nothing wrote a log.",
+                "Loaded then: " + ", ".join(seen["ours"])
+                + ". So the proxy and the executable are both right and what "
+                  "failed is further in - ReShade writes its log the moment "
+                  "it initialises. Say so in an issue with this report.")
+        rep.verdict = (f"Loaded into {running} at {when}, and no log was "
+                       f"written - the proxy is reached and ReShade is not "
+                       f"initialising.")
+        rep.never_ran = False
+        return True
+
+    rep.add(BAD, f"{running} ran at {when} with none of this folder's files "
+                 f"loaded.",
+            f"Windows lists every DLL in a process and not one of this "
+            f"install's was in it, so the {app} HAS been started - it does "
+            f"not load this folder's {man.get('proxy') or 'proxy DLL'} at "
+            f"all. Try another name in the 'reshade loads as' dropdown on "
+            f"the install page.")
+    rep.verdict = (f"{running} ran at {when} and loaded nothing from this "
                    f"folder - try another proxy name.")
     rep.never_ran = False
     return True
@@ -3139,7 +3266,7 @@ def issue_body(version: str, gpu_name: str, sm, driver: str, game, route: str,
             p = _opti_log(d)
             opti = _tail(p, 100_000) if p else ""
 
-    parts = [head, files]
+    parts = [head, files, _loaded_block(d)]
     # The last session only, as analyse() reads it: ReShade.log is never
     # truncated, and the excerpt's priorities pulled hook lines and add-on
     # builds out of older sessions over the last one's own errors.

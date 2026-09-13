@@ -282,6 +282,142 @@ def _same_file(a: str, b: Path) -> bool:
         return os.path.normcase(str(a)) == os.path.normcase(str(b))
 
 
+# Where a sighting is kept until the person comes back to the window. Beside
+# the tool's own log, never in the game folder: this is our record, and a
+# file written into a game folder is one more thing an uninstall has to take
+# back out and one more thing a launcher's file check can object to.
+RECORD = Path(os.environ.get("LOCALAPPDATA", Path.home())) \
+    / "dlss5-autopilot" / "sightings.json"
+_RECORD_KEEP = 40
+
+
+def _load_records() -> dict:
+    try:
+        import json
+        data = json.loads(RECORD.read_text(encoding="utf8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def remember(folder: Path, s: "Sighting") -> None:
+    """Keep what one sighting saw, so it can be read after the game closes.
+
+    The window is open while people play - they install, launch, play, come
+    back and press "did it work?" with the game already shut. The process is
+    gone by then and every question it could have answered goes back to
+    being a guess, so the answer is written down at the moment it is true.
+    """
+    import json
+    rec = _load_records()
+    rec[os.path.normcase(str(Path(folder)))] = {
+        "at": time.time(),
+        "exe": s.proc.path,
+        "name": s.proc.name,
+        "refused": s.loaded.refused,
+        "modules": len(s.loaded.paths),
+        "ours": sorted({os.path.basename(p) for p in s.ours}),
+        "elsewhere": sorted(set(s.elsewhere))[:8],
+        "missing": sorted(set(s.missing)),
+    }
+    if len(rec) > _RECORD_KEEP:
+        for k in sorted(rec, key=lambda k: rec[k].get("at", 0))[:-_RECORD_KEEP]:
+            rec.pop(k, None)
+    try:
+        RECORD.parent.mkdir(parents=True, exist_ok=True)
+        RECORD.write_text(json.dumps(rec, indent=1), encoding="utf8")
+    except OSError:
+        pass
+
+
+def last_sighting(folder: Path, since: float = 0.0) -> dict:
+    """What was seen the last time this game ran, or {}.
+
+    `since` is the install time: a sighting from before the install
+    describes an install that is no longer there and must not be read as
+    evidence about this one.
+    """
+    got = _load_records().get(os.path.normcase(str(Path(folder))), {})
+    if not isinstance(got, dict) or got.get("at", 0) < since - 60:
+        return {}
+    return got
+
+
+class Recorder:
+    r"""Watch the folders we have installed into, and write down what starts.
+
+    One thread, one snapshot of the process table every few seconds - the
+    snapshot costs about 35 ms on a machine with 300 processes, which is
+    what makes this affordable at all. It reads; it never writes anything
+    into a game folder and never touches a process it was not asked about.
+
+    Stops itself: a folder is watched until the game has been seen once, and
+    the whole thread stops when there is nothing left to watch, so a window
+    left open overnight is not polling anything.
+    """
+
+    def __init__(self, every: float = 4.0, settle: float = 8.0):
+        self.every = max(1.0, every)
+        self.settle = max(0.0, settle)
+        self._want: dict[str, dict] = {}
+        self._thread = None
+        self._stop = False
+        self._seen: dict[str, float] = {}
+
+    def add(self, folder: Path, ours: list[str] | None = None,
+            exe: str = "") -> None:
+        """Watch this folder from now on (an install just finished here)."""
+        key = os.path.normcase(str(Path(folder)))
+        self._want[key] = {"folder": Path(folder), "ours": list(ours or []),
+                           "exe": exe or ""}
+        self.start()
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        import threading
+        self._stop = False
+        self._thread = threading.Thread(target=self._run, name="dlss5-watch",
+                                        daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop = True
+
+    def _run(self) -> None:
+        pending: dict[str, float] = {}          # folder -> when to read it
+        while not self._stop and self._want:
+            try:
+                ps = procs()
+                now = time.monotonic()
+                for key, job in list(self._want.items()):
+                    if key in pending:
+                        if now < pending[key]:
+                            continue
+                        pending.pop(key)
+                        # Settled: read it, write it down, stop watching it.
+                        found = inspect(job["folder"], job["ours"],
+                                        exe=job["exe"])
+                        if found:
+                            remember(job["folder"], found[0])
+                            self._seen[key] = time.time()
+                            self._want.pop(key, None)
+                        continue
+                    if from_folder(job["folder"], ps, exe=job["exe"]):
+                        # Wait before reading: the graphics DLLs are loaded
+                        # when the device is created, and a proxy read three
+                        # seconds in reads as missing when it is merely late.
+                        pending[key] = now + self.settle
+            except Exception:
+                # A watcher must never take the window down with it.
+                pass
+            time.sleep(self.every if not pending else min(self.every, 1.0))
+        self._thread = None
+
+    def saw(self, folder: Path) -> float:
+        return self._seen.get(os.path.normcase(str(Path(folder))), 0.0)
+
+
 def wait_for(folder: Path, ours: list[str] | None = None, exe: str = "",
              seconds: float = 300.0, settle: float = 6.0,
              tick=None) -> list[Sighting]:
