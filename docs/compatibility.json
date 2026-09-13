@@ -274,6 +274,21 @@
     }
    }
   },
+  "god_of_war_arabic.exe": {
+   "drivers": {
+    "616.64": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "God of War",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "gow.exe": {
    "drivers": {
     "616.92": {
@@ -710,6 +725,6 @@
    }
   }
  },
- "generated": "2026-09-13T06:53:47Z",
- "reports": 59
+ "generated": "2026-09-13T08:31:45Z",
+ "reports": 60
 }
