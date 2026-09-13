@@ -630,6 +630,21 @@
     }
    }
   },
+  "sandfallgog-win64-shipping.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Clair Obscur: Expedition 33",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "skyrimse.exe": {
    "drivers": {
     "616.92": {
@@ -759,6 +774,6 @@
    }
   }
  },
- "generated": "2026-09-13T14:59:44Z",
- "reports": 63
+ "generated": "2026-09-13T16:32:14Z",
+ "reports": 64
 }
