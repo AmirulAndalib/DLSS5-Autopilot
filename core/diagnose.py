@@ -315,6 +315,104 @@ _OUR_MARKS = ("dlss5-feed.addon64", "dlss5-feed.addon32",
               "dlss5-feed.log", "OptiScaler.ini", "nvngx_dlssnr.dll")
 
 
+def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
+    """Ask the running game itself, instead of guessing from an absent log.
+
+    This is the one branch where the tool used to offer three guesses at
+    once - the game was never started, or it launches a different
+    executable, or it ignores that DLL name - and 34 of the first 84 reports
+    got that list. All three are questions Windows will answer outright
+    while the game is up: which executable is running, and which DLLs are
+    mapped into it. Somebody who alt-tabs out to press "did it work?" has
+    the game running, and this reads it.
+
+    True when it settled the question and wrote a verdict.
+    """
+    try:
+        from . import watch
+        seen = watch.inspect(install_dir, list(man.get("files") or []),
+                             exe=str(man.get("exe") or ""))
+    except Exception:
+        return False
+    if not seen:
+        return False
+    s = seen[0]
+    app = "app" if man.get("kind") == "video" else "game"
+    running = Path(s.proc.path).name
+
+    # Whatever else is true, the game IS running: "not started since the
+    # install" is off the table from here on.
+    if not s.loaded.known:
+        rep.add(WARN, f"{running} is running now, and will not say what it "
+                      f"has loaded.",
+                f"{s.loaded.refused.capitalize()}. So the {app} has been "
+                f"started - what could not be checked is whether the files "
+                f"here are in it. Anti-cheat and ReShade add-ons do not "
+                f"coexist; if this game has anti-cheat, that is the answer.")
+        rep.verdict = (f"{running} is running and nothing here has written a "
+                       f"log - the process is protected, so nothing of ours "
+                       f"can be read in it.")
+        rep.never_ran = False
+        return True
+
+    recorded = str(man.get("exe") or "")
+    if recorded and running.lower() != Path(recorded).name.lower():
+        rep.add(BAD, f"The {app} is running from {running}, not "
+                     f"{Path(recorded).name}.",
+                f"{s.proc.path} is the process that is up. The install went "
+                f"beside {Path(recorded).name}, and a process only loads what "
+                f"is beside the executable it started from. Point the tool at "
+                f"{running} and install again.")
+        rep.verdict = (f"The {app} runs from {running}, and the install went "
+                       f"beside {Path(recorded).name} - install again there.")
+        rep.never_ran = False
+        return True
+
+    if s.elsewhere:
+        names = ", ".join(sorted({Path(p).name for p in s.elsewhere}))
+        rep.add(BAD, f"The {app} loaded {names} from somewhere else, not from "
+                     f"this folder.",
+                "Its own copy is in the process: "
+                + "; ".join(s.elsewhere[:3])
+                + ". A DLL already loaded under that name is never loaded a "
+                  "second time, so the one written here is ignored - another "
+                  "mod, an overlay, or the folder the game was started from "
+                  "got there first. Remove the other one, or install under a "
+                  "different name in the 'reshade loads as' dropdown.")
+        rep.verdict = (f"The {app} is loading {names} from another folder - "
+                       f"ours is never reached.")
+        rep.never_ran = False
+        return True
+
+    if s.ours:
+        rep.add(WARN, f"Our files are loaded in {running}, and nothing has "
+                      f"written a log.",
+                "Loaded right now: " + "; ".join(sorted(
+                    {Path(p).name for p in s.ours}))
+                + ". So the proxy and the executable are both right, and "
+                  "what failed is further in - ReShade writes its log the "
+                  "moment it initialises, so it has been loaded and has not "
+                  "got that far. Close the game and press this again; if "
+                  "there is still no log, say so in an issue with this "
+                  "report.")
+        rep.verdict = (f"Loaded into {running}, and no log was written - the "
+                       f"proxy is reached and ReShade is not initialising.")
+        rep.never_ran = False
+        return True
+
+    rep.add(BAD, f"{running} is running and has loaded none of the files "
+                 f"here.",
+            f"Windows lists every DLL in a process, and not one of this "
+            f"install's is in {running}. The {app} has been started, so it is "
+            f"not that - it does not load this folder's "
+            f"{man.get('proxy') or 'proxy DLL'} at all. Try another name in "
+            f"the 'reshade loads as' dropdown on the install page.")
+    rep.verdict = (f"{running} is running and has loaded nothing from this "
+                   f"folder - try another proxy name.")
+    rep.never_ran = False
+    return True
+
+
 def _launcher_installed(install_dir: Path, exe: str) -> bool:
     """Did this install go in front of a launcher rather than the game?
 
@@ -1147,9 +1245,14 @@ def _explain_no_log(install_dir: Path, man: dict, rep: Report,
                 "none in the folder. Nothing the game itself writes has "
                 "changed since the install either. All the files are still in "
                 "place.")
-    # Before the guesses: an executable that is a launcher explains all of
-    # them, and it is the one cause in this branch that can be read off the
-    # install itself rather than guessed at (#191).
+    # Before any of the guesses: if the game is up right now, none of this
+    # has to be guessed at all.
+    if _live_evidence(install_dir, man, rep):
+        return rep
+
+    # Then: an executable that is a launcher explains all of them, and it is
+    # the one cause in this branch that can be read off the install itself
+    # rather than guessed at (#191).
     if _launcher_installed(install_dir, str(man.get("exe") or "")):
         real = None
         try:

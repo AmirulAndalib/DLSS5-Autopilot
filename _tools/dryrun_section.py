@@ -44,7 +44,7 @@ X64 = Path(os.environ.get("DLSS5_TEST_X64",
 
 from core import (diagnose, dlss, games, gpu, installer, net, optiscaler,  # noqa: E402
                   pe, prefs, reshade_ini, sources, update, vulkan)
-from core import dxvk, refw, video  # noqa: E402
+from core import dxvk, refw, video, watch  # noqa: E402
 from core import mfg as _m141  # noqa: E402
 from core import gui as _gui  # noqa: E402
 import zipfile as _zf141  # noqa: E402,F811

@@ -1,0 +1,313 @@
+r"""What is actually running, and what it has loaded.
+
+Every other evidence source in this tool reads a folder or a log after the
+fact and reasons backwards: no ReShade.log, so *probably* the proxy was not
+loaded, so *probably* the game launches a different executable, or ignores
+that DLL name, or was never started at all. Three guesses, offered as a
+list, to somebody who wanted an answer - and 34 of the first 84 reports got
+that list.
+
+While the game runs, none of it has to be guessed. Windows will say which
+process started, which executable it came from, who started it, and which
+DLLs are mapped into it - so "our dxgi.dll is not in the module list, the
+one in System32 is" is a fact, and so is "the launcher started a second
+executable in another folder, and that is what draws".
+
+    procs()                     every process, with its parent and path
+    from_folder(folder)         the ones running out of a game folder
+    modules(pid)                the DLLs mapped into one, or why not
+    inspect(folder, ours)       the whole answer for one game folder
+
+Nothing here writes anything, opens a process for anything but reading, or
+touches a process it was not asked about. A protected game (anti-cheat, and
+some store builds) refuses the module list: that is reported as refused,
+never as "nothing of ours is loaded" - absence of evidence has cost this
+project three wrong verdicts already.
+"""
+from __future__ import annotations
+
+import ctypes
+import ctypes.wintypes as w
+import os
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+# Read-only rights. QUERY_INFORMATION rather than its LIMITED sibling
+# because EnumProcessModulesEx refuses the limited one, and VM_READ because
+# the module list is read out of the process's own memory.
+_PROCESS_QUERY_INFORMATION = 0x0400
+_PROCESS_VM_READ = 0x0010
+_LIST_MODULES_ALL = 0x03
+_TH32CS_SNAPPROCESS = 0x00000002
+_ERROR_ACCESS_DENIED = 5
+_ERROR_PARTIAL_COPY = 299          # the process is starting, or is 32-bit
+_MAX_MODULES = 4096
+
+_WINDOWS = os.name == "nt"
+
+
+class _PROCESSENTRY32(ctypes.Structure):
+    _fields_ = [("dwSize", w.DWORD), ("cntUsage", w.DWORD),
+                ("th32ProcessID", w.DWORD),
+                ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+                ("th32ModuleID", w.DWORD), ("cntThreads", w.DWORD),
+                ("th32ParentProcessID", w.DWORD),
+                ("pcPriClassBase", ctypes.c_long), ("dwFlags", w.DWORD),
+                ("szExeFile", ctypes.c_wchar * 260)]
+
+
+def _api():
+    """kernel32/psapi with their argument types declared.
+
+    Declared, because the defaults truncate: a HANDLE came back as a signed
+    int and the second OpenProcess of a session raised "int too long to
+    convert" instead of reading anything.
+    """
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    psapi = ctypes.WinDLL("psapi", use_last_error=True)
+    k32.OpenProcess.restype = w.HANDLE
+    k32.OpenProcess.argtypes = [w.DWORD, w.BOOL, w.DWORD]
+    k32.CloseHandle.argtypes = [w.HANDLE]
+    k32.CreateToolhelp32Snapshot.restype = w.HANDLE
+    k32.CreateToolhelp32Snapshot.argtypes = [w.DWORD, w.DWORD]
+    k32.Process32FirstW.argtypes = [w.HANDLE, ctypes.POINTER(_PROCESSENTRY32)]
+    k32.Process32NextW.argtypes = [w.HANDLE, ctypes.POINTER(_PROCESSENTRY32)]
+    k32.QueryFullProcessImageNameW.argtypes = [w.HANDLE, w.DWORD, w.LPWSTR,
+                                               ctypes.POINTER(w.DWORD)]
+    psapi.EnumProcessModulesEx.argtypes = [w.HANDLE, ctypes.c_void_p, w.DWORD,
+                                           ctypes.POINTER(w.DWORD), w.DWORD]
+    psapi.GetModuleFileNameExW.argtypes = [w.HANDLE, w.LPVOID, w.LPWSTR, w.DWORD]
+    return k32, psapi
+
+
+@dataclass
+class Proc:
+    pid: int
+    ppid: int
+    name: str
+    path: str = ""             # "" when the executable's path cannot be read
+
+
+@dataclass
+class Loaded:
+    """The DLLs one running process has mapped in - or why they are unknown."""
+    pid: int
+    exe: str = ""
+    paths: list[str] = field(default_factory=list)
+    refused: str = ""          # non-empty means the list is UNKNOWN, not empty
+
+    @property
+    def known(self) -> bool:
+        return not self.refused
+
+    def by_name(self, name: str) -> list[str]:
+        low = name.lower()
+        return [p for p in self.paths if os.path.basename(p).lower() == low]
+
+
+def procs() -> list[Proc]:
+    """Every process this account can see, with its parent."""
+    if not _WINDOWS:
+        return []
+    k32, _ = _api()
+    snap = k32.CreateToolhelp32Snapshot(_TH32CS_SNAPPROCESS, 0)
+    if not snap or snap == w.HANDLE(-1).value:
+        return []
+    out: list[Proc] = []
+    try:
+        e = _PROCESSENTRY32()
+        e.dwSize = ctypes.sizeof(e)
+        if not k32.Process32FirstW(snap, ctypes.byref(e)):
+            return []
+        while True:
+            out.append(Proc(int(e.th32ProcessID), int(e.th32ParentProcessID),
+                            str(e.szExeFile)))
+            if not k32.Process32NextW(snap, ctypes.byref(e)):
+                break
+    finally:
+        k32.CloseHandle(snap)
+    for p in out:
+        p.path = _image_path(p.pid)
+    return out
+
+
+def _image_path(pid: int) -> str:
+    """The executable a running process was started from, or ""."""
+    if not _WINDOWS:
+        return ""
+    k32, _ = _api()
+    # LIMITED_INFORMATION is enough for the path and is granted for
+    # processes whose module list is refused, which is the point: a
+    # protected game still tells us WHICH executable is running.
+    h = k32.OpenProcess(0x1000, False, pid)
+    if not h:
+        return ""
+    try:
+        size = w.DWORD(1024)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if k32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
+            return buf.value
+        return ""
+    finally:
+        k32.CloseHandle(h)
+
+
+def modules(pid: int) -> Loaded:
+    """Every DLL mapped into one process, or the reason there is no list."""
+    got = Loaded(pid=pid, exe=_image_path(pid))
+    if not _WINDOWS:
+        got.refused = "not Windows"
+        return got
+    k32, psapi = _api()
+    h = k32.OpenProcess(_PROCESS_QUERY_INFORMATION | _PROCESS_VM_READ, False, pid)
+    if not h:
+        err = ctypes.get_last_error()
+        got.refused = ("the process is protected (anti-cheat, or a store "
+                       "build) and will not be opened"
+                       if err == _ERROR_ACCESS_DENIED else
+                       f"could not open the process (error {err})")
+        return got
+    try:
+        arr = (ctypes.c_void_p * _MAX_MODULES)()
+        need = w.DWORD()
+        if not psapi.EnumProcessModulesEx(h, arr, ctypes.sizeof(arr),
+                                          ctypes.byref(need), _LIST_MODULES_ALL):
+            err = ctypes.get_last_error()
+            got.refused = (
+                "the process is protected (anti-cheat, or a store build) "
+                "and will not list its DLLs" if err == _ERROR_ACCESS_DENIED
+                else "the process was still starting - try again in a moment"
+                if err == _ERROR_PARTIAL_COPY
+                else f"the DLL list could not be read (error {err})")
+            return got
+        buf = ctypes.create_unicode_buffer(1024)
+        count = min(need.value // ctypes.sizeof(ctypes.c_void_p), _MAX_MODULES)
+        for i in range(count):
+            if psapi.GetModuleFileNameExW(h, arr[i], buf, 1024):
+                got.paths.append(buf.value)
+    finally:
+        k32.CloseHandle(h)
+    return got
+
+
+def _under(path: str, folder: Path) -> bool:
+    try:
+        Path(path).resolve().relative_to(Path(folder).resolve())
+        return True
+    except (ValueError, OSError):
+        return False
+
+
+def from_folder(folder: Path, all_procs: list[Proc] | None = None,
+                exe: str = "") -> list[Proc]:
+    """The processes running out of this game folder, the game first.
+
+    Also the children of anything in it: a launcher in the folder starting
+    the game somewhere else is the case this exists to see, and the child
+    keeps the launcher as its parent (#191).
+
+    Ordered, because the caller reads the first one: the executable the
+    install was made for, then anything that looks like a game, then the
+    helpers - a Sentry crash handler in the folder is a process of this
+    game and is emphatically not the thing that draws.
+    """
+    ps = all_procs if all_procs is not None else procs()
+    mine = [p for p in ps if p.path and _under(p.path, folder)]
+    pids = {p.pid for p in mine}
+    for p in ps:
+        if p.ppid in pids and p.pid not in pids and p.path:
+            mine.append(p)
+            pids.add(p.pid)
+    try:
+        from . import pe
+        helper = lambda p: not pe.looks_like_game(Path(p.path))
+    except Exception:                                   # pragma: no cover
+        helper = lambda p: False
+    want = os.path.basename(exe).lower() if exe else ""
+    mine.sort(key=lambda p: (p.name.lower() != want, helper(p),
+                             -len(Path(p.path).parts)))
+    return mine
+
+
+@dataclass
+class Sighting:
+    """What one running game says about an install beside it."""
+    proc: Proc
+    loaded: Loaded
+    ours: list[str] = field(default_factory=list)      # loaded from our folder
+    elsewhere: list[str] = field(default_factory=list)  # same name, other folder
+    missing: list[str] = field(default_factory=list)    # ours, not loaded
+
+
+def inspect(folder: Path, ours: list[str], exe: str = "") -> list[Sighting]:
+    """Every process of this game, and what became of the files we wrote.
+
+    `ours` is the install's own file list (manifest "files"): the names that
+    have to end up in the process for anything to work. A name that is
+    loaded from somewhere else - System32's dxgi.dll while ours sits unused
+    beside the game - is the answer to "everything is in place and nothing
+    happens", and it cannot be seen any other way.
+    """
+    folder = Path(folder)
+    want = {}
+    for rel in ours or []:
+        if not isinstance(rel, str) or not rel.lower().endswith(".dll"):
+            continue
+        want[os.path.basename(rel).lower()] = folder / rel
+    out: list[Sighting] = []
+    for p in from_folder(folder, exe=exe):
+        got = modules(p.pid)
+        s = Sighting(proc=p, loaded=got)
+        if got.known:
+            for name, mine in want.items():
+                hits = got.by_name(name)
+                if not hits:
+                    s.missing.append(name)
+                    continue
+                for h in hits:
+                    if _same_file(h, mine):
+                        s.ours.append(h)
+                    else:
+                        s.elsewhere.append(h)
+        out.append(s)
+    return out
+
+
+def _same_file(a: str, b: Path) -> bool:
+    try:
+        return os.path.normcase(os.path.realpath(a)) == \
+            os.path.normcase(os.path.realpath(str(b)))
+    except OSError:
+        return os.path.normcase(str(a)) == os.path.normcase(str(b))
+
+
+def wait_for(folder: Path, ours: list[str] | None = None, exe: str = "",
+             seconds: float = 300.0, settle: float = 6.0,
+             tick=None) -> list[Sighting]:
+    """Wait for this game to start, let it settle, then read it.
+
+    `settle` because the module list of a process three seconds old is not
+    the one it will render with: the graphics DLLs are loaded when the
+    device is created, and a proxy that loads late would read as missing.
+    `tick(seconds_waited, proc_or_None)` is called about once a second so a
+    window can say what it is waiting for; return False from it to stop.
+    """
+    deadline = time.monotonic() + max(1.0, seconds)
+    seen: Proc | None = None
+    while time.monotonic() < deadline:
+        found = from_folder(folder, exe=exe)
+        if found:
+            seen = found[0]
+            break
+        if tick is not None and tick(0.0, None) is False:
+            return []
+        time.sleep(1.0)
+    if seen is None:
+        return []
+    end = time.monotonic() + settle
+    while time.monotonic() < end:
+        if tick is not None and tick(settle, seen) is False:
+            break
+        time.sleep(0.5)
+    return inspect(folder, ours or [], exe=exe)

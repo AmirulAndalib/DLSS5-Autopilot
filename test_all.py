@@ -89,7 +89,7 @@ with warnings.catch_warnings():
     warnings.simplefilter("error")
     mods = ("pe", "games", "emulators", "gpu", "sources", "net", "prefs",
             "reshade_ini", "feedcfg", "dxvk", "dlss", "vulkan",
-            "anticheat", "optiscaler", "diagnose", "selfupdate", "update",
+            "anticheat", "optiscaler", "diagnose", "selfupdate", "update", "watch",
             "log", "components", "profiles", "remix", "reengine", "refw",
             "installer", "gui")
     for m in mods:
@@ -100,7 +100,7 @@ with warnings.catch_warnings():
             check(f"core.{m}", False, f"{type(e).__name__}: {e}")
 
 from core import remix, remixlist  # noqa: E402
-from core import pe, reengine, refw  # noqa: E402
+from core import pe, reengine, refw, watch  # noqa: E402
 from core import (diagnose, dlss, games, gpu, installer, net, optiscaler,  # noqa: E402
                   pe, prefs, reshade_ini, sources, update, vulkan)
 
@@ -7999,6 +7999,122 @@ check("the crash verdict now carries the test that splits it in two (#98)",
       "[DlssNr]" in _crash_src and "Enabled=false" in _crash_src)
 check("...on the route whose ini that is, and something real on the others",
       'route == "optiscaler"' in _crash_src and "uninstall" in _crash_src.lower())
+
+section("1.9.0: the folder nobody had, a launcher in front of the game, and "
+        "asking the running process (#43 #191 #194)")
+
+# --- the replay was answering about a folder nobody had ---------------------
+import replay_report as _rr
+_rep194 = (
+    "**Did the game start?** it never started\n"
+    "- version: 1.8.1\n- exe: GTAIV.exe\n- route: feeder\n\n"
+    "**Files in the folder**\n"
+    "- ReShade.ini: MISSING\n"
+    "- nvngx_dlssnr.dll: MISSING\n"
+    "- reshade-shaders/Shaders/DLSS5_Feed.fx: MISSING\n")
+_st = _rr.folder_state(_rep194)
+check("the report's own file list is what the replay builds now",
+      _st is not None and _st["files"] == {
+          "ReShade.ini": False, "nvngx_dlssnr.dll": False,
+          "reshade-shaders/Shaders/DLSS5_Feed.fx": False}, _st)
+check("...and no proxy, no add-on and no layer line means no install record",
+      _st["manifest"] is False and _st["proxy"] == "")
+_vk = _rr.folder_state("**Files in the folder**\n- dlss5-feed.addon64: present\n"
+                       "- ReShade 64-bit Vulkan layer: registered\n")
+check("a Vulkan install is not read as a missing dxgi.dll (#16, #19)",
+      _vk["proxy"] == diagnose.VULKAN_LAYER and _vk["layer"] is True, _vk)
+check("an older report with no file list keeps the old whole-folder replay",
+      _rr.folder_state("**ReShade.log**\n```\n(none)\n```") is None)
+
+_nofolder = Path(tempfile.mkdtemp(prefix="norecord_"))
+_r = diagnose.analyse(_nofolder)
+check("a folder this tool never installed into is told exactly that (#43, #194)",
+      "Nothing is installed in this folder" in _r.verdict, _r.verdict)
+check("...and not that the game has not been started since the install",
+      not any("has not been started since" in f.title for f in _r.findings))
+(_nofolder / "OptiScaler.ini").write_text("x", encoding="utf8")
+_r = diagnose.analyse(_nofolder)
+check("a folder whose record is gone keeps its route, read off the files",
+      _r.route == "optiscaler" and any("install record is gone" in f.title
+                                       for f in _r.findings), _r.route)
+check("...and the report says the record is missing, so the next one need "
+      "not be inferred",
+      any("install record: MISSING" in ln
+          for ln in diagnose._presence(_nofolder, {}, "")))
+for _legacy in ("dlss5kur-kurulum.json", "dlss5-installer.json"):
+    _lf = Path(tempfile.mkdtemp(prefix="legacy_"))
+    (_lf / _legacy).write_text('{"path": "feeder", "exe": "g.exe"}',
+                               encoding="utf8")
+    check(f"an install recorded as {_legacy} is still an install",
+          diagnose._manifest(_lf).get("path") == "feeder"
+          and "Nothing is installed" not in diagnose.analyse(_lf).verdict)
+    shutil.rmtree(_lf, ignore_errors=True)
+shutil.rmtree(_nofolder, ignore_errors=True)
+
+# --- a launcher is not the game (#191) --------------------------------------
+check("a launcher whose game is not named after it is still a launcher (#191)",
+      pe.launcher_like(Path("GTAVLauncher.exe"))
+      and pe.launcher_like(Path("UBOAT Launcher.exe"))
+      and pe.launcher_like(Path("start_protected_game.exe")))
+check("...and a game with 'launcher' inside a longer word is not",
+      not pe.launcher_like(Path("SpaceLauncherSimulator.exe"))
+      and not pe.launcher_like(Path("GTA5.exe")))
+_ldir = Path(tempfile.mkdtemp(prefix="launch_"))
+(_ldir / "GTAVLauncher.exe").write_bytes(b"MZ" + b"\0" * 4096)
+(_ldir / "GTA5.exe").write_bytes(b"MZ" + b"\0" * 40960)
+check("the ranking puts the game in front of the launcher beside it",
+      [x.name for x in pe.find_game_exes(_ldir)][0] == "GTA5.exe",
+      [x.name for x in pe.find_game_exes(_ldir)])
+check("...and the warning the install shows names it",
+      "GTA5.exe" in installer.launcher_warning(
+          games.Game(name="GTA V", folder=_ldir,
+                     exe=_ldir / "GTAVLauncher.exe",
+                     candidates=[_ldir / "GTA5.exe"])))
+check("a game that is not a launcher gets no warning at all",
+      installer.launcher_warning(
+          games.Game(name="GTA V", folder=_ldir, exe=_ldir / "GTA5.exe",
+                     candidates=[])) == "")
+(_ldir / "dlss5-autopilot.json").write_text(json.dumps(
+    {"version": 1, "complete": True, "exe": "GTAVLauncher.exe", "bitness": 64,
+     "api": "DX12", "proxy": "dxgi.dll", "path": "feeder",
+     "files": ["dxgi.dll"]}), encoding="utf8")
+(_ldir / "dxgi.dll").write_bytes(b"MZ")
+_r = diagnose.analyse(_ldir)
+check("and the installs already out there are told so by the diagnosis",
+      "launcher" in _r.verdict and any("is a launcher" in f.title
+                                       for f in _r.findings), _r.verdict)
+check("...naming the executable that draws, since it is right there",
+      any("GTA5.exe" in f.detail for f in _r.findings))
+shutil.rmtree(_ldir, ignore_errors=True)
+
+# --- ask the process, do not guess at the folder ----------------------------
+_selfdll = f"python{sys.version_info[0]}{sys.version_info[1]}.dll"
+check("every DLL loaded into this very process can be read",
+      any(Path(x).name.lower() == _selfdll.lower()
+          for x in watch.modules(os.getpid()).paths))
+_seen = [s for s in watch.inspect(Path(sys.executable).parent, [_selfdll])
+         if s.proc.pid == os.getpid()]
+check("...and a file of ours that IS loaded is seen as loaded",
+      bool(_seen) and bool(_seen[0].ours) and not _seen[0].missing, _seen[:1])
+_elsewhere = [s for s in watch.inspect(Path(tempfile.mkdtemp(prefix="notmine_")),
+                                       [_selfdll])]
+check("a folder with no process of its own says nothing at all",
+      _elsewhere == [])
+_refused = watch.Loaded(pid=1, refused="the process is protected")
+check("a refused module list is unknown, never 'nothing of ours is loaded'",
+      not _refused.known and _refused.paths == [])
+_esrc = src_of(diagnose._explain_no_log)
+check("the diagnosis asks the running process before it offers a guess",
+      "_live_evidence(install_dir, man, rep)" in _esrc
+      and _esrc.index("_live_evidence") < _esrc.index("The likeliest reason"))
+_lsrc = src_of(diagnose._live_evidence)
+for _shape in ("will not say what it", "is running from", "from somewhere else",
+               "has loaded none of the files"):
+    check(f"...and it answers this case: {_shape.strip()[:40]}",
+          _shape in _lsrc)
+check("a process that is up proves the game was started, whatever else",
+      _lsrc.count("never_ran = False") >= 4)
+
 
 section("RESULT")
 _REACHED_RESULT = True
