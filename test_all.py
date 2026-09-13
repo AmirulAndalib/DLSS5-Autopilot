@@ -100,7 +100,7 @@ with warnings.catch_warnings():
             check(f"core.{m}", False, f"{type(e).__name__}: {e}")
 
 from core import remix, remixlist  # noqa: E402
-from core import pe, reengine, refw, watch  # noqa: E402
+from core import pe, reengine, refw, watch, community  # noqa: E402
 from core import (diagnose, dlss, games, gpu, installer, net, optiscaler,  # noqa: E402
                   pe, prefs, reshade_ini, sources, update, vulkan)
 
@@ -8192,6 +8192,60 @@ check("...and only where there is an install to watch",
       and "if not man" in src_of(_gui.App._watch_this_game))
 check("the watcher writes nothing into a game folder",
       "LOCALAPPDATA" in src_of(watch).split("RECORD =")[1][:200])
+
+
+# --- what to try next, said with its numbers --------------------------------
+_shared = json.loads((Path("docs") / "compatibility.json").read_text(encoding="utf8"))
+_tot = community.totals(_shared)
+check("the shared file adds up across every game, not one at a time",
+      _tot["games"] > 0 and _tot["reports"] > 0
+      and sum(r["worked"] + r["failed"] for r in _tot["routes"].values())
+      == _tot["reports"], _tot["reports"])
+check("a driver's note carries its denominator, never a bare claim",
+      all(w in (community.driver_note(_shared, "616.92") or "of")
+          for w in ("of", "616.92"))
+      and community.driver_note(_shared, "no-such-driver") == "")
+
+
+class _FakeGame:
+    def __init__(self, exe):
+        self.exe = Path(exe)
+        self.name = "test"
+
+
+check("after a route fails, the next one to try is named with its rate",
+      "next one to try" in community.next_route(
+          _shared, _FakeGame("nobody-has-this.exe"), "feeder")
+      or community.next_route(_shared, _FakeGame("nobody-has-this.exe"),
+                              "feeder") == "")
+check("...and never a route this game is not offered (#148)",
+      community.next_route(_shared, _FakeGame("nobody-has-this.exe"),
+                           "feeder", ["feeder"]) == "")
+check("...and nothing at all when no route has enough reports behind it",
+      community.next_route({"games": {}}, _FakeGame("x.exe"), "feeder") == "")
+check("the window says it under a verdict that is not 'Working'",
+      "_what_next(rep)" in src_of(_gui.App._diagnose)
+      and "next_route" in src_of(_gui.App._what_next)
+      and "threading.Thread" in src_of(_gui.App._what_next))
+
+# --- one click to the executable that actually ran --------------------------
+_guisrc190 = src_of(_gui)
+check("the row that moves the install to what really ran is its own row (#144)",
+      "self.wrongexe" in _guisrc190 and "btn_use_exe" in _guisrc190)
+check("...shown only when the watcher saw a different executable, in this tree",
+      "g.folder not in other.parents" in src_of(_gui.App._seen_other_exe)
+      and "pack_forget" in src_of(_gui.App._offer_seen_exe))
+check("...and it re-points the install the way the exe dropdown does",
+      "enrich(g, chosen=True)" in src_of(_gui.App._use_seen_exe)
+      and "_forget_last_session" in src_of(_gui.App._use_seen_exe))
+
+# --- half of "go and look in the overlay" is already known ------------------
+check("an add-on is looked for in the process, not only a .dll",
+      ".addon64" in src_of(watch.inspect))
+check("the routes that log no frames say what the process had loaded",
+      src_of(diagnose).count("_loaded_note(install_dir, man, rep)") >= 2)
+check("a foreign hook is never named twice in the same warning (#190)",
+      "dict.fromkeys(found)" in src_of(installer.other_ngx_hooks))
 
 
 section("RESULT")

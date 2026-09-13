@@ -136,7 +136,10 @@ def other_ngx_hooks(root: Path, path: str = "") -> list[str]:
     for low, orig in names.items():
         if low.endswith(".addon64") and low not in ours:
             found.append(orig)
-    return found
+    # A name that is both in OTHER_NGX_HOOKS and an add-on of somebody
+    # else's was counted twice, and the warning read
+    # "dlssnr-companion.addon64, ..., dlssnr-companion.addon64" (#190).
+    return list(dict.fromkeys(found))
 
 
 def hook_warning(root: Path, path: str) -> str:

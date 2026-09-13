@@ -180,6 +180,104 @@ def advice(entry: dict | None, route: str = "", driver: str = "") -> list[str]:
     return out
 
 
+def totals(data: dict) -> dict:
+    """Every game's numbers added up: {"routes": {...}, "drivers": {...}}.
+
+    The published file is keyed by game, so a game nobody has reported - the
+    usual case - got no sentence at all, and the numbers that ARE known
+    across the whole set (which routes work at all, which drivers fail
+    everywhere) were never said to anybody. They are worth saying: the
+    feeder route works in about a quarter of the games it is tried in, and
+    that is a fact somebody choosing a route should have.
+    """
+    out = {"routes": {}, "drivers": {}, "games": 0, "reports": 0}
+    for entry in (data.get("games") or {}).values():
+        if not isinstance(entry, dict):
+            continue
+        out["games"] += 1
+        for kind in ("routes", "drivers"):
+            for name, r in (entry.get(kind) or {}).items():
+                if not isinstance(r, dict):
+                    continue
+                got = out[kind].setdefault(name, {"worked": 0, "failed": 0})
+                got["worked"] += int(r.get("worked", 0) or 0)
+                got["failed"] += int(r.get("failed", 0) or 0)
+    out["reports"] = sum(r["worked"] + r["failed"]
+                         for r in out["routes"].values())
+    return out
+
+
+def rate(counts: dict) -> tuple[int, int]:
+    """(worked, tried) for one {"worked": n, "failed": n} entry."""
+    w = int((counts or {}).get("worked", 0) or 0)
+    f = int((counts or {}).get("failed", 0) or 0)
+    return w, w + f
+
+
+def driver_note(data: dict, driver: str) -> str:
+    """What this driver does across every game, or "".
+
+    Said with its denominator. "616.92 faults" is a rumour; "7 of the 25
+    reports on 616.92 worked, against 7 of 11 on 616.56" is the reason to
+    roll back, and it is the tool's own shared data saying it.
+    """
+    if not driver:
+        return ""
+    all_ = totals(data).get("drivers") or {}
+    w, n = rate(all_.get(driver))
+    if n < MIN_REPORTS:
+        return ""
+    best = max(((d, *rate(c)) for d, c in all_.items() if rate(c)[1] >= MIN_REPORTS),
+               key=lambda x: (x[1] / x[2] if x[2] else 0), default=None)
+    line = f"On driver {driver}, {w} of {n} shared results worked."
+    if best and best[0] != driver and best[1] * n > w * best[2]:
+        line += (f" The best reported driver is {best[0]}: {best[1]} of "
+                 f"{best[2]}.")
+    return line
+
+
+def next_route(data: dict, game, tried: str, offer: list[str] | None = None) -> str:
+    """One sentence naming the route to try next, or "".
+
+    After a route has failed the tool used to say nothing about what else to
+    do - which is why, over 47 games and 60 shared results, not one row
+    reads "this route rescued a game another could not". Nobody was ever
+    told to try the second one, so the data that would prove a route worth
+    recommending cannot come into being. This is the sentence that starts it.
+    """
+    if not tried:
+        return ""
+    allowed = {r for r in (offer or []) if r} or None
+    entry = for_game(data, game)
+    routes = (entry or {}).get("routes") or {}
+    # This game first, when anybody has reported it: a route that worked
+    # HERE beats any general rate.
+    here = [(n, *rate(r)) for n, r in routes.items()
+            if n != tried and rate(r)[0] and (allowed is None or n in allowed)]
+    if here:
+        here.sort(key=lambda x: (x[1], x[1] / x[2] if x[2] else 0), reverse=True)
+        n, w, t = here[0]
+        return (f"In this game the {n} route is reported working by {w} of "
+                f"{t}. Try that next - pick it in the route dropdown and "
+                f"install again.")
+    # Otherwise the whole set, and only where there is enough of it.
+    all_ = totals(data).get("routes") or {}
+    mine_w, mine_n = rate(all_.get(tried))
+    ranked = [(n, *rate(c)) for n, c in all_.items()
+              if n != tried and rate(c)[1] >= MIN_REPORTS
+              and (allowed is None or n in allowed)]
+    if not ranked:
+        return ""
+    ranked.sort(key=lambda x: x[1] / x[2] if x[2] else 0, reverse=True)
+    n, w, t = ranked[0]
+    if mine_n and w * mine_n <= mine_w * t:
+        return ""                    # nothing on offer does better
+    return (f"Nobody has reported this game yet. Across every game shared so "
+            f"far the {n} route worked in {w} of {t} tries"
+            + (f", against {mine_w} of {mine_n} for {tried}" if mine_n else "")
+            + " - it is the next one to try.")
+
+
 def issue_url(rec: dict, note: str = "") -> str:
     """A pre-filled issue that carries the record. Nothing is posted by the
     tool itself - the person reads it in their browser and decides."""

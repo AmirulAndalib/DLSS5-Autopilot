@@ -424,6 +424,37 @@ def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
     return True
 
 
+def _loaded_note(install_dir: Path, man: dict, rep: Report) -> None:
+    """Say what the process really had in it, where the log cannot.
+
+    Three routes write no frame log at all and OptiScaler's log stops short
+    of saying whether the model ran, so 14 reports were answered "open the
+    overlay and read it yourself". Half of that question - is the add-on
+    even in the process, is the runtime beside it - the module list answers
+    outright, and it does not need the person to go and look.
+    """
+    try:
+        from . import watch
+        seen = watch.last_sighting(install_dir, _installed_at(install_dir))
+    except Exception:
+        return
+    if not seen or seen.get("refused"):
+        return
+    loaded = [n for n in (seen.get("ours") or [])]
+    if not loaded and not seen.get("missing"):
+        return
+    when = datetime.fromtimestamp(seen.get("at", 0)).strftime("%d %b %H:%M")
+    if loaded:
+        rep.add(OK, f"When it last ran ({when}), the process had "
+                    f"{', '.join(loaded)} loaded.",
+                "Read out of the running game, not out of a log: those are "
+                "in it. What the overlay still answers is whether the model "
+                "is switched on and drawing.")
+    if seen.get("missing"):
+        rep.add(WARN, f"...and not {', '.join(seen['missing'])}.",
+                "Written here, and not in the process when it last ran.")
+
+
 def _loaded_block(install_dir: Path | None) -> str:
     """What the game had loaded when it last ran, for the report.
 
@@ -930,6 +961,7 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
         rep.verdict = (f"Inconclusive - open the overlay "
                        f"({_overlay_key()}) and read the status under the "
                        f"Neural Rendering checkbox.")
+        _loaded_note(install_dir, man, rep)
     else:
         rep.add(WARN, "OptiScaler ran, but neural rendering was never asked for.",
                 f"Press {_overlay_key()} in game and tick Neural Rendering; "
@@ -2578,6 +2610,8 @@ def analyse(install_dir: Path) -> Report:
                     "native route runs after the game's own tone mapping.")
         rep.verdict = (f"Add-ons loaded. Confirm in the {panel} - this "
                        f"route does not log frames.")
+        # Half of that confirmation is a fact we already have.
+        _loaded_note(install_dir, man, rep)
         if rep.route == "bridge" and man.get("native_dlss") is False:
             # #127: an unstamped settings file is replaced by the bridge with
             # its defaults, substitute off - and a game with no DLSS of its

@@ -252,7 +252,12 @@ def inspect(folder: Path, ours: list[str], exe: str = "") -> list[Sighting]:
     folder = Path(folder)
     want = {}
     for rel in ours or []:
-        if not isinstance(rel, str) or not rel.lower().endswith(".dll"):
+        # ReShade loads an add-on the same way Windows loads any DLL, so it
+        # is in the module list under its own name - which is how "the
+        # add-on loaded" stops being a question for the person to answer in
+        # an overlay. The runtime (nvngx_dlssnr.dll) likewise.
+        if not isinstance(rel, str) \
+                or not rel.lower().endswith((".dll", ".addon64", ".addon32")):
             continue
         want[os.path.basename(rel).lower()] = folder / rel
     out: list[Sighting] = []

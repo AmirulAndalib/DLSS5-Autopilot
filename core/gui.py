@@ -2679,6 +2679,18 @@ class App:
         ttk.Button(act, text="open folder",
                    command=lambda: self.game and webbrowser.open(str(self.game.install_dir)))\
             .pack(side="left")
+        # Its own row, shown only when the watcher saw the game start from a
+        # different executable than the one this install went beside. Two
+        # controls in one row is the shape nothing tests (#144), and this
+        # one appears and disappears on its own evidence.
+        self.wrongexe = tk.Frame(f, bg=BG)
+        self.wrongexe_label = tk.Label(self.wrongexe, text="", bg=BG, fg=RUST,
+                                       font=font(9), anchor="w")
+        self.wrongexe_label.pack(side="left")
+        self.btn_use_exe = ttk.Button(self.wrongexe, text="use that executable",
+                                      command=self._use_seen_exe)
+        self.btn_use_exe.pack(side="left", padx=(10, 0))
+
         act2 = tk.Frame(f, bg=BG)
         act2.pack(side="bottom", fill="x", pady=(8, 0))
         ttk.Button(act2, text="what will happen?", command=self._preview)\
@@ -2842,7 +2854,9 @@ class App:
             self._log(f"{mark} {f_.title}", tag)
             if f_.detail:
                 self._log(f"        {f_.detail}")
+        self._offer_seen_exe()
         if not rep.verdict.startswith("Working"):
+            self._what_next(rep)
             self._log("")
             self._log("> stuck? press [ report a bug ] on the left - the diagnosis "
                       "above and the log tail go into the report, you post it.",
@@ -3304,6 +3318,102 @@ class App:
             webbrowser.open(community.issue_url(rec, str(getattr(rep, "verdict", ""))))
         except Exception as e:
             self._log(f"[fail] could not open the browser ({e})", "err")
+
+    def _seen_other_exe(self):
+        r"""The executable the watcher saw running, when it is not ours.
+
+        Returns a Path under this game's folder, or None. Only a real file
+        in the tree we can install beside: a game whose real executable is
+        somewhere else entirely is a sentence in the diagnosis, not a button
+        that would install into a folder nobody asked about.
+        """
+        g = self.game
+        if g is None:
+            return None
+        try:
+            seen = watch.last_sighting(g.install_dir,
+                                       diagnose._installed_at(g.install_dir))
+            other = Path(str(seen.get("exe") or ""))
+            recorded = str((installer._previous_manifest(g.install_dir)
+                            or {}).get("exe") or "")
+        except Exception:
+            return None
+        if not seen or not other.name or not recorded:
+            return None
+        if other.name.lower() == Path(recorded).name.lower():
+            return None
+        try:
+            if not other.is_file() or g.folder not in other.parents:
+                return None
+        except OSError:
+            return None
+        return other
+
+    def _offer_seen_exe(self) -> None:
+        """Show (or hide) the row that moves the install to what actually ran."""
+        row = getattr(self, "wrongexe", None)
+        if row is None:
+            return
+        other = self._seen_other_exe()
+        if other is None:
+            row.pack_forget()
+            return
+        self.wrongexe_label.config(
+            text=f"the game ran from {other.name}, and the install went "
+                 f"beside another executable")
+        row.pack(side="bottom", fill="x", pady=(8, 0))
+
+    def _use_seen_exe(self) -> None:
+        """Point the install at the executable the game really runs from."""
+        g, other = self.game, self._seen_other_exe()
+        if g is None or other is None:
+            return
+        self._forget_last_session()
+        if other not in (g.candidates or []):
+            g.candidates = list(g.candidates or []) + [other]
+        g.exe = other
+        g.emu = None
+        games.enrich(g, chosen=True)
+        self._log("")
+        self._log(f"> target exe -> {g.exe.name}  ({g.bit_label} {g.api}); "
+                  f"installing into {g.install_dir}", "head")
+        self._log("  press INSTALL to set it up beside the executable that "
+                  "actually runs. the files beside the old one stay until you "
+                  "uninstall there.", "warn")
+        self._enter_install()
+
+    def _what_next(self, rep) -> None:
+        r"""After a route has failed here: which one to try next, and why.
+
+        Over 47 games and 60 shared results not one row reads "this route
+        rescued a game another could not" - because nobody was ever told to
+        try a second one. The tool knew what worked elsewhere and said
+        nothing at the only moment it mattered: right under a verdict that
+        says this route did not work.
+
+        Off the Tk thread, like every other use of the shared file: it may
+        download, and a download on the Tk thread is #8, #18 and #32.
+        """
+        g = self.game
+        if g is None:
+            return
+        tried = str(getattr(rep, "route", "") or getattr(self, "route", "") or "")
+        # Only routes this game is actually offered - naming one that is not
+        # in the dropdown is #148's shape.
+        offer = list(getattr(getattr(self, "support", None), "options", None) or [])
+        where = g.install_dir
+
+        def work() -> None:
+            try:
+                data = community.fetch()
+                lines = [x for x in (community.next_route(data, g, tried, offer),
+                                     community.driver_note(
+                                         data, gpu.driver_version() or "")) if x]
+            except Exception:
+                return
+            if lines:
+                self.q.put(("community", (where, lines)))
+        threading.Thread(target=work, daemon=True).start()
 
     def _community_note(self) -> None:
         """What other people found in this game, before the install runs.
