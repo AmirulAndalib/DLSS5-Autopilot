@@ -62,6 +62,10 @@
   },
   "cyberpunk2077.exe": {
    "drivers": {
+    "610.88": {
+     "failed": 1,
+     "worked": 0
+    },
     "616.56": {
      "failed": 1,
      "worked": 1
@@ -70,7 +74,7 @@
    "name": "Cyberpunk 2077",
    "routes": {
     "optiscaler": {
-     "failed": 1,
+     "failed": 2,
      "worked": 1
     }
    }
@@ -740,6 +744,6 @@
    }
   }
  },
- "generated": "2026-09-13T11:11:33Z",
- "reports": 61
+ "generated": "2026-09-13T11:27:00Z",
+ "reports": 62
 }
