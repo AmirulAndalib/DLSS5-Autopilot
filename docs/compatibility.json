@@ -1,5 +1,20 @@
 {
  "games": {
+  "007firstlight.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "007 First Light",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "bannerlord.exe": {
    "drivers": {
     "616.64": {
@@ -816,6 +831,6 @@
    }
   }
  },
- "generated": "2026-09-13T17:57:00Z",
- "reports": 68
+ "generated": "2026-09-13T18:25:20Z",
+ "reports": 69
 }
