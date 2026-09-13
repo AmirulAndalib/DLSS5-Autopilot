@@ -45,6 +45,21 @@
     }
    }
   },
+  "control.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Control",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "control_dx12.exe": {
    "drivers": {
     "616.92": {
@@ -744,6 +759,6 @@
    }
   }
  },
- "generated": "2026-09-13T12:48:59Z",
- "reports": 62
+ "generated": "2026-09-13T12:50:47Z",
+ "reports": 63
 }
