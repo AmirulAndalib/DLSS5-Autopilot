@@ -1,0 +1,31 @@
+**Did the game start?** it never started
+
+**What happened**
+ReShade ... all time
+
+---
+- version: 1.8.1
+- gpu: NVIDIA GeForce RTX 4060 Ti (sm_89), driver 596.49
+- game: GTA Vice City - Nextgen Edition
+- exe: GTAIV.exe
+- arch/api: 32-bit / DX9 (imports d3d9.dll, no DXGI)
+- route: feeder
+
+**Diagnosis**: Not started since the install - run the game once, then check again.
+- [warn] The game has not been started since the install.
+- [info] If you DID start it, it launches something other than the game's executable.
+
+**Files in the folder**
+- ReShade.ini: MISSING
+- nvngx_dlssnr.dll: MISSING
+- reshade-shaders/Shaders/DLSS5_Feed.fx: MISSING
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

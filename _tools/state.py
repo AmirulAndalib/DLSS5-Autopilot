@@ -57,6 +57,16 @@ CLASSES = (
      ("inconclusive", "did not get far enough")),
     ("we ask the person to look in the overlay",
      ("confirm in the", "check '", "switched on")),
+    # Two shapes that used to hide inside "nothing we wrote ever loaded",
+    # because the replay put every file back and invented a finished install
+    # record: the answer was measured against a folder nobody had. They are
+    # their own classes - one is the installer's to fix, the other is a
+    # person pointed at a folder we never installed into.
+    ("the install stopped part way",
+     ("install never finished", "install stopped for a reason",
+      "drive was full", "uninstall left files")),
+    ("we were never installed in that folder",
+     ("nothing is installed in this folder", "no install record here")),
     ("the install is incomplete on disk",
      ("is missing - install again", "reinstall", "missing a runtime file")),
     ("it ran and then something stopped",

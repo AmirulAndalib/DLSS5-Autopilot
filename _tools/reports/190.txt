@@ -1,0 +1,37 @@
+**Did the game start?** it never started
+
+**What happened**
+The game didn’t launch with neural rendering.
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 4060 (sm_89), driver 616.92
+- game: Subnautica
+- exe: Subnautica32.exe
+- arch/api: 32-bit / DX12 (no graphics DLL imported statically, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: feeder
+
+**Diagnosis**: Not started since the install - run the game once, then check again.
+- [warn] Another DLSS hook shares this folder: dlssnr-companion.addon64, nvngx_dlssnr.ini, dlssnr-companion.addon64, relimiter.addon64, renodx-unityengine.addon64
+- [warn] The game has not been started since the install.
+- [info] If you DID start it, it launches something other than Subnautica32.exe.
+- [info] Or the game ignores dxgi.dll.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

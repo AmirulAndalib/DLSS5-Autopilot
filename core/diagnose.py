@@ -119,6 +119,10 @@ class Report:
     # This verdict rests on there being no log at all: whoever has better
     # evidence that the game ran (Windows' fault record) must replace it.
     never_ran: bool = False
+    # There is no install record in this folder. Nothing below may date
+    # anything "since the install", because there is no install to date
+    # against - and a log older than it cannot be told from a new one.
+    no_record: bool = False
 
     def add(self, level: str, title: str, detail: str = "") -> None:
         self.findings.append(Finding(level, title, detail))
@@ -277,12 +281,73 @@ def _installed_at(install_dir: Path) -> float:
         return 0.0
 
 
+# What older releases of this tool called the same record. components.py and
+# installer.py both read these; this module used to look only for the current
+# name, so an install by 1.2 or earlier was diagnosed as no install at all.
+LEGACY_MANIFESTS = ("dlss5kur-kurulum.json", "dlss5-installer.json")
+
+
+def _manifest_file(install_dir: Path) -> Path | None:
+    """The install record in this folder, whichever name it was written under."""
+    for name in (MANIFEST,) + LEGACY_MANIFESTS:
+        p = install_dir / name
+        if p.is_file():
+            return p
+    return None
+
+
 def _manifest(install_dir: Path) -> dict:
+    p = _manifest_file(install_dir)
+    if p is None:
+        return {}
     try:
-        data = json.loads((install_dir / MANIFEST).read_text(encoding="utf8"))
+        data = json.loads(p.read_text(encoding="utf8", errors="replace"))
         return data if isinstance(data, dict) else {}
     except Exception:
         return {}
+
+
+# Files that say "this tool has installed here" when the record itself is
+# gone. games.MARKER_FILES is the same idea for the library scan; the two
+# lists are for different questions (that one includes the record names).
+_OUR_MARKS = ("dlss5-feed.addon64", "dlss5-feed.addon32",
+              "dlss5-bridge.addon64", "renodx-dlss5.addon64",
+              "dlss5-feed.log", "OptiScaler.ini", "nvngx_dlssnr.dll")
+
+
+def _route_from_files(install_dir: Path) -> str:
+    """Which route installed here, read off the folder.
+
+    Only for a folder whose record is gone: the route decides which reader
+    below runs, and the wrong one answers about files that route never
+    writes. Ordered by how exclusive the marker is.
+    """
+    def there(*names: str) -> bool:
+        return any((install_dir / n).is_file() for n in names)
+
+    if there("OptiScaler.ini", "OptiScaler.log"):
+        return "optiscaler"
+    if any(install_dir.glob("*.trex/NvRemixBridge.exe")) \
+            or (install_dir / ".trex").is_dir():
+        return "remix"
+    if there("dlss5-bridge.addon64"):
+        return "bridge"
+    if there("dlss5-feed.addon64", "dlss5-feed.addon32", "dlss5-feed.log"):
+        return "feeder"
+    if there("nvngx.dll", "standalone-dlssnr.addon64"):
+        return "standalone"
+    return ""
+
+
+def _anything_of_ours(install_dir: Path) -> str:
+    """The first file in the folder that only this tool would have put there."""
+    for n in _OUR_MARKS:
+        try:
+            if (install_dir / n).is_file():
+                return n
+        except OSError:
+            pass
+    return ""
 
 
 def _route(install_dir: Path) -> str:
@@ -1048,6 +1113,17 @@ def _explain_no_log(install_dir: Path, man: dict, rep: Report,
                 f"there is none, and everything is still in place: if it did "
                 f"run, it is the loading that failed rather than the "
                 f"install.")
+    elif rep.no_record:
+        # Without the record there is no install time, so "has not been
+        # started SINCE the install" is a sentence this cannot support: a
+        # log from a run before the install and no log at all read the
+        # same. Say only what is true - there is no log.
+        rep.add(WARN, f"Nothing has loaded ReShade in this folder.",
+                "ReShade writes ReShade.log the moment it loads, and there is "
+                "none here. With the install record gone there is no install "
+                "time to measure against either, so this cannot tell an "
+                "install that was never run from one whose files were "
+                "removed. Install again, play once, and press this again.")
     else:
         rep.add(WARN, f"The {app} has not been started since the install.",
                 "ReShade writes ReShade.log the moment it loads, and there is "
@@ -1100,6 +1176,9 @@ def _explain_no_log(install_dir: Path, man: dict, rep: Report,
                    f"wrote was loaded - most likely the proxy name or the "
                    f"executable."
                    if _ran_what else
+                   f"No install record here and no ReShade.log - install "
+                   f"again, then run the {app} once."
+                   if rep.no_record else
                    f"Not started since the install - run the {app} once, then "
                    f"check again.")
     # Said in a way the caller can act on: Windows' own fault record for this
@@ -1339,6 +1418,41 @@ def analyse(install_dir: Path) -> Report:
     since = _installed_at(install_dir)
     man = _manifest(install_dir)
     rep.route = man.get("path") or ""
+
+    # No install record in this folder. Everything below reads the logs as
+    # "since the install" and, finding none, tells the person the game has
+    # not been started since an install that never happened here - eight
+    # reports got that answer (#43, #194 among them), and it blames them for
+    # the tool's own mistake. The button is not gated on having installed:
+    # a folder picked by hand, a game moved or reinstalled by its store, a
+    # second copy, or the record removed by a cleanup all arrive here.
+    if _manifest_file(install_dir) is None:
+        ours = _anything_of_ours(install_dir)
+        if not ours:
+            rep.add(BAD, "Nothing of this tool is in this folder.",
+                    "There is no install record here and none of the files an "
+                    "install writes. Either nothing has been installed for "
+                    "this game yet, or it went to a different folder - the "
+                    "one the executable that actually runs sits in. Pick the "
+                    "game and press INSTALL, then play once and press this "
+                    "again.")
+            rep.verdict = "Nothing is installed in this folder - install first."
+            rep.ran = False
+            rep.never_ran = True
+            return rep
+        rep.no_record = True
+        # The record is also where the route is written, and the readers
+        # below are chosen by it: without one, an OptiScaler folder was read
+        # by the feeder's reader and answered about add-ons that route never
+        # installs. The files say which route it was.
+        rep.route = man["path"] = _route_from_files(install_dir)
+        rep.add(WARN, "The install record is gone from this folder.",
+                f"{ours} is here, so an install was made, but "
+                f"{MANIFEST} - which records what was written, for which "
+                f"game and by which route - is not. Something removed it: a "
+                f"cleanup tool, the game's own file verification, or a "
+                f"partial uninstall. What is read below is only what the logs "
+                f"say; install again to restore the record.")
 
     # The install itself did not finish. The installer records that, and the
     # folder then holds whatever arrived before it stopped - which is why a
@@ -2672,6 +2786,13 @@ def _presence(install_dir: Path, man: dict, route: str) -> list[str]:
     """One line per file that decides whether anything can load at all."""
     names: list[str] = []
     extra: list[str] = []
+    # Whether there is an install record at all has to be IN the report.
+    # Without it the list simply had fewer lines in it, and a folder this
+    # tool had never installed into looked like an install with files
+    # missing - to a reader and to the replay both (#43, #194).
+    if _manifest_file(install_dir) is None:
+        extra.append("- install record: MISSING (no install recorded in "
+                     "this folder)")
     proxy = man.get("proxy")
     if man.get("vr"):
         try:

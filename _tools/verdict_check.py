@@ -52,6 +52,36 @@ API_RE = re.compile(r"(DX9|DX10|DX11|DX12|Vulkan|OpenGL)")
 DRIVER_RE = re.compile(r"driver\s+([\d.]+)")
 
 
+# The four verdicts diagnose.analyse() can only reach through the
+# `complete is False` branch, which returns before anything else is read.
+# A report carrying one of them proves the install record said "unfinished";
+# a report carrying any OTHER verdict proves it did not.
+UNFINISHED = (
+    "The install never finished - install again.",
+    "The install stopped for a reason of its own - see below.",
+    "The drive was full - free up space and install again.",
+    "The uninstall left files behind - close the game and uninstall again.",
+)
+
+
+def _finished(text: str) -> dict:
+    """Whether the install record in that folder said the install finished.
+
+    Not in the report as a field, and it decides everything: the unfinished
+    branch returns before any log is read. Two things in the report settle
+    it - the verdict the machine printed (it proves which side of that
+    branch it came out of), and, when there is none, whether the report
+    carries a traceback out of the installer, which is what a install that
+    stopped part way leaves behind (#97, #103).
+    """
+    said = printed_verdict(text)
+    if said:
+        return {"complete": said not in UNFINISHED}
+    crashed = re.search(r"\*\*Last error\*\*(.*?)```", text, re.S) is not None \
+        and "installer.py" in text
+    return {"complete": not crashed}
+
+
 def _answer(path: Path) -> dict:
     """What the diagnosis says about one saved report, on any machine."""
     # Git may hand these back with CRLF on another checkout, and a log line
@@ -72,7 +102,15 @@ def _answer(path: Path) -> dict:
     drv = DRIVER_RE.search(head.get("gpu", ""))
     driver = drv.group(1) if drv else None
 
-    d = replay_report.build(route, api, exe, logs, bitness)
+    # The folder as the report describes it, not as an install that went
+    # perfectly would leave it: which files were on disk, and whether there
+    # was an install record at all. Replaying every report against a
+    # complete folder made the biggest class in the corpus - "nothing we
+    # wrote ever loaded" - unreproducible, because the reason was on the
+    # disk and the replay put it back (#43, #194).
+    state = replay_report.folder_state(text)
+    d = replay_report.build(route, api, exe, logs, bitness, state=state,
+                            extra_manifest=_finished(text))
     # The standalone add-on keeps its log outside the game folder, and the
     # driver rules ask this PC what it has. Both would make the answer
     # depend on the machine running the check, so both come from the report.
@@ -82,7 +120,13 @@ def _answer(path: Path) -> dict:
     try:
         # diagnose imports gpu inside the two functions that ask for it, so
         # the patch goes on the gpu module itself.
+        # The Vulkan layer is a registry entry, not a file, so on this route
+        # the answer would otherwise depend on what is registered on the
+        # machine running the check. The report says which it was.
+        layer = (state or {}).get("layer")
+        reg = (True, True) if layer is None else (layer, layer)
         with patch.object(diagnose, "STANDALONE_LOG", sa), \
+                patch.object(diagnose, "_layer_state", lambda man: reg), \
                 patch.object(_gpu, "driver_version", lambda: driver):
             rep = diagnose.analyse(d)
         return {
@@ -94,6 +138,36 @@ def _answer(path: Path) -> dict:
         }
     finally:
         shutil.rmtree(d, ignore_errors=True)
+
+
+def printed_verdict(text: str) -> str:
+    """The verdict the tool printed on the reporter's own machine.
+
+    Most reports carry it: the report template puts the diagnosis in. It is
+    the only ground truth there is for whether a replay reproduces the
+    machine it came from - if the replay says something else, the fault may
+    be in the rule OR in the replay, and until 1.8.2 nothing compared them.
+    """
+    m = re.search(r"^\*\*Diagnosis\*\*:\s*(.+)$", text, re.M)
+    return m.group(1).strip() if m else ""
+
+
+def reproduction(new: dict) -> tuple[int, int, list[str]]:
+    """How many reports the replay answers the way the machine did."""
+    same, total, off = 0, 0, []
+    for p in sorted(REPORTS.glob("*.txt")):
+        n = p.stem.lstrip("0") or p.stem
+        said = printed_verdict(p.read_text(encoding="utf8", errors="replace")
+                               .replace("\r\n", "\n"))
+        if not said or n not in new:
+            continue
+        total += 1
+        got = str(new[n].get("verdict", ""))
+        if got == said:
+            same += 1
+        else:
+            off.append(f"  #{n}\n     machine: {said}\n     replay:  {got}")
+    return same, total, off
 
 
 def answers(only: str = "") -> dict:
@@ -145,12 +219,25 @@ def main() -> int:
     ap.add_argument("--save", action="store_true")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--only", default="")
+    ap.add_argument("--reproduce", action="store_true",
+                    help="compare the replay against the verdict each report "
+                         "says the tool printed on the reporter's machine")
     a = ap.parse_args()
 
     if not REPORTS.is_dir() or not any(REPORTS.glob("*.txt")):
         print(f"no reports in {REPORTS}")
         return 2
     new = answers(a.only)
+
+    if a.reproduce:
+        same, total, off = reproduction(new)
+        print("=" * 78)
+        print(f"REPLAY vs THE MACHINE: {same} of {total} report(s) that carry "
+              f"a printed verdict come back the same")
+        print("=" * 78)
+        for ln in off:
+            print(ln)
+        return 0
 
     if a.list or a.only:
         for n, r in new.items():

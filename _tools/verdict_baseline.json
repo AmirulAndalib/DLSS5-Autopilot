@@ -11,25 +11,21 @@
  },
  "103": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than SPEED2.EXE.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "11": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than GTAIV.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: ReShade's Vulkan layer is not registered any more."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "ReShade's Vulkan layer is not registered - install again."
  },
  "110": {
   "findings": [
@@ -42,14 +38,12 @@
  },
  "119": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than NBA2K27.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: Nothing of this tool is in this folder."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "127": {
   "findings": [
@@ -86,35 +80,32 @@
  },
  "134": {
   "findings": [
+   "warn: The install record is gone from this folder.",
    "ok: Frames are being processed (3 logged, last was frame 3).",
    "info: 600 frames at 20.5 fps, 0.33 ms/frame spent on the feed."
   ],
   "never_ran": false,
   "ran": true,
-  "route": "-",
+  "route": "feeder",
   "verdict": "Working."
  },
  "140": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than -.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "141": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than forzahorizon6.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "renodx",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "142": {
   "findings": [
@@ -139,12 +130,12 @@
  },
  "148": {
   "findings": [
-   "bad: The RTX Remix runtime is gone from this game."
+   "bad: The install did not finish."
   ],
   "never_ran": false,
   "ran": false,
   "route": "remix",
-  "verdict": "No Remix runtime in the folder any more."
+  "verdict": "The install never finished - install again."
  },
  "154": {
   "findings": [
@@ -185,7 +176,7 @@
   "findings": [
    "warn: The game has not been started since the install.",
    "info: If you DID start it, it launches something other than DOOMx64vk.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "info: Or the game is not running on Vulkan."
   ],
   "never_ran": true,
   "ran": false,
@@ -255,14 +246,12 @@
  },
  "175": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than The Stanley Parable Ultra Deluxe.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "182": {
   "findings": [
@@ -279,12 +268,43 @@
   "findings": [
    "warn: The game has not been started since the install.",
    "info: If you DID start it, it launches something other than rpcs3.exe.",
+   "info: Or the game is not running on Vulkan."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "190": {
+  "findings": [
+   "warn: The game has not been started since the install.",
+   "info: If you DID start it, it launches something other than Subnautica32.exe.",
    "info: Or the game ignores dxgi.dll."
   ],
   "never_ran": true,
   "ran": false,
   "route": "feeder",
   "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "191": {
+  "findings": [
+   "warn: The game has not been started since the install.",
+   "info: If you DID start it, it launches something other than GTAVLauncher.exe.",
+   "info: Or the game ignores dxgi.dll."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "194": {
+  "findings": [
+   "bad: Nothing of this tool is in this folder."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "20": {
   "findings": [
@@ -319,25 +339,21 @@
  },
  "25": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than FlightSimulator2024.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: Nothing of this tool is in this folder."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "26": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than FC26.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "27": {
   "findings": [
@@ -374,14 +390,12 @@
  },
  "31": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than CoJGunslinger.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: Nothing of this tool is in this folder."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "34": {
   "findings": [
@@ -415,14 +429,12 @@
  },
  "38": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than BioShockInfinite.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "39": {
   "findings": [
@@ -471,14 +483,12 @@
  },
  "43": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than ACBlackFlag.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: Nothing of this tool is in this folder."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "44": {
   "findings": [
@@ -512,7 +522,7 @@
   "findings": [
    "warn: The game has not been started since the install.",
    "info: If you DID start it, it launches something other than HouseParty.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "info: Or the game does not render with OpenGL."
   ],
   "never_ran": true,
   "ran": false,
@@ -523,7 +533,7 @@
   "findings": [
    "warn: The game has not been started since the install.",
    "info: If you DID start it, it launches something other than HouseParty.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "info: Or the game does not render with OpenGL."
   ],
   "never_ran": true,
   "ran": false,
@@ -534,7 +544,7 @@
   "findings": [
    "warn: The game has not been started since the install.",
    "info: If you DID start it, it launches something other than ACOdyssey_plus.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "info: Or the game does not render with OpenGL."
   ],
   "never_ran": true,
   "ran": false,
@@ -556,23 +566,21 @@
  },
  "54": {
   "findings": [
-   "bad: OptiScaler.ini is missing."
+   "bad: The install did not finish."
   ],
   "never_ran": false,
   "ran": false,
   "route": "optiscaler",
-  "verdict": "OptiScaler.ini is missing - install again."
+  "verdict": "The install never finished - install again."
  },
  "55": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than re9.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: Nothing of this tool is in this folder."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "upstream",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "56": {
   "findings": [
@@ -585,12 +593,12 @@
  },
  "57": {
   "findings": [
-   "bad: OptiScaler.ini is missing."
+   "bad: The install did not finish."
   ],
   "never_ran": false,
   "ran": false,
   "route": "optiscaler",
-  "verdict": "OptiScaler.ini is missing - install again."
+  "verdict": "The install never finished - install again."
  },
  "58": {
   "findings": [
@@ -603,25 +611,21 @@
  },
  "59": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than ReadyOrNotSteam-Win64-Shipping.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "61": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than evilwithin.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: ReShade's dxgi.dll is gone from the folder."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "ReShade's dxgi.dll is missing from the folder - reinstall."
  },
  "63": {
   "findings": [
@@ -645,14 +649,12 @@
  },
  "65": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than Cyberpunk2077.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "standalone",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "66": {
   "findings": [
@@ -680,23 +682,21 @@
  },
  "69": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than pcsx2-qt.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "7": {
   "findings": [
-   "bad: OptiScaler.ini is missing."
+   "bad: The install did not finish."
   ],
   "never_ran": false,
   "ran": false,
   "route": "optiscaler",
-  "verdict": "OptiScaler.ini is missing - install again."
+  "verdict": "The install never finished - install again."
  },
  "74": {
   "findings": [
@@ -768,14 +768,12 @@
  },
  "84": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than GTAIV.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: Nothing of this tool is in this folder."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
  },
  "86": {
   "findings": [
@@ -793,12 +791,12 @@
  },
  "87": {
   "findings": [
-   "bad: OptiScaler.ini is missing."
+   "bad: The install did not finish."
   ],
   "never_ran": false,
   "ran": false,
   "route": "optiscaler",
-  "verdict": "OptiScaler.ini is missing - install again."
+  "verdict": "The install never finished - install again."
  },
  "89": {
   "findings": [
@@ -833,12 +831,12 @@
  },
  "91": {
   "findings": [
-   "bad: OptiScaler.ini is missing."
+   "bad: The install did not finish."
   ],
   "never_ran": false,
   "ran": false,
   "route": "optiscaler",
-  "verdict": "OptiScaler.ini is missing - install again."
+  "verdict": "The install never finished - install again."
  },
  "92": {
   "findings": [
@@ -876,25 +874,23 @@
  },
  "96": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than DOOMTheDarkAges.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "warn: The install record is gone from this folder.",
+   "warn: Nothing has loaded ReShade in this folder.",
+   "info: If you DID start it, it launches something other than the game's executable."
   ],
   "never_ran": true,
   "ran": false,
-  "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "route": "",
+  "verdict": "No install record here and no ReShade.log - install again, then run the game once."
  },
  "97": {
   "findings": [
-   "warn: The game has not been started since the install.",
-   "info: If you DID start it, it launches something other than ACBlackFlag.exe.",
-   "info: Or the game ignores dxgi.dll."
+   "bad: The install did not finish."
   ],
-  "never_ran": true,
+  "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "Not started since the install - run the game once, then check again."
+  "verdict": "The install never finished - install again."
  },
  "98": {
   "findings": [

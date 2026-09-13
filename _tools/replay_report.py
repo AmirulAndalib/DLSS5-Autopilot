@@ -75,21 +75,108 @@ def _header(text: str) -> dict:
     return out
 
 
+def folder_state(text: str) -> dict | None:
+    """What the report says was in the folder, from its own file list.
+
+    The list under "**Files in the folder**" is written by
+    `diagnose._presence()` on the reporter's machine, so it is the one piece
+    of the report that describes the DISK rather than a log. Until 1.8.2
+    this was thrown away and every report was replayed against a folder with
+    every file in place and a finished install record - so no replay could
+    ever reproduce a quarantined DLL, an uninstalled folder, or a folder the
+    tool had never installed into (#43, #194). The measurement said "not
+    started since the install" as often as the corpus did, and the reason
+    those reports got that answer stayed invisible.
+
+    Returns None when the report has no such list (the older template), so
+    those keep the old behaviour: a folder with everything in place.
+
+    Otherwise: {"files": {name: present}, "manifest": bool}. No proxy DLL,
+    no add-on, no Vulkan layer and no .trex line in the list means
+    `_presence` had nothing to name them from - there was no install record
+    in that folder at all.
+    """
+    m = re.search(r"\*\*Files in the folder\*\*\s*\n(.*?)(?:\n\*\*|\Z)", text, re.S)
+    if not m:
+        return None
+    files: dict[str, bool] = {}
+    named = False
+    layer: bool | None = None
+    for line in m.group(1).splitlines():
+        line = line.strip()
+        if not line.startswith("- ") or ":" not in line:
+            continue
+        name, _, state = line[2:].partition(":")
+        name, state = name.strip(), state.strip()
+        # Lines that describe a registration or a folder rather than a file
+        # beside the game: they answer "is the install recorded", not "is
+        # this file on disk", and there is nothing to create for them.
+        if name.lower().startswith(("reshade openxr", "reshade ", ".trex",
+                                    "optiscaler build", "runtime flavour",
+                                    "the game's own upscaler")):
+            if "vulkan layer" in name.lower():
+                # "registered" / "NOT REGISTERED": the layer is a registry
+                # entry, so this line is the only place a replay can learn
+                # what the loader on that machine had.
+                layer = not state.upper().startswith("NOT")
+                named = True
+            else:
+                named = named or "registered" in state.lower()
+            continue
+        if "/" in name and name.split("/")[0].endswith(".trex"):
+            named = True
+            continue
+        files[name] = state.startswith("present") or state.startswith("not written")
+        if re.match(r"(dxgi|d3d9|d3d10|d3d11|d3d12|opengl32|winmm|version|"
+                    r"dinput8|nvngx)\.dll$", name, re.I) or ".addon" in name.lower():
+            named = True
+    if not files and not named:
+        return None
+    proxy = next((n for n in files if re.match(
+        r"(dxgi|d3d9|d3d10|d3d11|d3d12|opengl32|winmm|version|dinput8)\.dll$",
+        n, re.I)), "")
+    if not proxy and (layer is not None or "(vulkan layer)" in files):
+        proxy = "(vulkan layer)"                  # diagnose.VULKAN_LAYER
+        if layer is None:
+            layer = files.get("(vulkan layer)", False)
+        files.pop("(vulkan layer)", None)
+    return {"files": files, "manifest": named, "proxy": proxy, "layer": layer}
+
+
 def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
-          extra_manifest: dict | None = None) -> Path:
+          extra_manifest: dict | None = None,
+          state: dict | None = None) -> Path:
     d = Path(tempfile.mkdtemp(prefix="replay_"))
     proxy = "dxgi.dll"
     files = [proxy] + (list(ADDONS) if route == "feeder" else [])
+    on_disk = files + ["ReShade.ini", "nvngx_dlssnr.dll",
+                       "reshade-shaders/Shaders/DLSS5_Feed.fx",
+                       "reshade-shaders/Shaders/lumenite_Kernel.fx"]
+    write_manifest = True
+    if state is not None:
+        # The report's own list has the last word on both questions: which
+        # files were there, and whether the install was recorded at all.
+        # What the install WROTE stays the default set - a file the report
+        # calls MISSING is one that was written and has since gone, which is
+        # exactly what `diagnose._missing_core` is there to notice.
+        on_disk = [n for n, there in state["files"].items() if there]
+        # No proxy in the list means the install did not write one under a
+        # name this can see - guessing dxgi.dll there invents a file that is
+        # "missing" and answers the wrong question (#16, #19: both Vulkan).
+        proxy = state["proxy"]
+        files = sorted(set(state["files"]) | ({proxy} if proxy else set()))
+        write_manifest = bool(state["manifest"])
     man = {"version": 1, "complete": True, "exe": exe, "bitness": bitness,
            "api": api, "proxy": proxy, "path": route, "files": files}
     man.update(extra_manifest or {})
-    (d / "dlss5-autopilot.json").write_text(json.dumps(man), encoding="utf8")
-    for n in files + ["ReShade.ini", "nvngx_dlssnr.dll"]:
-        (d / n).write_bytes(b"MZ")
+    if write_manifest:
+        (d / "dlss5-autopilot.json").write_text(json.dumps(man), encoding="utf8")
+    for n in on_disk:
+        p = d / n
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(b"MZ")
     sh = d / "reshade-shaders" / "Shaders"
     sh.mkdir(parents=True, exist_ok=True)
-    (sh / "DLSS5_Feed.fx").write_bytes(b"x")
-    (sh / "lumenite_Kernel.fx").write_bytes(b"x")
     for key, name in (("reshade", "ReShade.log"), ("feed", "dlss5-feed.log"),
                       ("opti", "OptiScaler.log")):
         if logs.get(key):
@@ -122,10 +209,11 @@ def main() -> int:
     p.add_argument("--keep", action="store_true", help="leave the folder behind")
     a = p.parse_args()
 
-    logs, route, api, exe = {}, a.route, a.api, a.exe
+    logs, route, api, exe, state = {}, a.route, a.api, a.exe, None
     if a.report:
         text = Path(a.report).read_text(encoding="utf8", errors="replace")
         logs = _blocks(text)
+        state = folder_state(text)
         head = _header(text)
         route = head.get("route", route)
         exe = head.get("exe", exe)
@@ -140,11 +228,16 @@ def main() -> int:
     for key, path in (("reshade", a.reshade), ("feed", a.feed), ("opti", a.opti)):
         if path:
             logs[key] = Path(path).read_text(encoding="utf8", errors="replace")
-    if not logs:
+    if not logs and state is None:
         print("nothing to replay: pass a saved report, or --reshade/--feed/--opti")
         return 2
+    if state is not None:
+        gone = [n for n, there in state["files"].items() if not there]
+        print(f"folder: {len(state['files']) - len(gone)} file(s) present"
+              + (f", gone: {', '.join(gone)}" if gone else "")
+              + ("" if state["manifest"] else ", NO install record"))
 
-    d = build(route, api, exe, logs, a.bitness)
+    d = build(route, api, exe, logs, a.bitness, state=state)
     show(d, f"issue #{a.issue}  route={route}  api={api}  exe={exe}")
     if a.keep:
         print(f"\nfolder kept: {d}")

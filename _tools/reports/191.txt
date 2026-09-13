@@ -1,0 +1,36 @@
+**Did the game start?** it never started
+
+**What happened**
+The game didn’t launch with neural rendering.
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 4060 (sm_89), driver 616.92
+- game: Grand Theft Auto V
+- exe: GTAVLauncher.exe
+- arch/api: 64-bit / DX11 (set by hand (detected DX10))
+- route: feeder
+
+**Diagnosis**: Not started since the install - run the game once, then check again.
+- [warn] The game has not been started since the install.
+- [info] If you DID start it, it launches something other than GTAVLauncher.exe.
+- [info] Or the game ignores dxgi.dll.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-feed.addon64: present
+- renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
