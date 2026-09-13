@@ -143,6 +143,21 @@
     }
    }
   },
+  "dolphin.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Dolphin (GameCube / Wii)",
+   "routes": {
+    "standalone": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "doomx64vk.exe": {
    "drivers": {
     "616.64": {
@@ -782,6 +797,6 @@
    }
   }
  },
- "generated": "2026-09-13T16:51:46Z",
- "reports": 65
+ "generated": "2026-09-13T17:10:06Z",
+ "reports": 66
 }
