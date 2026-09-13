@@ -677,6 +677,10 @@
   },
   "sparkingzero-win64-shipping.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 1,
+     "worked": 0
+    },
     "616.64": {
      "failed": 0,
      "worked": 1
@@ -687,6 +691,10 @@
     "feeder": {
      "failed": 0,
      "worked": 1
+    },
+    "standalone": {
+     "failed": 1,
+     "worked": 0
     }
    }
   },
@@ -774,6 +782,6 @@
    }
   }
  },
- "generated": "2026-09-13T16:32:14Z",
- "reports": 64
+ "generated": "2026-09-13T16:51:46Z",
+ "reports": 65
 }
