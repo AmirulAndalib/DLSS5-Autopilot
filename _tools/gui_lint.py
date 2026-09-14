@@ -74,6 +74,43 @@ def walk(w: tk.Misc):
         yield from walk(c)
 
 
+def hovers(root: tk.Tk, where: str) -> None:
+    """Open every "( ? )" and look at what comes up.
+
+    Moving a paragraph behind a marker took it out of every check this file
+    does - it is not in the window any more until the pointer asks. So the
+    pointer asks: each marker is entered, the tip is drawn, and the same
+    checks run over it. An empty one is a marker that explains nothing.
+    """
+    for w in walk(root):
+        if not isinstance(w, gui.Hint):
+            continue
+        text = (getattr(w, "hint_text", "") or "").strip()
+        if len(text) < 20:
+            ISSUES.append(f"{where}: a ( ? ) with nothing behind it "
+                          f"({text[:30]!r})")
+            continue
+        try:
+            w.event_generate("<Enter>", x=2, y=2)
+            w._tip.show(text, w.winfo_rootx(), w.winfo_rooty(), delay=0)
+            root.update()
+        except tk.TclError:
+            continue
+        tip = getattr(w._tip, "win", None)
+        if tip is None:
+            ISSUES.append(f"{where}: a ( ? ) whose tip never opened")
+            continue
+        if tip.winfo_width() <= 1 or tip.winfo_height() <= 1:
+            ISSUES.append(f"{where}: a tip drawn {tip.winfo_width()}x"
+                          f"{tip.winfo_height()}")
+        # ...and on the screen it was opened from.
+        if tip.winfo_rootx() < 0 or tip.winfo_rooty() < 0:
+            ISSUES.append(f"{where}: a tip at {tip.winfo_rootx()},"
+                          f"{tip.winfo_rooty()}")
+        w._tip.hide()
+        root.update()
+
+
 def check(root: tk.Tk, where: str) -> int:
     root.update()
     found = 0
@@ -254,6 +291,7 @@ def run(scale: float, size: str) -> None:
             ISSUES.append(f"{tag} install/{route}: route raised {e!r}")
             continue
         check(root, f"{tag} install/{route}")
+        hovers(root, f"{tag} install/{route}")
     try:
         for job in root.tk.call("after", "info"):
             root.after_cancel(job)
