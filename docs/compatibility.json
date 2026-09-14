@@ -826,6 +826,21 @@
     }
    }
   },
+  "splintercell3.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Tom Clancy's Splinter Cell: Chaos Theory",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "supremecommander2.exe": {
    "drivers": {
     "616.64": {
@@ -910,6 +925,6 @@
    }
   }
  },
- "generated": "2026-09-14T20:18:55Z",
- "reports": 75
+ "generated": "2026-09-14T22:39:14Z",
+ "reports": 76
 }
