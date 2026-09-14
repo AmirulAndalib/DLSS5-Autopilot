@@ -852,6 +852,48 @@ def _stale_install(rep: "Report", man: dict) -> None:
             "from what that older install wrote.")
 
 
+def _addon_switch(install_dir: Path, rep: "Report") -> str:
+    """Say what the DLSS 5 add-on's own switch is set to.
+
+    Returns "on", "off", "default" or "" - and the caller writes the
+    verdict, because a verdict set here would be overwritten by the one
+    written after the call.
+
+    The add-on keeps it in ReShade.ini beside the game, so this is a fact on
+    the person's own disk - and every route that "leaves no frame log" was
+    answered by sending them to read it in an overlay.
+    """
+    try:
+        from . import reshade_ini as _ini
+        state = _ini.addon_state(Path(install_dir))
+    except Exception:
+        return ""
+    if not state:
+        return ""
+    switch = state.get("switch")
+    if switch is None:
+        if state.get("overlay_seen"):
+            rep.add(INFO, "The add-on has written no settings of its own yet.",
+                    f"ReShade.ini has no [{_ini.ADDON_SECTION}] section, so "
+                    f"the add-on is running on its defaults - which have the "
+                    f"neural pass on.")
+            return "default"
+        return ""
+    on = str(switch).strip() not in ("0", "", "false", "False")
+    if on:
+        rep.add(OK, "The add-on's own switch is on.",
+                f"ReShade.ini beside the game has "
+                f"[{_ini.ADDON_SECTION}] {_ini.ADDON_SWITCH}={switch}, so "
+                f"this is not a case of it never having been turned on.")
+        return "on"
+    rep.add(BAD, "The neural pass is switched OFF in the add-on itself.",
+            f"ReShade.ini beside the game has "
+            f"[{_ini.ADDON_SECTION}] {_ini.ADDON_SWITCH}={switch}. Open the "
+            f"ReShade overlay in the game and tick it back on in the DLSS 5 "
+            f"tab - or press INSTALL again, which sets it.")
+    return "off"
+
+
 def _missing_core(install_dir: Path, man: dict) -> list[str]:
     """Recorded files that the install wrote and are no longer there."""
     out = []
@@ -2831,17 +2873,27 @@ def analyse(install_dir: Path, last_error: str = "") -> Report:
         panel = ("RenoDX DLSS tab" if rep.route == "renodx"
                  else UPSTREAM_PANEL if rep.route == "upstream"
                  else "DLSS 5 Neural Rendering panel")
+        # Half of what that overlay would show is in ReShade.ini, beside
+        # the game: the add-on writes its own switch there. Asking somebody
+        # to go and read it was 14 of the first 96 reports.
+        switch = _addon_switch(install_dir, rep)
         rep.add(INFO, "This route leaves no frame log of its own.",
-                f"Open the ReShade overlay and check the {panel}: it shows "
-                f"the live state and whether it is switched on.")
+                (f"Open the ReShade overlay and check the {panel}: it shows "
+                 f"the live state, frame by frame.") if switch else
+                (f"Open the ReShade overlay and check the {panel}: it shows "
+                 f"the live state and whether it is switched on."))
         if rep.route == "upstream":
             rep.add(INFO, "If the picture only gets darker, switch the route "
                           "to native.",
                     "neural-upstream normalises the frame against the game's "
                     "exposure buffer, and some games do not expose one; the "
                     "native route runs after the game's own tone mapping.")
-        rep.verdict = (f"Add-ons loaded. Confirm in the {panel} - this "
-                       f"route does not log frames.")
+        rep.verdict = (
+            "The add-ons are loaded and the neural pass is switched off in "
+            "the add-on itself - turn it on in the overlay."
+            if switch == "off" else
+            f"Add-ons loaded. Confirm in the {panel} - this "
+            f"route does not log frames.")
         # Half of that confirmation is a fact we already have.
         _loaded_note(install_dir, man, rep)
         if rep.route == "bridge" and man.get("native_dlss") is False:
@@ -3415,6 +3467,18 @@ def _presence(install_dir: Path, man: dict, route: str) -> list[str]:
     # A ray-reconstruction runtime this install swapped, wherever the game
     # keeps it: invisible in a report otherwise, and exactly the kind of
     # thing that explains one.
+    # What the add-on has written about itself, so the report answers
+    # "is it even switched on" without anybody opening an overlay.
+    try:
+        from . import reshade_ini as _ini2
+        st = _ini2.addon_state(install_dir)
+        if st:
+            extra.append(f"- DLSS 5 add-on switch: "
+                         + (f"{_ini2.ADDON_SWITCH}={st['switch']}"
+                            if st.get("switch") is not None else
+                            "not written yet (running on its defaults)"))
+    except Exception:
+        pass
     rr = (man.get("components") or {}).get("dlssd")
     if rr:
         where = next((f for f in (man.get("files") or [])

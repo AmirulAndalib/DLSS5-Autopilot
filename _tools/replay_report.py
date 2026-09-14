@@ -173,6 +173,12 @@ def folder_state(text: str) -> dict | None:
             remix["swapped"] = state.lower().startswith("swapped")
             named = True
             continue
+        if low == "dlss 5 add-on switch":
+            # "NeuralUplift=1" / "not written yet (...)"
+            if "=" in state:
+                files["(addon switch)"] = state.split("=", 1)[1].strip()
+            named = True
+            continue
         if low == "runtime flavour":
             # "neural", "uplift", or "no DLSS 5 pass" for a runtime with none.
             remix["flavour"] = "" if state.startswith("no ") else state
@@ -214,7 +220,8 @@ def folder_state(text: str) -> dict | None:
             layer = files.get("(vulkan layer)", False)
         files.pop("(vulkan layer)", None)
     return {"files": files, "manifest": named, "proxy": proxy, "layer": layer,
-            "remix": remix if (remix["trex"] or remix["key"]) else None}
+            "remix": remix if (remix["trex"] or remix["key"]) else None,
+            "addon_switch": files.pop("(addon switch)", None)}
 
 
 def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
@@ -258,6 +265,14 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
         p.write_bytes(b"MZ")
     sh = d / "reshade-shaders" / "Shaders"
     sh.mkdir(parents=True, exist_ok=True)
+    # The add-on's own switch, as the report recorded it: the diagnosis
+    # reads ReShade.ini for it, so the replay has to write one.
+    switch = (state or {}).get("addon_switch")
+    if switch is not None:
+        from core import reshade_ini as _ini
+        (d / "ReShade.ini").write_text(
+            f"[{_ini.ADDON_SECTION}]\n{_ini.ADDON_SWITCH}={switch}\n",
+            encoding="utf8")
     for key, name in (("reshade", "ReShade.log"), ("feed", "dlss5-feed.log"),
                       ("opti", "OptiScaler.log")):
         if logs.get(key):

@@ -8793,6 +8793,37 @@ check("...and a runtime with no neural pass is still told apart",
                     )).verdict)
 shutil.rmtree(_d, ignore_errors=True)
 
+# The 14 reports told to "open the overlay and read the status": the status
+# is in ReShade.ini beside the game. Confirmed on a real install (DEATHLOOP
+# on the owner's machine: [RenoDX.DLSS5] NeuralUplift=1) and in the feeder
+# and bridge binaries, which read that section themselves.
+_sw = Path(tempfile.mkdtemp(prefix="addonsw_"))
+check("no ReShade.ini says nothing at all, rather than 'off'",
+      reshade_ini.addon_state(_sw) == {})
+(_sw / "ReShade.ini").write_text(
+    "[ADDON]\nOverlayCollapsed=DLSS 5 Feed@dlss5-feed.addon64\n"
+    "[RenoDX.DLSS5]\nNeuralUplift=1\nNRIntensity=2\n", encoding="utf8")
+_st = reshade_ini.addon_state(_sw)
+check("the add-on's own switch is read out of ReShade.ini",
+      _st["switch"] == "1" and _st["keys"].get("NRIntensity") == "2"
+      and _st["overlay_seen"] is True, _st)
+_rep = diagnose.Report()
+check("...and 'on' is said as a fact, not as something to go and check",
+      diagnose._addon_switch(_sw, _rep) == "on"
+      and any(f_.level == "ok" and "switch is on" in f_.title
+              for f_ in _rep.findings), [f_.title for f_ in _rep.findings])
+(_sw / "ReShade.ini").write_text(
+    "[RenoDX.DLSS5]\nNeuralUplift=0\n", encoding="utf8")
+_rep = diagnose.Report()
+check("...and 'off' is the answer itself, with the way to turn it on",
+      diagnose._addon_switch(_sw, _rep) == "off"
+      and any("switched OFF" in f_.title for f_ in _rep.findings),
+      [f_.title for f_ in _rep.findings])
+(_sw / "ReShade.ini").write_text("[ADDON]\nOverlayCollapsed=x\n", encoding="utf8")
+check("...and an overlay that has been opened with nothing written is defaults",
+      diagnose._addon_switch(_sw, diagnose.Report()) == "default")
+shutil.rmtree(_sw, ignore_errors=True)
+
 # #218: "it doesnt start" on a Max Payne Remix mod, and the answer was
 # "not run yet". A runtime this install swapped in is a different d3d9.dll
 # from the one the mod ships, and a game that reaches Remix through a
