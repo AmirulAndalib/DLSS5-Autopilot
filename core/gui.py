@@ -453,6 +453,87 @@ def _button_bar(bar: tk.Frame, lead: tk.Widget, buttons: list, gap: int,
     bar.bind("<Configure>", lay, add="+")
 
 
+class Tip:
+    """A borderless window that follows a widget, shown while the pointer is on it.
+
+    Tk has no tooltip, so this is one: a Toplevel with no decorations, one
+    label in it, put below-right of the pointer and taken down on the way
+    out. It never takes focus, so it cannot swallow a click, and it is
+    clamped to the screen so a long one is not drawn off the edge.
+    """
+
+    def __init__(self, master: tk.Misc) -> None:
+        self.master = master
+        self.win: tk.Toplevel | None = None
+        self._after = None
+
+    def show(self, text: str, x: int, y: int, delay: int = 250) -> None:
+        self.hide()
+        if not text.strip():
+            return
+        self._after = self.master.after(delay, lambda: self._pop(text, x, y))
+
+    def _pop(self, text: str, x: int, y: int) -> None:
+        self._after = None
+        try:
+            win = tk.Toplevel(self.master)
+            win.wm_overrideredirect(True)
+            win.attributes("-topmost", True)
+            lbl = tk.Label(win, text=text, justify="left", anchor="w",
+                           bg=FIELD, fg=TXT, font=font(8),
+                           borderwidth=1, relief="solid",
+                           padx=px(8), pady=px(6),
+                           wraplength=px(420))
+            lbl.pack()
+            win.update_idletasks()
+            sw = win.winfo_screenwidth()
+            sh = win.winfo_screenheight()
+            x = min(max(0, x + px(14)), max(0, sw - win.winfo_width() - px(8)))
+            y = min(max(0, y + px(18)), max(0, sh - win.winfo_height() - px(8)))
+            win.wm_geometry(f"+{int(x)}+{int(y)}")
+            self.win = win
+        except tk.TclError:
+            self.win = None
+
+    def hide(self) -> None:
+        if self._after is not None:
+            try:
+                self.master.after_cancel(self._after)
+            except tk.TclError:
+                pass
+            self._after = None
+        if self.win is not None:
+            try:
+                self.win.destroy()
+            except tk.TclError:
+                pass
+            self.win = None
+
+
+class Hint(tk.Label):
+    """A small marker that holds a paragraph until the pointer asks for it.
+
+    The text is not gone - it is one hover away, and the marker is where the
+    paragraph used to be, so the row still says there is something to read.
+    """
+
+    def __init__(self, parent: tk.Misc, text: str, mark: str = "( ? )") -> None:
+        super().__init__(parent, text=mark, bg=PANEL, fg=DIM, font=font(8),
+                         cursor="question_arrow")
+        self.hint_text = text
+        self._tip = Tip(self)
+        self.bind("<Enter>", self._show)
+        self.bind("<Leave>", lambda _e: self._tip.hide())
+        self.bind("<Button-1>", self._show)
+
+    def set_hint(self, text: str) -> None:
+        self.hint_text = text
+
+    def _show(self, e) -> None:
+        self._tip.show(self.hint_text, e.x_root, e.y_root,
+                       delay=0 if str(e.type) == "ButtonPress" else 250)
+
+
 class Prose(tk.Text):
     """Read-only text that is as tall as what it says, with styled lines.
 
@@ -478,19 +559,54 @@ class Prose(tk.Text):
         self.tag_configure("driver", foreground=AMBER, lmargin1=px(6),
                            lmargin2=ind, spacing1=px(2))
         self.tag_configure("bad", foreground=RUST, spacing3=px(3))
+        self.tag_configure("hint", foreground=AMBER, underline=True)
         self.configure(state="disabled")
         self.bind("<Configure>", lambda _e: self.after_idle(self._fit))
+        # What a route IS and what it will not sit beside is worth reading
+        # once; what changes the outcome stays on screen. The rest is behind
+        # this marker.
+        self._tip = Tip(self)
+        self._hidden = ""
+        self.tag_bind("hint", "<Enter>", self._on_hint)
+        self.tag_bind("hint", "<Leave>", lambda _e: self._tip.hide())
+        self.bind("<Leave>", lambda _e: self._tip.hide())
 
-    def show(self, parts: list[tuple[str, str]]) -> None:
-        """parts: (tag, text) pairs, one per line."""
+    def _on_hint(self, e) -> None:
+        self._tip.show(self._hidden, e.x_root, e.y_root)
+
+    # Lines that change what happens stay on screen whatever else is
+    # hidden: this PC cannot run the route, the driver faults on it, the
+    # executable Windows protects. Somebody who never moves the pointer
+    # still reads those.
+    ALWAYS = ("bad", "driver")
+
+    def show(self, parts: list[tuple[str, str]], fold: bool = True) -> None:
+        """parts: (tag, text) pairs, one per line.
+
+        `fold`: keep the description and the warnings that decide the
+        outcome, and put the rest - what this route will not sit beside -
+        behind a marker the pointer opens.
+        """
+        keep = list(parts)
+        self._hidden = ""
+        if fold:
+            hide = [t for tag, t in parts if tag not in self.ALWAYS]
+            if hide:
+                keep = [(tag, t) for tag, t in parts if tag in self.ALWAYS]
+                self._hidden = "\n\n".join(hide)
         self.configure(state="normal")
         self.delete("1.0", "end")
-        for i, (tag, text) in enumerate(parts):
+        for i, (tag, text) in enumerate(keep):
             if i:
                 self.insert("end", "\n")
             if tag in ("warn", "driver"):
                 self.insert("end", "!  ", ("mark", tag))
             self.insert("end", text, tag)
+        if self._hidden:
+            if keep:
+                self.insert("end", "\n")
+            self.insert("end", "what this route is, and what it will not sit "
+                               "beside", "hint")
         self.configure(state="disabled")
         self.after_idle(self._fit)
 
@@ -2484,8 +2600,9 @@ class App:
             inner, state="readonly", width=18,
             values=[f"{v}" for v in optiscaler.NR_STYLES.values()])
         self.cb_nrstyle.current(0)
-        self.nrhint = tk.Label(inner, text="the rest is on the overlay",
-                               bg=PANEL, fg=DIM, font=font(8))
+        self.nrhint = Hint(inner, "the rest of the model's dials are in "
+                                  "OptiScaler's own overlay, live, while the "
+                                  "game runs - Insert opens it.")
         # Which OptiScaler + DLSS-NR build goes in (#21).
         self.lbl_optibuild = tk.Label(inner, text="optiscaler build", bg=PANEL,
                                       fg=DIM, font=font(9))
@@ -2530,8 +2647,8 @@ class App:
         self.cb_feederver.current(0)
         self.cb_feederver.bind("<<ComboboxSelected>>", self._on_feederver)
         self.feeder_tags: list[str] = []
-        self.feederhint = tk.Label(
-            inner, bg=PANEL, fg=DIM, font=font(8), anchor="w", justify="left",
+        self.feederhint = Hint(
+            inner,
             text="stable = what GitHub marks as the latest release; or pin an "
                  "exact build when the newest one breaks a game. builds "
                  "before 0.8.0-beta.3 pair with renodx-dlss5 4.55 and have "
@@ -2540,7 +2657,6 @@ class App:
                  "newest add-on is installed unless "
                  "the driver or an OpenGL game pins an older one - the "
                  "install log says which")
-        _wrap_to_width(self.feederhint)
 
         # Some D3D11 games quit the moment ReShade hooks them (MGS V). Through
         # DXVK they render on Vulkan and ReShade loads as a layer instead.
@@ -2734,11 +2850,16 @@ class App:
                                    image=self._auto_img, compound="left",
                                    command=self._autopilot)
         self.btn_auto.pack(side="left")
-        tk.Label(self.autorow,
-                 text="installs, starts the game, reads what it loaded, and "
-                      "tries the next route if nothing of ours got in",
-                 bg=BG, fg=DIM, font=font(8), anchor="w")\
-            .pack(side="left", padx=(10, 0))
+        self.autohint = Hint(
+            self.autorow,
+            "installs the route, starts the game, waits for it to settle and "
+            "reads which DLLs it loaded. If ours are not in it - or the game "
+            "loaded another copy of the same name instead - it waits for you "
+            "to close the game, installs the next route and goes round "
+            "again, up to three. It never starts a game with anti-cheat in "
+            "the folder: there it asks you to.")
+        self.autohint.configure(bg=BG)
+        self.autohint.pack(side="left", padx=(10, 0))
 
         # Its own row, shown only when the watcher saw the game start from a
         # different executable than the one this install went beside. Two
@@ -3732,8 +3853,9 @@ class App:
             self.dlaalbl.grid(row=10, column=2, sticky="w", padx=(10, 0))
         if feeder:
             self.lbl_feederver.grid(row=11, column=0, sticky="w", padx=(0, 14), pady=5)
-            self.cb_feederver.grid(row=11, column=1, columnspan=2, sticky="ew", pady=5)
-            self.feederhint.grid(row=12, column=0, columnspan=3, sticky="ew")
+            self.cb_feederver.grid(row=11, column=1, sticky="ew", pady=5)
+            # Beside the dropdown it explains, not as a paragraph under it.
+            self.feederhint.grid(row=11, column=2, sticky="w", padx=(px(10), 0))
 
         # OptiScaler is loaded by the game under one of several names; the
         # feeder's motion-vector provider sits in the same place on screen.
