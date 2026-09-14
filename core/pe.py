@@ -32,6 +32,50 @@ class PEError(Exception):
     pass
 
 
+def file_version(path) -> str:
+    """"310.8.0" - the version stamped in a DLL, or "" if it has none.
+
+    Read from the file's own VS_FIXEDFILEINFO through Windows' version API,
+    which is where NVIDIA stamps the DLSS build number. It is the only way
+    to know what is in a game folder NOW: the install record says what this
+    tool wrote, and a launcher that verifies its files puts its own copy
+    back without telling anybody.
+
+    A trailing zero is dropped, because NVIDIA writes 310.8.0 as 310.8.0.0
+    and nobody calls it that.
+    """
+    if os.name != "nt":
+        return ""
+    try:
+        import ctypes
+        import ctypes.wintypes as w
+        ver = ctypes.WinDLL("version", use_last_error=True)
+        p = str(Path(path))
+        size = ver.GetFileVersionInfoSizeW(w.LPCWSTR(p), None)
+        if not size:
+            return ""
+        buf = ctypes.create_string_buffer(size)
+        if not ver.GetFileVersionInfoW(w.LPCWSTR(p), 0, size, buf):
+            return ""
+        block = ctypes.c_void_p()
+        length = ctypes.c_uint()
+        if not ver.VerQueryValueW(buf, w.LPCWSTR("\\"),
+                                  ctypes.byref(block), ctypes.byref(length)):
+            return ""
+        if length.value < 52:                    # a VS_FIXEDFILEINFO is 52
+            return ""
+        data = ctypes.string_at(block, length.value)
+        sig, _sver, ms, ls = struct.unpack("<IIII", data[:16])
+        if sig != 0xFEEF04BD:                    # not a fixed-info block
+            return ""
+        parts = [ms >> 16, ms & 0xFFFF, ls >> 16, ls & 0xFFFF]
+        while len(parts) > 3 and parts[-1] == 0:
+            parts.pop()
+        return ".".join(str(n) for n in parts)
+    except Exception:
+        return ""
+
+
 def exe_bitness(path: Path) -> int:
     """Return 32 or 64, read from the PE COFF header's Machine field.
 

@@ -653,6 +653,16 @@ def _is_win64_dll(p: Path, least: int = 200_000) -> tuple[bool, str]:
     return True, ""
 
 
+def _swapped(was: str, label: str) -> str:
+    """"310.2.1 -> 310.8.0", or just the new build when there was nothing.
+
+    A swap that says only what it put there leaves the person with no way
+    to see what it was worth - and no way to notice, next time, that a
+    launcher has quietly put the old runtime back.
+    """
+    return f"{was} -> {label}" if was and was != label else label
+
+
 def _place_family(entries: list, want, dest: Path, rep, root: Path, dl,
                   member: str, prefix: str, log) -> dict:
     """Install the chosen build, falling back to the next source if need be.
@@ -2614,10 +2624,12 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                     log("      a nvngx_dlss.dll is already here, left untouched")
                     rep.skipped.append(DLSS)
                 else:
+                    was_ = pe.file_version(root / DLSS)
                     e_ = _place_family(catalog_["dlss"], opt.dlss,
                                        root / DLSS, rep, root, dl, DLSS,
                                        "dlss", log)
-                    log(f"      nvngx_dlss {e_['label']} (the game has none: "
+                    log(f"      nvngx_dlss {_swapped(was_, e_['label'])} "
+                        f"(the game has none: "
                         f"OptiScaler runs DLSS in place of its "
                         f"{'FSR' if opt.upscaler == 'fsr' else 'XeSS'})")
                     rep.notes.append(f"dlss version: {e_['label']}")
@@ -2987,10 +2999,11 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                 log("      the game ships its own nvngx_dlss.dll, left untouched")
                 rep.skipped.append(DLSS)
             else:
+                was = pe.file_version(dlss_dir / DLSS)
                 e = _place_family(catalog["dlss"], opt.dlss,
                                   dlss_dir / DLSS, rep, root, dl, DLSS,
                                   "dlss", log)
-                log(f"      nvngx_dlss {e['label']}")
+                log(f"      nvngx_dlss {_swapped(was, e['label'])}")
                 rep.notes.append(f"dlss version: {e['label']}")
                 rep.components["dlss"] = e["label"]
 
@@ -3021,6 +3034,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                 # install is already done: skip the swap, say so, and carry
                 # on rather than ending the install over an extra.
                 try:
+                    rr_was = pe.file_version(have)
                     rr_entry = _place_family(fam, opt.dlssd, have, rep, root,
                                              dl, DLSSD, "dlssd", log)
                 except PermissionError:
@@ -3041,7 +3055,8 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                     where = have.relative_to(root)
                 except ValueError:
                     where = have
-                log(f"      nvngx_dlssd {rr_entry['label']} -> {where}")
+                log(f"      nvngx_dlssd {_swapped(rr_was, rr_entry['label'])}"
+                    f"  ({where})")
                 rep.notes.append(f"ray reconstruction: {rr_entry['label']} "
                                  f"(the game's own is backed up and comes "
                                  f"back on uninstall)")
@@ -3069,9 +3084,11 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                                  "rendering and DLAA/DLSS SR still run")
                 rep.skipped.append(DLSSG)
             else:
+                g_was = pe.file_version(root / DLSSG)
                 e = _place_family(fam, None, root / DLSSG, rep, root, dl,
                                   DLSSG, "dlssg", log)
-                log(f"      nvngx_dlssg {e['label']} (frame generation)")
+                log(f"      nvngx_dlssg {_swapped(g_was, e['label'])} "
+                    f"(frame generation)")
                 rep.notes.append(f"dlssg version: {e['label']}")
                 rep.components["dlssg"] = e["label"]
                 if sm is not None and sm < 89:

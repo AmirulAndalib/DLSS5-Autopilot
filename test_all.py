@@ -8337,6 +8337,28 @@ check("the window hands the diagnosis the tool's own last error",
       "log.last_error()" in src_of(_gui.App._diagnose))
 
 
+section("1.9.0: what the swap was worth, in numbers")
+
+# The install said "nvngx_dlss 310.9.1" and nothing about what had been
+# there, so the one thing a DLSS swap is for - moving a game off an old
+# runtime - was invisible in the log, in a screenshot and to the person.
+check("a DLL's own stamped version is read from the file",
+      _re.match(r"^\d+(\.\d+)+$",
+                pe.file_version(Path(os.environ["WINDIR"]) / "System32"
+                                / "kernel32.dll") or ""),
+      pe.file_version(Path(os.environ["WINDIR"]) / "System32" / "kernel32.dll"))
+check("...and a file with no version block is not guessed at",
+      pe.file_version(SRC_DIR / "test_all.py") == ""
+      and pe.file_version(SRC_DIR / "no-such-file.dll") == "")
+check("a swap is logged as what it replaced and what it put there",
+      installer._swapped("310.2.1", "310.9.1") == "310.2.1 -> 310.9.1")
+check("...and a first install, with nothing to replace, is just the build",
+      installer._swapped("", "310.9.1") == "310.9.1"
+      and installer._swapped("310.9.1", "310.9.1") == "310.9.1")
+check("every runtime this tool swaps says it that way",
+      src_of(installer).count("_swapped(") >= 5, src_of(installer).count("_swapped("))
+
+
 section("1.9.0: which build set this folder up (#215)")
 
 # A report arrived on 1.5.0 while 1.8.2 was current, and nothing in the

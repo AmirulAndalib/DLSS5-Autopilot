@@ -13,13 +13,13 @@ NVIDIA RTX 20 or newer
   different way. The tool reads the executable and the folder, offers every route
   the game allows, marks the one that fits your card, and leaves the
   choice yours.
-- **The game's own DLSS, brought up to date.** An install can also swap
+- **The game's own DLSS, kept up to date.** An install can also swap
   super resolution (`nvngx_dlss.dll`), frame generation
   (`nvngx_dlssg.dll`) and, for a game that ships one, ray reconstruction
   (`nvngx_dlssd.dll`) for builds fetched from NVIDIA's own repository. The
   game's file is backed up and comes back on uninstall, and **check
   versions** later says which of your games has a part with a newer build.
-  [How a swap works](#updating-a-games-dlss).
+  [How a swap works](#keeping-a-games-dlss-up-to-date).
 - **It tells you what happened.** Play, then press **did it work?**: it
   reads ReShade's log, the add-on's, OptiScaler's and Windows' own crash
   record, and says whether the model ran - and when it did not, which
@@ -159,7 +159,7 @@ The first works in any D3D12 game on the optiscaler route; the second only
 raises a multiplier the game already has. NVIDIA's own multi-frame
 generation stays an RTX 50 feature.
 
-## Updating a game's DLSS
+## Keeping a game's DLSS up to date
 
 A game ships the DLSS build it was released with and keeps it for as long
 as the studio does not patch one in. Newer builds of NVIDIA's runtimes
@@ -280,8 +280,8 @@ matters.
   Insert. A keyboard with neither can bind another key here, once, for
   every game.
 - **nvngx_dlss** and **ray reconstruction**: the game's own DLSS runtimes,
-  replaceable with newer builds - see [Updating a game's
-  DLSS](#updating-a-games-dlss).
+  replaceable with newer builds - see [Keeping a game's DLSS up to
+  date](#keeping-a-games-dlss-up-to-date).
 - **What will happen?** lists what INSTALL would write, back up and remove,
   without writing anything.
 - **Before / after** puts the last two ReShade screenshots side by side.
