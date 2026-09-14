@@ -1,0 +1,39 @@
+**Did the game start?** it never started
+
+**What happened**
+certificate verify failed, still the same
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 5060 Ti (sm_120), driver 616.92
+- game: The Stanley Parable: Ultra Deluxe
+- exe: The Stanley Parable Ultra Deluxe.exe
+- arch/api: 64-bit / DX11 (Unity player beside the exe - Direct3D 11 on Windows unless the game is started with -force-d3d12, -force-vulkan or -force-glcore)
+- route: feeder
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-feed.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: MISSING
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/vort_Motion.fx: MISSING
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**Last error**
+```
+y", line 1581, in _install_feeder_parts
+  File "core\installer.py", line 1601, in _install_vort
+  File "core\installer.py", line 2275, in dl
+  File "core\net.py", line 365, in download
+RuntimeError: codeload.github.com: something on this network answered for codeload.github.com with a certificate issued to a different name (<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: Hostname mismatch, certificate is not valid for 'codeload.github.com'. (_ssl.c:1010)>). The certificate was trusted - it is the name on it that is wrong, so this is not a missing Windows root and opening the site in Edge does not fix it: the connection did not reach codeload.github.com at all. The usual causes, in order - a DNS or family-filter service, an ISP or router block page, a hotel/campus wifi login page, or a VPN. Try a phone hotspot or set this PC's DNS to 1.1.1.1, then install again.
+```

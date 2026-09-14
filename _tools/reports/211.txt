@@ -1,0 +1,50 @@
+**Did the game start?** it started and ran
+
+**What happened**
+started nvidia remix console but not the game
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 4060 Ti (sm_89), driver 616.92
+- game: Need for Speed Carbon
+- exe: NFSC.exe
+- arch/api: 32-bit / DX9 (imports d3d9.dll, no DXGI)
+- route: remix
+
+**Diagnosis**: Remix ran; the neural pass was never even attempted.
+- [warn] The Remix log predates the current install.
+- [warn] The Remix runtime ran but says nothing about DLSS-NR.
+
+**Files in the folder**
+- .trex: found at H:\game zone\NFS\Need for Speed Carbon\.trex
+- .trex/d3d9.dll: present
+- .trex/nvngx_dlssnr.dll: present
+- .trex/remix_nvngx.dll: present
+- runtime flavour: neural
+- rtx.neuralRendering.enable: set
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**remix-dxvk.log**
+```
+[17:39:19.493] info:  [RTX Neural Radiance Cache] Selected High preset mode.
+[17:39:19.833] info:  [RTX info] Neural Radiance Cache: supported
+[17:39:24.298] info:  [RTX Neural Radiance Cache] NRC SDK: Loading the default network config data.
+[17:39:24.327] info:  [RTX Neural Radiance Cache] NRC v0.13 (22 January 2025) Context successfully initialized.
+[17:39:24.330] info:  [RTX] Integrate Indirect Mode: Neural Radiance Cache - activated
+[17:39:59.028] info:  [RTX Neural Radiance Cache] NRC SDK: Loading the default network config data.
+[17:39:59.036] info:  [RTX Neural Radiance Cache] NRC v0.13 (22 January 2025) Context successfully initialized.
+[17:40:03.292] info:  [RTX Neural Radiance Cache] NRC SDK: Loading the default network config data.
+[17:40:03.294] info:  [RTX Neural Radiance Cache] NRC v0.13 (22 January 2025) Context successfully initialized.
+```
+
+
+PS NFSC-Remix-CompatibilityMod-0.9.7 is installed

@@ -2832,7 +2832,7 @@ class App:
         """Read the game's own logs back and say what happened."""
         if not self.game:
             return
-        rep = diagnose.analyse(self.game.install_dir)
+        rep = diagnose.analyse(self.game.install_dir, log.last_error())
         self._last_diag = rep
         try:
             # Enabled for any diagnosis, not only for a session that logged:

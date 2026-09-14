@@ -623,6 +623,81 @@ def _anything_of_ours(install_dir: Path) -> str:
     return ""
 
 
+# What an install that stopped on its own leaves behind. The traceback is
+# already in every report - issue_body() prints it at the bottom - but no
+# rule read it, and an install that crashed before it delivered anything
+# leaves a folder that looks exactly like a folder nobody ever installed
+# into. That is how #213 (the install died on a DNS lookup, nothing was
+# written) was told to go and start the game once and come back.
+# Only a traceback that went through this tool's own install path counts:
+# one out of the update check or the GUI says nothing about the install.
+_INSTALL_FRAMES = ("installer.py", "optiscaler.py", "remix.py", "remixdl.py",
+                   "dxvk.py", "vulkan.py", "openxr.py")
+
+# Read off the exception line, most specific first. The line itself is
+# always shown as well, so an unrecognised one still says something.
+_CRASH_CAUSES = (
+    ("gaierror", "this PC could not look up the download's address"),
+    ("ssl", "the secure connection to the download failed"),
+    ("timed out", "the download timed out"),
+    ("connectionreset", "the connection was reset part way through"),
+    ("connectionrefused", "the download server refused the connection"),
+    ("connection", "the download could not reach the internet"),
+    ("urlerror", "the download could not reach the internet"),
+    ("httperror", "the download server answered with an error"),
+    ("permissionerror", "Windows refused a file the install had to write"),
+    ("filenotfounderror", "a file the install expected was not there"),
+    ("nospace", "the drive filled up"),
+    ("oserror", "Windows refused a file the install had to write"),
+    ("memoryerror", "this PC ran out of memory during the install"),
+)
+
+
+def _install_crash(last_error: str) -> tuple[str, str]:
+    """(why, the exception line) from the traceback the install left behind.
+
+    ("", "") when the last error did not come out of the install path - the
+    update check and the GUI fail in their own ways and neither of them
+    explains an empty folder.
+    """
+    text = last_error or ""
+    if not any(f in text for f in _INSTALL_FRAMES):
+        return "", ""
+    line = ""
+    for ln in reversed(text.strip().splitlines()):
+        ln = ln.strip()
+        # The frames are indented and the message is not; the last
+        # unindented line of a traceback is the exception itself.
+        if ln and not ln.startswith(("File ", "Traceback", "During handling",
+                                     "The above exception")):
+            line = ln
+            break
+    low = line.lower()
+    for key, why in _CRASH_CAUSES:
+        if key in low:
+            return why, line[:200]
+    return "it stopped with an error", line[:200]
+
+
+def _crash_verdict(rep: "Report", last_error: str) -> bool:
+    """Say that the install crashed, when that is what emptied this folder.
+
+    Only when nothing of ours arrived at all. A folder with our files in it
+    and one missing has its own rules below - antivirus quarantine among
+    them - and they are better answers than this one.
+    """
+    why, line = _install_crash(last_error)
+    if not why:
+        return False
+    rep.add(BAD, "The install stopped with an error before it wrote anything.",
+            f"Nothing was installed into this folder: {why}. It said: "
+            f"{line} - so there is nothing here for the game to load, and "
+            f"nothing to clean up. Press INSTALL again.")
+    rep.verdict = "The install crashed before it finished - install again."
+    rep.ran = False
+    return True
+
+
 def _route(install_dir: Path) -> str:
     return _manifest(install_dir).get("path") or ""
 
@@ -1717,8 +1792,14 @@ def _shader_failures(rtext: str, provider_tech: str, rep: Report) -> None:
                 ", ".join(others))
 
 
-def analyse(install_dir: Path) -> Report:
-    """Read whatever logs apply to this install and explain the outcome."""
+def analyse(install_dir: Path, last_error: str = "") -> Report:
+    """Read whatever logs apply to this install and explain the outcome.
+
+    `last_error` is the tool's own last traceback (`log.last_error()`). It
+    is only ever consulted for a folder nothing arrived in: an install that
+    crashed is indistinguishable from one that never happened by looking at
+    the folder, and the traceback is the only thing that tells them apart.
+    """
     rep = Report()
     since = _installed_at(install_dir)
     man = _manifest(install_dir)
@@ -1734,6 +1815,11 @@ def analyse(install_dir: Path) -> Report:
     if _manifest_file(install_dir) is None:
         ours = _anything_of_ours(install_dir)
         if not ours:
+            # An install that crashed says so itself. Without this, the one
+            # person who knows least about why their folder is empty is the
+            # one being asked to work it out.
+            if _crash_verdict(rep, last_error):
+                return rep
             rep.add(BAD, "Nothing of this tool is in this folder.",
                     "There is no install record here and none of the files an "
                     "install writes. Either nothing has been installed for "
@@ -1809,6 +1895,15 @@ def analyse(install_dir: Path) -> Report:
                   "carries on), or 'uninstall' first if you would rather "
                   "start from a clean folder.")
         rep.verdict = "The install never finished - install again."
+        return rep
+
+    # The record says it finished, and the folder is empty anyway. That
+    # happens when a re-install crashed over a record an earlier one wrote:
+    # every rule below reads this as files that went missing after a good
+    # install, and names antivirus for something the install never wrote
+    # (#213 - "not started since the install", to somebody whose install
+    # had just died on a DNS lookup).
+    if not _anything_of_ours(install_dir) and _crash_verdict(rep, last_error):
         return rep
 
     if rep.route == "optiscaler":

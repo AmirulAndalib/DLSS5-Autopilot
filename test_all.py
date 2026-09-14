@@ -8248,6 +8248,94 @@ check("a foreign hook is never named twice in the same warning (#190)",
       "dict.fromkeys(found)" in src_of(installer.other_ngx_hooks))
 
 
+section("1.9.0: an install that crashed is not a folder nobody installed "
+        "into (#213, #61)")
+
+# The traceback has been printed at the bottom of every report since 1.6.0
+# and no rule ever read it. An install that died before it wrote anything
+# leaves the same empty folder as an install nobody ever ran, so #213 - the
+# install stopped on a DNS lookup - was told to go and start the game once,
+# and #61 - reshade.me answering 500 - was told its dxgi.dll had gone
+# missing from a folder it was never written into.
+_DNS_TB = (
+    "installing\nTraceback (most recent call last):\n"
+    '  File "core\\gui.py", line 4219, in work\n'
+    '  File "core\\installer.py", line 2720, in install\n'
+    '  File "core\\net.py", line 467, in fetch_text\n'
+    "socket.gaierror: [Errno 11001] getaddrinfo failed")
+
+_empty = Path(tempfile.mkdtemp(prefix="diag_crash_"))
+_r = diagnose.analyse(_empty, _DNS_TB)
+check("an install that crashed says so, and names what stopped it",
+      "crashed before it finished" in _r.verdict
+      and any("look up the download's address" in (f_.detail or "")
+              for f_ in _r.findings), _r.verdict)
+check("...and never tells that person to go and start the game",
+      not any("has not been started" in f_.title for f_ in _r.findings)
+      and "Nothing is installed in this folder" not in _r.verdict)
+
+# The same folder with no traceback, and with one that did not come out of
+# the install path, keep the answer they had: the update check and the GUI
+# fail in their own ways and neither explains an empty folder.
+check("...while an empty folder with no error is told what it was told before",
+      "Nothing is installed in this folder" in diagnose.analyse(_empty).verdict)
+_other = ('Traceback (most recent call last):\n'
+          '  File "core\\selfupdate.py", line 88, in check\n'
+          "urllib.error.URLError: <urlopen error timed out>")
+check("...and an error from somewhere else is not blamed on the install",
+      "Nothing is installed in this folder"
+      in diagnose.analyse(_empty, _other).verdict)
+shutil.rmtree(_empty, ignore_errors=True)
+
+# The record says the install finished and the folder is empty anyway: a
+# re-install that crashed over an earlier one's record. Every rule below
+# this reads that as files that went missing after a good install and names
+# antivirus for something that was never written.
+_d = _diag_dir("diag_crash_rec_", proxy=False, addons=False)
+shutil.rmtree(_d / "reshade-shaders", ignore_errors=True)
+_r = diagnose.analyse(_d, _DNS_TB)
+check("a record that says 'finished' over an empty folder is read the same way",
+      "crashed before it finished" in _r.verdict, _r.verdict)
+check("...and antivirus is not named for a file the install never wrote",
+      not any("antivirus" in (f_.detail or "").lower() for f_ in _r.findings))
+shutil.rmtree(_d, ignore_errors=True)
+
+# The rules that are better answers than this one keep their reports. A
+# finished install is still read as before, and the folder that holds our
+# files with one of them gone is still antivirus, not a crash.
+_d = _diag_dir("diag_crash_ok_", feed=_FEED_OK)
+check("a working install is still working, traceback or not",
+      diagnose.analyse(_d, _DNS_TB).verdict == "Working.")
+shutil.rmtree(_d, ignore_errors=True)
+_d = _diag_dir("diag_crash_part_", feed=_FEED_OK, complete=False)
+check("...and an unfinished record still answers with its own branch",
+      "never finished" in diagnose.analyse(_d, _DNS_TB).verdict)
+shutil.rmtree(_d, ignore_errors=True)
+
+# The cause is read off the exception line, and an unfamiliar one still
+# carries the line itself rather than saying nothing.
+check("a 500 from the download server is named as one",
+      diagnose._install_crash(
+          '  File "core\\installer.py", line 1\n'
+          "urllib.error.HTTPError: HTTP Error 500: Internal Server Error"
+      )[0] == "the download server answered with an error")
+check("...and an exception nobody has seen before is still quoted",
+      diagnose._install_crash(
+          '  File "core\\installer.py", line 1\nValueError: weird')
+      == ("it stopped with an error", "ValueError: weird"))
+
+# The replay has to hand the traceback over too, or the one report that
+# proves the rule works replays without the evidence it is about.
+sys.path.insert(0, str(SRC_DIR / "_tools"))
+import verdict_check as _vc  # noqa: E402
+check("the replay reads the traceback out of the report it is replaying",
+      _vc._last_error("**Last error**\n```\n" + _DNS_TB + "\n```\n") == _DNS_TB)
+check("...and a report without one hands over nothing",
+      _vc._last_error("**ReShade.log**\n```\n(none)\n```") == "")
+check("the window hands the diagnosis the tool's own last error",
+      "log.last_error()" in src_of(_gui.App._diagnose))
+
+
 section("RESULT")
 _REACHED_RESULT = True
 if FAILS:

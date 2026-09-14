@@ -305,6 +305,28 @@
   "route": "",
   "verdict": "Nothing is installed in this folder - install first."
  },
+ "197": {
+  "findings": [
+   "bad: The install did not finish."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "The install never finished - install again."
+ },
+ "198": {
+  "findings": [
+   "info: An old dlss5-feed.log is still in the folder.",
+   "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
+   "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.2110",
+   "warn: The add-on flagged your nvngx_dlssnr as an untested build.",
+   "info: This route leaves no frame log of its own."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "bridge",
+  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
+ },
  "20": {
   "findings": [
    "bad: Neural rendering did not start.",
@@ -314,6 +336,54 @@
   "ran": true,
   "route": "optiscaler",
   "verdict": "OptiScaler loaded, but the model refused or failed."
+ },
+ "203": {
+  "findings": [
+   "bad: Nothing of this tool is in this folder."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
+ },
+ "211": {
+  "findings": [
+   "bad: Nothing of this tool is in this folder."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
+ },
+ "212": {
+  "findings": [
+   "ok: ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0",
+   "warn: Running on zero-motion guides - expect ghosting.",
+   "warn: The add-on attached but never reached a contract."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "standalone",
+  "verdict": "Inconclusive - the add-on attached but built nothing."
+ },
+ "213": {
+  "findings": [
+   "bad: The install stopped with an error before it wrote anything."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "",
+  "verdict": "The install crashed before it finished - install again."
+ },
+ "215": {
+  "findings": [
+   "bad: ReShade loaded no add-ons.",
+   "info: Or this log is from another program's ReShade."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "Inconclusive - the feed did not get far enough to tell."
  },
  "22": {
   "findings": [
@@ -619,12 +689,12 @@
  },
  "61": {
   "findings": [
-   "bad: ReShade's dxgi.dll is gone from the folder."
+   "bad: The install stopped with an error before it wrote anything."
   ],
   "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "ReShade's dxgi.dll is missing from the folder - reinstall."
+  "verdict": "The install crashed before it finished - install again."
  },
  "63": {
   "findings": [

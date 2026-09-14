@@ -1,0 +1,57 @@
+**Did the game start?** it started and ran
+
+**What happened**
+the addons are there but dlss 5 isn't actually running
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 4060 (sm_89), driver 616.56
+- game: Assassins Creed Unity
+- exe: ACU.exe
+- arch/api: 64-bit / DX11 (imports d3d11.dll statically)
+- route: bridge
+
+**Diagnosis**: Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames.
+- [info] An old dlss5-feed.log is still in the folder.
+- [ok] ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0
+- [ok] ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.2110
+- [warn] The add-on flagged your nvngx_dlssnr as an untested build.
+- [info] This route leaves no frame log of its own.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-bridge.addon64: present
+- renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+
+**ReShade.log**
+```
+13:59:08:130 [ 7600] | WARN  | IDirectInput8W::CreateDevice failed with error code E_FAIL.
+13:59:08:133 [ 7600] | WARN  | IDirectInput8W::CreateDevice failed with error code E_FAIL.
+13:59:08:217 [ 7600] | INFO  | Registered add-on "DLSS 5 Bridge 1.4.12" v1.4.12.0 using ReShade API version 18.
+13:59:08:297 [ 7600] | INFO  | Registered add-on "DLSS 5 Neural Rendering" v0.2026.828.2110 using ReShade API version 18.
+13:59:08:300 [ 7600] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff98bbf81e0 ) (0x00007ff990e99e08))
+13:59:08:300 [ 7600] | ERROR | [DLSS 5 Neural Rendering] vtable::Hook(Failed to find NVSDK_NGX_D3D12_EvaluateFeature_C)
+13:59:08:761 [ 7600] | WARN  | [DLSS 5 Neural Rendering] DLSS5 Generic: signed runtime sha256 4B8D19BC3EFF58A084F5ECA7489C921501C203450169FB82FF4F649A4482BA05 (custom runtime accepted; untested build,
+13:59:10:906 [ 7600] | INFO  | Redirecting IDXGIFactory::CreateSwapChain(this = 000000001029DEE0, pDevice = 00000000105BAE00, pDesc = 00000000E3D5F930, ppSwapChain = 00000000E3D5F900) ...
+```
+
+**dlss5-feed.log**
+```
+...
+17:40:10.568  [feed] MV probe (centre 64x64, frame 186600): mean |mv| 0.000 px, max 0.00 px, 0% non-zero  <-- DLSS is getting (almost) no motion vectors
+17:40:17.982  [feed] 600 frames: feed CPU 3.85 ms/frame | frame interval 16.19 ms (61.8 fps) | feed is 24% of the frame
+17:40:20.124  [feed] MV probe (centre 64x64, frame 187200): mean |mv| 4.411 px, max 6.98 px, 77% non-zero
+17:40:20.125  [feed] frame 187200 delivered (2560x1440 at 100% -> 2560x1440, reset=0)
+17:40:27.484  [feed] 600 frames: feed CPU 4.60 ms/frame | frame interval 15.84 ms (63.1 fps) | feed is 29% of the frame
+17:40:29.772  [feed] MV probe (centre 64x64, frame 187800): mean |mv| 1.164 px, max 1.52 px, 99% non-zero
+17:40:37.184  [feed] 600 frames: feed CPU 4.87 ms/frame | frame interval 16.17 ms (61.9 fps) | feed is 30% of the frame
+17:40:39.358  [feed] MV probe (centre 64x64, frame 188400): mean |mv| 1.359 px, max 2.81 px, 97% non-zero
+17:40:46.655  [feed] 600 frames: feed CPU 4.54 ms/frame | frame interval 15.78 ms (63.4 fps) | feed is 29% of the frame
+17:40:48.854  [feed] MV probe (centre 64x64, frame 189000): mean |mv| 3.195 px, max 4.20 px, 92% non-zero
+17:40:48.854  [feed] frame 189000 delivered (2560x1440 at 100% -> 2560x1440, reset=0)
+17:40:55.947  [feed] effect runtime 00000001183F78B0 destroyed
+17:40:56.203  [feed] D3D11 device destroyed; shutting the session down
+17:40:57.253  shut down cleanly.
+```

@@ -1,0 +1,59 @@
+**Did the game start?** it started and ran
+
+**What happened**
+no neural renderingm, doesn't work at all.
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 4090 (sm_89), driver 616.92
+- game: Assassin's Creed Unity
+- exe: ACU.exe
+- arch/api: 64-bit / DX11 (imports d3d11.dll statically)
+- route: standalone
+
+**Diagnosis**: Inconclusive - the add-on attached but built nothing.
+- [ok] ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0
+- [warn] Running on zero-motion guides - expect ghosting.
+- [warn] The add-on attached but never reached a contract.
+
+**Files in the folder**
+- dxgi.dll: present
+- standalone-dlssnr.addon64: present
+- nvngx.dll: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+
+**ReShade.log**
+```
+17:59:54:611 [30692] | INFO  | Registered add-on "Standalone DLSS-NR + SR 2.2.4" v0.0.0.0 using ReShade API version 20.
+17:59:54:714 [30032] | WARN  | Ignoring LoadLibrary('api-ms-win-appmodel-runtime-l1-1-2') call to avoid possible deadlock.
+17:59:56:376 [30692] | INFO  | Redirecting IDXGIFactory::CreateSwapChain(this = 00000000091CA8A0, pDevice = 0000000009298000, pDesc = 0000000100BBEAD0, ppSwapChain = 0000000100BBEAA0) ...
+18:00:11:438 [ 3008] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+18:00:11:543 [ 3008] | INFO  | Redirecting Direct3DCreate9Ex(SDKVersion = 0x20, ppD3D = 00007FF84B7E07F0) ...
+18:00:11:656 [ 3008] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+18:00:14:579 [ 3008] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+18:00:14:637 [ 3008] | INFO  | Redirecting Direct3DCreate9Ex(SDKVersion = 0x20, ppD3D = 00007FF84B7E07F0) ...
+18:00:14:663 [ 3008] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+18:00:17:579 [ 3008] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+18:00:17:637 [ 3008] | INFO  | Redirecting Direct3DCreate9Ex(SDKVersion = 0x20, ppD3D = 00007FF84B7E07F0) ...
+18:00:17:663 [ 3008] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+18:05:55:919 [23932] | WARN  | Reference count for ID3D11Device0 object 0000000009298020 (00000000168A9630) is inconsistent (24804).
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**standalone-dlssnr.log**
+```
+...
+18:05:31.793 same-frame optical-flow path unavailable; internal zero-motion fallback will be used
+18:05:31.861 current-frame guide handles: VORT=MISSING feed=MISSING mv=MISSING depth=MISSING sr_mask=optional/missing nr_mask=optional/missing strength=optional/missing depth_reversed=1
+18:05:31.861 same-frame optical-flow path unavailable; internal zero-motion fallback will be used
+18:05:31.866 deferred exclusive fullscreen virtualization applied on UI worker: monitor=3840x1600
+18:05:33.358 primary ReShade overlay closed; same-window compositor restored for direct game-window input
+18:05:55.889 primary runtime teardown quiesced proxy presentation before backbuffer destruction: worker_state=0
+18:05:55.919 game legacy graphics device is being destroyed; standalone session ending
+18:05:56.475 startup recovery marker cleared: clean process shutdown
+```

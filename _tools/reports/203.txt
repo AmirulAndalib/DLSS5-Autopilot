@@ -1,0 +1,30 @@
+**Did the game start?** it started and ran
+
+**What happened**
+The game runs, but no feeder, reshade or anything runs. In RDR 2 the overlay works, but nothing changes.
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 5070 Ti (sm_120), driver 616.56
+- game: Indiana Jones and the Great Circle
+- exe: TheGreatCircle.exe
+- arch/api: 64-bit / Vulkan (imports vulkan-1.dll, no DXGI)
+- route: bridge
+- windows event: TheGreatCircle.exe faulted in TheGreatCircle.exe 0xC0000005 at 2026-09-09 18:00:59 UTC
+
+**Diagnosis**: It started, and nothing here recorded the session - Windows recorded the fault in TheGreatCircle.exe.
+- [bad] Windows recorded TheGreatCircle.exe faulting in TheGreatCircle.exe.
+
+**Files in the folder**
+- ReShade.ini: MISSING
+- nvngx_dlssnr.dll: MISSING
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

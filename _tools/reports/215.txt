@@ -1,0 +1,34 @@
+**What happened**
+
+
+**What I expected**
+
+
+---
+- version: 1.5.0
+- gpu: NVIDIA GeForce RTX 4090 (sm_89), driver 591.74
+- game: Dear Esther: Landmark Edition
+- exe: DearEsther.exe
+- arch/api: 32-bit / OpenGL
+- route: feeder
+
+**Diagnosis**: Inconclusive - the feed did not get far enough to tell.
+- [bad] ReShade loaded no add-ons.
+
+**Files in the folder**
+- opengl32.dll: present
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- host64/renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: MISSING
+
+**ReShade.log**
+```
+12:55:59:171 [14280] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

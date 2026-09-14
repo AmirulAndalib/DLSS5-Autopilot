@@ -82,6 +82,20 @@ def _finished(text: str) -> dict:
     return {"complete": not crashed}
 
 
+_LAST_ERROR_RE = re.compile(r"\*\*Last error\*\*\s*```(.*?)```", re.S)
+
+
+def _last_error(text: str) -> str:
+    """The tool's own traceback, as the person's report carries it.
+
+    The diagnosis reads it for a folder nothing arrived in, so the replay
+    has to hand it over too - otherwise the one report that proves the rule
+    works (#213) replays without the evidence the rule is about.
+    """
+    m = _LAST_ERROR_RE.search(text)
+    return m.group(1).strip() if m else ""
+
+
 def _answer(path: Path) -> dict:
     """What the diagnosis says about one saved report, on any machine."""
     # Git may hand these back with CRLF on another checkout, and a log line
@@ -128,7 +142,7 @@ def _answer(path: Path) -> dict:
         with patch.object(diagnose, "STANDALONE_LOG", sa), \
                 patch.object(diagnose, "_layer_state", lambda man: reg), \
                 patch.object(_gpu, "driver_version", lambda: driver):
-            rep = diagnose.analyse(d)
+            rep = diagnose.analyse(d, _last_error(text))
         return {
             "route": rep.route or "",
             "ran": bool(rep.ran),

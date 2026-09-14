@@ -1,0 +1,55 @@
+**Did the game start?** it never started
+
+**What happened**
+nothing happened its not even launching
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 3050 6GB Laptop GPU (sm_86), driver 616.92
+- game: BeamNG.drive
+- exe: BeamNG.drive.exe
+- arch/api: 32-bit / DX11 (loads d3d11.dll at run time (named in the exe); no static graphics import)
+- route: feeder
+
+**Diagnosis**: Not started since the install - run the game once, then check again.
+- [warn] The game has not been started since the install.
+- [info] If you DID start it, it launches something other than the game's executable.
+
+**Files in the folder**
+- ReShade.ini: MISSING
+- nvngx_dlssnr.dll: MISSING
+- reshade-shaders/Shaders/DLSS5_Feed.fx: MISSING
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**Last error**
+```
+ient.py", line 1472, in connect
+  File "http\client.py", line 1003, in connect
+  File "socket.py", line 841, in create_connection
+  File "socket.py", line 978, in getaddrinfo
+socket.gaierror: [Errno 11001] getaddrinfo failed
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "core\gui.py", line 4219, in work
+  File "core\installer.py", line 2720, in install
+  File "core\installer.py", line 1503, in _install_feeder_parts
+  File "core\net.py", line 467, in fetch_text
+  File "urllib\request.py", line 215, in urlopen
+  File "urllib\request.py", line 515, in open
+  File "urllib\request.py", line 532, in _open
+  File "urllib\request.py", line 492, in _call_chain
+  File "urllib\request.py", line 1392, in https_open
+  File "urllib\request.py", line 1347, in do_open
+urllib.error.URLError: <urlopen error [Errno 11001] getaddrinfo failed>
+```
