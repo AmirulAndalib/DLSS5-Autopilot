@@ -8326,14 +8326,69 @@ check("...and an exception nobody has seen before is still quoted",
 
 # The replay has to hand the traceback over too, or the one report that
 # proves the rule works replays without the evidence it is about.
-sys.path.insert(0, str(SRC_DIR / "_tools"))
-import verdict_check as _vc  # noqa: E402
 check("the replay reads the traceback out of the report it is replaying",
-      _vc._last_error("**Last error**\n```\n" + _DNS_TB + "\n```\n") == _DNS_TB)
+      _rr.last_error("**Last error**\n```\n" + _DNS_TB + "\n```\n") == _DNS_TB)
 check("...and a report without one hands over nothing",
-      _vc._last_error("**ReShade.log**\n```\n(none)\n```") == "")
+      _rr.last_error("**ReShade.log**\n```\n(none)\n```") == "")
+check("...and a report replayed by hand gets what the corpus check measures",
+      "replay_report.machine(" in src_of(_vc._answer)
+      and "replay_report.last_error(" in src_of(_vc._answer))
 check("the window hands the diagnosis the tool's own last error",
       "log.last_error()" in src_of(_gui.App._diagnose))
+
+
+section("1.9.0: 'check both shaders are there' is a question we can answer "
+        "ourselves (#212)")
+
+# The standalone route runs on two shaders, exactly as the feeder route
+# does, and neither was in the report's file list - so the verdict asked the
+# person to go and check something the install had already written down.
+_sa_fx = "reshade-shaders/Shaders/DLSS5_AIO_Feed.fx"
+_sa_vort = "reshade-shaders/Shaders/vort_Motion.fx"
+_d = _diag_dir("diag_sa_fx_", addons=False, reshade=_REG, path="standalone",
+               files=["dxgi.dll", "standalone-dlssnr.addon64", "nvngx.dll",
+                      _sa_fx.replace("/", "\\"), _sa_vort.replace("/", "\\")])
+for _n in ("standalone-dlssnr.addon64", "nvngx.dll", _sa_fx, _sa_vort):
+    (_d / _n).parent.mkdir(parents=True, exist_ok=True)
+    (_d / _n).write_bytes(b"MZ")
+_lines = diagnose._presence(_d, diagnose._manifest(_d), "standalone")
+check("a standalone report says whether its two shaders are there",
+      any(l.endswith("DLSS5_AIO_Feed.fx: present") for l in _lines)
+      and any(l.endswith("vort_Motion.fx: present") for l in _lines), _lines)
+
+_zero = (_ATTACH + "current-frame guide handles: VORT=MISSING feed=MISSING\n"
+         "same-frame optical-flow path unavailable; internal zero-motion "
+         "fallback will be used\n")
+_saved_log, _logd2 = diagnose.STANDALONE_LOG, Path(tempfile.mkdtemp(prefix="sa2_"))
+diagnose.STANDALONE_LOG = _logd2 / "standalone-dlssnr.log"
+try:
+    diagnose.STANDALONE_LOG.write_text(_zero, encoding="utf8")
+    _r = diagnose.analyse(_d)
+    check("both shaders in place: the answer is not 'go and find them'",
+          any("zero-motion" in w for w in _levels(_r, "warn"))
+          and any("Both shaders are in the folder" in (f_.detail or "")
+                  for f_ in _r.findings), str(_levels(_r, "warn")))
+    (_d / _sa_vort).unlink()
+    _r = diagnose.analyse(_d)
+    check("a shader the install wrote and something removed is said as a fact",
+          any("vort_Motion.fx" in b and "gone" in b for b in _levels(_r, "bad"))
+          and "install again" in _r.verdict, _r.verdict)
+    # A report from before those files were listed says nothing about them,
+    # and a rule that reads that silence as absence invents a missing file.
+    _old = _diag_dir("diag_sa_old_", addons=False, reshade=_REG,
+                     path="standalone",
+                     files=["dxgi.dll", "standalone-dlssnr.addon64"])
+    (_old / "standalone-dlssnr.addon64").write_bytes(b"MZ")
+    _r = diagnose.analyse(_old)
+    check("...while an install that recorded neither is not accused of losing them",
+          not any("gone from" in b for b in _levels(_r, "bad"))
+          and any("check both" in (f_.detail or "") for f_ in _r.findings),
+          str(_levels(_r, "bad")))
+    shutil.rmtree(_old, ignore_errors=True)
+finally:
+    diagnose.STANDALONE_LOG = _saved_log
+    shutil.rmtree(_logd2, ignore_errors=True)
+    shutil.rmtree(_d, ignore_errors=True)
 
 
 section("1.9.0: the Remix route had never been replayed (#211)")

@@ -35,7 +35,6 @@ import shutil
 import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
@@ -43,13 +42,11 @@ sys.path.insert(0, str(HERE))
 
 import replay_report                       # noqa: E402
 from core import diagnose                  # noqa: E402
-from core import gpu as _gpu               # noqa: E402  (patched per report)
 
 REPORTS = HERE / "reports"
 BASELINE = HERE / "verdict_baseline.json"
 
 API_RE = re.compile(r"(DX9|DX10|DX11|DX12|Vulkan|OpenGL)")
-DRIVER_RE = re.compile(r"driver\s+([\d.]+)")
 
 
 # The four verdicts diagnose.analyse() can only reach through the
@@ -82,20 +79,6 @@ def _finished(text: str) -> dict:
     return {"complete": not crashed}
 
 
-_LAST_ERROR_RE = re.compile(r"\*\*Last error\*\*\s*```(.*?)```", re.S)
-
-
-def _last_error(text: str) -> str:
-    """The tool's own traceback, as the person's report carries it.
-
-    The diagnosis reads it for a folder nothing arrived in, so the replay
-    has to hand it over too - otherwise the one report that proves the rule
-    works (#213) replays without the evidence the rule is about.
-    """
-    m = _LAST_ERROR_RE.search(text)
-    return m.group(1).strip() if m else ""
-
-
 def _answer(path: Path) -> dict:
     """What the diagnosis says about one saved report, on any machine."""
     # Git may hand these back with CRLF on another checkout, and a log line
@@ -113,9 +96,6 @@ def _answer(path: Path) -> dict:
             api = m.group(1)
         if "32-bit" in head["arch/api"]:
             bitness = 32
-    drv = DRIVER_RE.search(head.get("gpu", ""))
-    driver = drv.group(1) if drv else None
-
     # The folder as the report describes it, not as an install that went
     # perfectly would leave it: which files were on disk, and whether there
     # was an install record at all. Replaying every report against a
@@ -125,24 +105,14 @@ def _answer(path: Path) -> dict:
     state = replay_report.folder_state(text)
     d = replay_report.build(route, api, exe, logs, bitness, state=state,
                             extra_manifest=_finished(text))
-    # The standalone add-on keeps its log outside the game folder, and the
-    # driver rules ask this PC what it has. Both would make the answer
-    # depend on the machine running the check, so both come from the report.
-    sa = d / "standalone-dlssnr.log"
-    if logs.get("standalone"):
-        sa.write_text(logs["standalone"], encoding="utf8")
     try:
-        # diagnose imports gpu inside the two functions that ask for it, so
-        # the patch goes on the gpu module itself.
-        # The Vulkan layer is a registry entry, not a file, so on this route
-        # the answer would otherwise depend on what is registered on the
-        # machine running the check. The report says which it was.
-        layer = (state or {}).get("layer")
-        reg = (True, True) if layer is None else (layer, layer)
-        with patch.object(diagnose, "STANDALONE_LOG", sa), \
-                patch.object(diagnose, "_layer_state", lambda man: reg), \
-                patch.object(_gpu, "driver_version", lambda: driver):
-            rep = diagnose.analyse(d, _last_error(text))
+        # What the diagnosis asks the MACHINE for - the standalone log's
+        # path, the Vulkan layer registry, the driver version - comes out of
+        # the report instead, so the answer is the same on any PC. The
+        # patching lives in replay_report so a report replayed by hand there
+        # gets the same verdict this measures (it did not: #212).
+        with replay_report.machine(text, d):
+            rep = diagnose.analyse(d, replay_report.last_error(text))
         return {
             "route": rep.route or "",
             "ran": bool(rep.ran),

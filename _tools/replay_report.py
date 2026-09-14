@@ -38,7 +38,9 @@ import re
 import shutil
 import sys
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -252,8 +254,54 @@ def _build_remix(d: Path, rx: dict) -> None:
         (d / remix.CONF).write_text(f"{rx['key']} = True\n", encoding="utf8")
 
 
-def show(d: Path, label: str) -> None:
-    rep = diagnose.analyse(d)
+_LAST_ERROR_RE = re.compile(r"\*\*Last error\*\*\s*```(.*?)```", re.S)
+
+
+def last_error(text: str) -> str:
+    """The tool's own traceback, as the report carries it.
+
+    `analyse()` reads it for a folder nothing arrived in - an install that
+    crashed leaves the same empty folder as one that never happened - so a
+    replay that does not hand it over answers a different question.
+    """
+    m = _LAST_ERROR_RE.search(text)
+    return m.group(1).strip() if m else ""
+
+
+@contextmanager
+def machine(text: str, d: Path):
+    """Make the answer depend on the report, not on the PC replaying it.
+
+    Three things the diagnosis asks the machine for: where the standalone
+    add-on's log is (outside the game folder), which Vulkan layers are
+    registered (the registry), and the driver version. All three come out
+    of the report instead. This used to live in verdict_check only, so the
+    same report replayed by hand - through this file, the one whose whole
+    job is "replay a report before writing a fix" - got a DIFFERENT verdict
+    from the one the corpus measured (#212 read as "no log yet").
+    """
+    logs = _blocks(text)
+    state = folder_state(text)
+    sa = d / "standalone-dlssnr.log"
+    if logs.get("standalone"):
+        sa.write_text(logs["standalone"], encoding="utf8")
+    layer = (state or {}).get("layer")
+    reg = (True, True) if layer is None else (layer, layer)
+    drv = re.search(r"driver\s+([\d.]+)", _header(text).get("gpu", ""))
+    from core import gpu as _gpu
+    with patch.object(diagnose, "STANDALONE_LOG", sa), \
+            patch.object(diagnose, "_layer_state", lambda man: reg), \
+            patch.object(_gpu, "driver_version",
+                         lambda: drv.group(1) if drv else None):
+        yield
+
+
+def show(d: Path, label: str, text: str = "") -> None:
+    if text:
+        with machine(text, d):
+            rep = diagnose.analyse(d, last_error(text))
+    else:
+        rep = diagnose.analyse(d)
     print("=" * 78)
     print(label)
     print("=" * 78)
@@ -277,7 +325,7 @@ def main() -> int:
     p.add_argument("--keep", action="store_true", help="leave the folder behind")
     a = p.parse_args()
 
-    logs, route, api, exe, state = {}, a.route, a.api, a.exe, None
+    logs, route, api, exe, state, text = {}, a.route, a.api, a.exe, None, ""
     if a.report:
         text = Path(a.report).read_text(encoding="utf8", errors="replace")
         logs = _blocks(text)
@@ -306,7 +354,8 @@ def main() -> int:
               + ("" if state["manifest"] else ", NO install record"))
 
     d = build(route, api, exe, logs, a.bitness, state=state)
-    show(d, f"issue #{a.issue}  route={route}  api={api}  exe={exe}")
+    show(d, f"issue #{a.issue}  route={route}  api={api}  exe={exe}",
+         text if a.report else "")
     if a.keep:
         print(f"\nfolder kept: {d}")
     else:

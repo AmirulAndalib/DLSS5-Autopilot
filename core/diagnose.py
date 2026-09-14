@@ -740,6 +740,33 @@ def _dlss_mod():
     return dlss
 
 
+def _feed_shaders(install_dir: Path | None,
+                  man: dict | None) -> tuple[list[str], list[str]]:
+    """(recorded, gone) for the standalone route's two shaders.
+
+    Recorded-and-gone, never "not on disk": a report from before these files
+    were listed says nothing about them, and absence of evidence has cost
+    this project three wrong verdicts already. Which is also why the
+    reassuring half needs `recorded` - "both are in the folder" may not be
+    said about files nothing ever wrote down.
+    """
+    if install_dir is None or not man:
+        return [], []
+    from . import installer as _inst
+    want = {_inst.STANDALONE_FX.lower(), _inst.VORT_FX.lower()}
+    recorded, gone = [], []
+    for f in man.get("files") or []:
+        if not isinstance(f, str):
+            continue
+        base = f.replace("\\", "/").rsplit("/", 1)[-1]
+        if base.lower() not in want:
+            continue
+        recorded.append(base)
+        if not (install_dir / f).is_file():
+            gone.append(base)
+    return recorded, gone
+
+
 def _missing_core(install_dir: Path, man: dict) -> list[str]:
     """Recorded files that the install wrote and are no longer there."""
     out = []
@@ -2397,7 +2424,7 @@ def analyse(install_dir: Path, last_error: str = "") -> Report:
     # The standalone add-on keeps a log of its own, outside the folder; it
     # says more than ReShade.log ever can on this route.
     if rep.route == "standalone":
-        return _analyse_standalone(rep, since, bool(rtext))
+        return _analyse_standalone(rep, since, bool(rtext), install_dir, man)
 
     # neural-upstream writes its whole run into ReShade.log under [NRPRE].
     # Older builds of the add-on wrote nothing, and those still fall through
@@ -2920,7 +2947,9 @@ def _analyse_upstream(rep: Report, rtext: str) -> Report:
     return rep
 
 
-def _analyse_standalone(rep: Report, since: float, reshade_ran: bool) -> Report:
+def _analyse_standalone(rep: Report, since: float, reshade_ran: bool,
+                        install_dir: Path | None = None,
+                        man: dict | None = None) -> Report:
     """Read the standalone add-on's own log and say what it got to.
 
     Phrases are the add-on's (README troubleshooting table and the strings
@@ -2983,7 +3012,30 @@ def _analyse_standalone(rep: Report, since: float, reshade_ran: bool) -> Report:
     if "same-frame VORT optical flow" in text:
         rep.add(OK, "Motion vectors: VORT optical flow is feeding the network.")
     elif "zero-motion" in text or "fallback guides" in text:
+        # "Check both are under reshade-shaders\Shaders" is a question this
+        # can answer itself: the install recorded what it wrote, so a shader
+        # that is no longer there is a fact, not something to send somebody
+        # looking for (#212 got the ask, with nothing in the report to say
+        # which of the two it was).
+        recorded, gone = _feed_shaders(install_dir, man)
+        if gone:
+            rep.add(BAD, f"{', '.join(gone)} "
+                         f"{'is' if len(gone) == 1 else 'are'} gone from "
+                         f"reshade-shaders\\Shaders.",
+                    "The install wrote it there and it is no longer in the "
+                    "folder - antivirus quarantine, or the shader pack was "
+                    "tidied up. Without it the add-on runs on zero-motion "
+                    "guides and the picture ghosts. Install again.")
+            rep.verdict = ("The motion-vector shader was removed after the "
+                           "install - install again.")
+            return rep
         rep.add(WARN, "Running on zero-motion guides - expect ghosting.",
+                "Both shaders are in the folder, so this is not a missing "
+                "file: open the ReShade overlay and look for a compile error "
+                "on DLSS5_AIO_Feed.fx or vort_Motion.fx (VORT needs its "
+                "Includes folder), and check the effect search path covers "
+                "reshade-shaders\\Shaders."
+                if len(recorded) == 2 else
                 "The add-on did not get VORT and DLSS5_AIO_Feed.fx: check both "
                 "are under reshade-shaders\\Shaders (vort_Motion.fx with its "
                 "Includes folder) and that the ReShade overlay shows no "
@@ -3277,11 +3329,20 @@ def _presence(install_dir: Path, man: dict, route: str) -> list[str]:
         prov = PROVIDER_FX.get(man.get("provider"))
         if prov:
             names.append("reshade-shaders/Shaders/" + prov)
+    elif route == "standalone":
+        # The same two files under different names, and the same failure:
+        # "the add-on did not get VORT and DLSS5_AIO_Feed.fx" is a verdict
+        # this route gives (#212, and every "inconclusive" like it), and the
+        # report it is printed on did not say whether either file was there.
+        from . import installer as _inst
+        names.append("reshade-shaders/Shaders/" + _inst.STANDALONE_FX)
+        prov = _inst.VORT_FX
+        names.append("reshade-shaders/Shaders/" + prov)
     out = []
     for n in dict.fromkeys(names):
         state = "present" if (install_dir / n).is_file() else "MISSING"
         out.append(f"- {n}: {state}")
-        if state == "MISSING" and route == "feeder" and prov \
+        if state == "MISSING" and route in ("feeder", "standalone") and prov \
                 and n.endswith(prov):
             # The install does not write this one when the person already has
             # the pack: their copy is used, wherever they keep it under
