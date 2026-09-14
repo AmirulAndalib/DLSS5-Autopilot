@@ -708,7 +708,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 1.8.2", update.VERSION == "1.8.2", update.VERSION)
+check("version is 1.9.0", update.VERSION == "1.9.0", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -5986,8 +5986,8 @@ check("the compatibility workflow does not filter on the label",
       "labels=result" not in _wf and "state=all" in _wf)
 
 # FEATURES: the version is the delivery mechanism for the library rescan.
-check("the version is 1.8.2 in the file the build reads too",
-      "1.8.2.0" in (Path(__file__).resolve().parent
+check("the version is 1.9.0 in the file the build reads too",
+      "1.9.0.0" in (Path(__file__).resolve().parent
                     / "version_info.txt").read_text(encoding="utf8"))
 check("...and the release notes the workflow publishes exist",
       (Path(__file__).resolve().parent / "docs" / "releases"
