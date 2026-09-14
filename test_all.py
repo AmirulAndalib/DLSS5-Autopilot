@@ -2585,8 +2585,18 @@ check("fit says standalone is usable without DLSS in the game",
 check("standalone has a label, a blurb and a conflicts entry that says OFF",
       dlss.STANDALONE in dlss.LABELS and dlss.STANDALONE in dlss.BLURB
       and dlss.STANDALONE in dlss.CONFLICTS
-      and any("OFF" in c for c in dlss.CONFLICTS[dlss.STANDALONE])
-      and any("window" in c for c in dlss.CONFLICTS[dlss.STANDALONE]))
+      and any("OFF" in c for _k, c in dlss.CONFLICTS[dlss.STANDALONE])
+      and any("window" in c for _k, c in dlss.CONFLICTS[dlss.STANDALONE]))
+# Every line says which kind it is, because the card shows them differently:
+# a setting in the game is always on screen, something that must not be in
+# the folder is only said when it IS, and the rest folds with the blurb.
+check("every conflict line says whether it is the folder, the game or a note",
+      all(k in ("folder", "ingame", "note")
+          for v in dlss.CONFLICTS.values() for k, _t in v),
+      sorted({k for v in dlss.CONFLICTS.values() for k, _t in v}))
+check("...and the window asks the folder before it says one",
+      "other_ngx_hooks(self.game.install_dir, path)" in src_of(_gui.App._apply_route)
+      and 'kind == "ingame"' in src_of(_gui.App._apply_route))
 check("the release lists the three assets and VORT",
       set(sources.STANDALONE_ASSETS) == {installer.STANDALONE_ADDON,
                                          installer.STANDALONE_BRIDGE,

@@ -3847,9 +3847,28 @@ class App:
         parts.append(("blurb", dlss.BLURB[path]))
         if usable and note:
             parts.append(("note", note))
-        # What this route will not tolerate, in plain words, before INSTALL.
-        for line in getattr(dlss, "CONFLICTS", {}).get(path, ()):
-            parts.append(("warn", line))
+        # What this route will not tolerate - but only the conditions that
+        # are not already met. A folder with nothing foreign in it does not
+        # need to be told, every visit, what must not be in it; and when
+        # something IS there, the file is named, which the general sentence
+        # never did.
+        foreign = []
+        try:
+            if self.game is not None:
+                foreign = installer.other_ngx_hooks(self.game.install_dir, path)
+        except Exception:
+            foreign = []
+        for kind, line in getattr(dlss, "CONFLICTS", {}).get(path, ()):
+            if kind == "ingame":
+                parts.append(("warn", line))
+            elif kind == "folder":
+                if foreign:
+                    parts.append(("warn", f"{', '.join(foreign[:3])} "
+                                          f"in this folder - {line}"))
+                else:
+                    parts.append(("blurb", line))
+            else:
+                parts.append(("blurb", line))
         for line in dlss.quirks(self.game.exe if self.game else None,
                                 self.game.api if self.game else ""):
             parts.append(("warn", line))
