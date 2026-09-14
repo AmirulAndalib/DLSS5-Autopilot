@@ -4056,6 +4056,20 @@ check("HoYoverse and EA Javelin games are detected as anti-cheat",
       _f.present and "HoYoverse anti-cheat" in _f.products and "EA Javelin" in _f.products, str(_f.products))
 shutil.rmtree(_d, ignore_errors=True)
 
+# An anti-cheat that ships as a folder of its own beside the game, with
+# nothing next to the executable: WARDOGS carries Elytra that way, and the
+# library listed it as an ordinary single-player game.
+_d = Path(tempfile.mkdtemp(prefix="ac_elytra_"))
+(_d / "Elytra").mkdir()
+(_d / "Elytra" / "Elytra-Setup.exe").write_bytes(b"MZ")
+(_d / "WardogsLauncher-Shipping.exe").write_bytes(b"MZ")
+_f = anticheat.detect(_d / "Binaries", _d)
+check("an anti-cheat in a folder of its own is found too",
+      _f.present and "Elytra Anti-Cheat" in _f.products, str(_f.products))
+check("...and the folder it was found in is named as the evidence",
+      any("Elytra" in e for e in _f.evidence), _f.evidence)
+shutil.rmtree(_d, ignore_errors=True)
+
 import io
 import re
 import urllib.error as _ue

@@ -357,6 +357,24 @@ def _flow_row(bar: tk.Frame, lead: tk.Widget, buttons: list, gap: int,
     bar.bind("<Configure>", lay, add="+")
 
 
+def first_sentence(text: str, limit: int = 130) -> str:
+    """The first sentence of a paragraph, for a line in the log.
+
+    The whole of it is one hover away on the route card, so this is not
+    hiding anything - it is not saying it twice, once in a place with no
+    room for it.
+    """
+    t = " ".join(str(text or "").split())
+    if len(t) <= limit:
+        return t
+    cut = t[:limit]
+    for stop in (". ", "; ", " - "):
+        i = cut.rfind(stop)
+        if i > 40:
+            return cut[:i + 1].rstrip()
+    return cut.rsplit(" ", 1)[0] + "..."
+
+
 def _autopilot_glyph(size: int, fg: str = AMBER) -> tk.PhotoImage:
     r"""An aircraft yoke, for the button that flies the thing itself.
 
@@ -597,14 +615,13 @@ class Prose(tk.Text):
     def _on_hint(self, e) -> None:
         self._tip.show(self._hidden, e.x_root, e.y_root)
 
-    # Lines that change what happens stay on screen whatever else is
-    # hidden: this PC cannot run the route, the driver faults on it, what
-    # must not be in the folder, what to switch off in the game first, the
-    # executable Windows protects. Only the description folds - it says what
-    # a route IS, which is read once; the rest is acted on before INSTALL,
-    # every time. The first cut of this folded the lot, and a usable route
-    # on a good driver left the card as one underlined line.
-    ALWAYS = ("bad", "driver", "warn", "note")
+    # What stays is what is about THIS pc and THIS folder: the route your
+    # card cannot run, the driver that faults on it, the file that is in the
+    # way. Everything else is a hover away - and the settings that have to
+    # be changed in the game are printed after the install, under "now
+    # launch the game and:", where they are the next thing you do rather
+    # than a paragraph in front of a button.
+    ALWAYS = ("bad", "driver", "warn")
 
     def show(self, parts: list[tuple[str, str]], fold: bool = True) -> None:
         """parts: (tag, text) pairs, one per line.
@@ -3845,6 +3862,12 @@ class App:
         if not usable:
             parts.append(("bad", f"NOT FOR THIS PC - {note}."))
         parts.append(("blurb", dlss.BLURB[path]))
+        # The paragraphs that used to be printed into the log in full: why
+        # this route for this game, and what this card does on your GPU.
+        for long_ in (getattr(self, "_why_full", ""),
+                      getattr(self, "_tier_full", "")):
+            if long_:
+                parts.append(("blurb", long_))
         if usable and note:
             parts.append(("note", note))
         # What this route will not tolerate - but only the conditions that
@@ -3860,7 +3883,9 @@ class App:
             foreign = []
         for kind, line in getattr(dlss, "CONFLICTS", {}).get(path, ()):
             if kind == "ingame":
-                parts.append(("warn", line))
+                # Said after the install instead, where it is the next thing
+                # to do - _route_instructions prints them.
+                parts.append(("blurb", line))
             elif kind == "folder":
                 if foreign:
                     parts.append(("warn", f"{', '.join(foreign[:3])} "
@@ -3882,7 +3907,13 @@ class App:
         except Exception:
             warn = None
         if warn:
-            parts.append(("driver", warn))
+            # The line that decides the most evenings, in one line: the rest
+            # of it - which build to roll back to, what to try first - is
+            # under the same marker as the description.
+            short = first_sentence(warn, 150)
+            parts.append(("driver", short))
+            if short != " ".join(warn.split()):
+                parts.append(("blurb", warn))
         self.routelbl.show(parts)
         feeder = path == dlss.FEEDER
         opti = path == dlss.OPTI
@@ -4039,7 +4070,7 @@ class App:
         if self.game:
             level, why = installer.reliability(self.game, path)
             self._log(f"> route: {dlss.LABELS[path]}  [{level}]", "head")
-            self._log(f"  {why}")
+            self._log(f"  {first_sentence(why)}")
             if not usable:
                 self._log(f"  !! not for this pc: {note}", "warn")
             self._log(f"  plan: {' -> '.join(installer.plan(self.game, self._opts()))}")
@@ -4396,10 +4427,14 @@ class App:
                       f"optiscaler routes need the game's own dlss. if this game "
                       f"does have dlss, press [ report a bug ] and say where the "
                       f"nvngx_dlss.dll is; the log tail goes with it.", "warn")
-        self._log(f"> {self.support.reason}")
+        # The first sentence here, the rest under "what this route is" on
+        # the card - it was two paragraphs before a single press.
+        self._why_full = str(self.support.reason or "")
+        self._log(f"> {first_sentence(self._why_full)}")
         tier = gpu.tier_note(sm)
+        self._tier_full = str(tier or "")
         if tier:
-            self._log(f"> {tier}")
+            self._log(f"> {first_sentence(tier)}")
         self._apply_route(self.support.recommended)
         if len(cands) > 1:
             self._log(f"!! this folder has {len(cands)} executables; selected "
@@ -5171,6 +5206,12 @@ class App:
         """
         self._log("> in the game, now that it is running:" if running
                   else "> now launch the game and:", "head")
+        # The settings this route needs changed in the game itself. They are
+        # not on the install page - a condition read before anything is
+        # pressed is in the way; here it is the next thing to do.
+        for _kind, _line in getattr(dlss, "CONFLICTS", {}).get(route, ()):
+            if _kind == "ingame":
+                self._log(f"   !  {_line}", "warn")
         if route == dlss.OPTI:
             self._log(f"   1. press {reshade_ini.overlay_key_name('Insert')} to open "
                       f"the optiscaler overlay")
