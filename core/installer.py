@@ -671,6 +671,21 @@ def note_failure(root, exc: BaseException) -> None:
                                              exc.__traceback__))[-4000:]})
 
 
+# An hour: long enough for a slow download that died and a person who went
+# to make tea, short enough that yesterday's failure is not offered as an
+# explanation for today's folder.
+FAILURE_KEEP = 3600.0
+
+
+def clear_failure(root) -> None:
+    """Forget this folder's failure - an install into it has just worked."""
+    try:
+        if LAST_FAILURE and Path(LAST_FAILURE.get("root") or "") == Path(root):
+            LAST_FAILURE.clear()
+    except OSError:
+        pass
+
+
 def last_failure(root) -> str:
     """The traceback of an install into this folder, or "".
 
@@ -679,6 +694,8 @@ def last_failure(root) -> str:
     diagnosis is only ever asked the second one.
     """
     if not LAST_FAILURE:
+        return ""
+    if time.time() - float(LAST_FAILURE.get("at") or 0) > FAILURE_KEEP:
         return ""
     try:
         same = Path(LAST_FAILURE.get("root") or "").resolve() == Path(root).resolve()
@@ -700,8 +717,21 @@ def _swapped(was: str, label: str) -> str:
     strings printed an arrow between a build and itself on every reinstall.
     """
     num = re.match(r"[\d.]+", label or "")
-    same = was and num and was.rstrip(".0") == num.group(0).rstrip(".0")
-    return label if (not was or same) else f"{was} -> {label}"
+    return label if (not was or (num and _ver(was) == _ver(num.group(0)))) \
+        else f"{was} -> {label}"
+
+
+def _ver(s: str) -> tuple:
+    """(310, 10, 0) from "310.10.0.0" - trailing zeroes dropped.
+
+    Numbers, not text: "310.10.0".rstrip(".0") and "310.1.0".rstrip(".0")
+    are the same string, so a swap between two different builds printed as
+    if nothing had moved.
+    """
+    parts = [int(n) for n in re.findall(r"\d+", s or "")]
+    while len(parts) > 1 and parts[-1] == 0:
+        parts.pop()
+    return tuple(parts)
 
 
 def _place_family(entries: list, want, dest: Path, rep, root: Path, dl,
@@ -2595,6 +2625,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                 "No ReShade, no feeder and no add-on go into a Remix game. A "
                 "ReShade proxy DLL left in this folder crashes it before it "
                 "draws a frame.")
+            clear_failure(root)     # this folder's last failure is history now
             _write_manifest(root, g, opt, rep, proxy, level, complete=True)
             prefs.add_install(root)
             prog(100, "Done")
@@ -3381,6 +3412,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
             log(f"         {m}")
 
     # --- record -----------------------------------------------------------
+    clear_failure(root)     # this folder's last failure is history now
     _write_manifest(root, g, opt, rep, proxy, level, complete=True)
     prefs.add_install(root)
     prog(100, "Done")

@@ -421,13 +421,14 @@ def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
         # Nothing was recorded for this folder, so "none of ours is in it"
         # is a statement about an empty list. The game running is still a
         # fact worth having, and it is the only one there is here.
-        rep.add(WARN, f"{running} is running, and there is no record of what "
-                      f"was installed here to look for.",
-                "The install record is what names the files to look for in "
-                "the process; without it this can say the game is up and "
-                "nothing more. Install again and the next run answers it.")
-        rep.verdict = (f"{running} is running - install again so there is a "
-                       f"record to read it against.")
+        rep.add(WARN, f"{running} is running, and nothing is recorded here "
+                      f"to look for in it.",
+                "What is read out of a running game is the list of files an "
+                "install wrote; this folder's record names none, so this can "
+                "say the game is up and nothing more. Close the game, "
+                "install again, and the next run answers it.")
+        rep.verdict = (f"{running} is running - close it and install again, "
+                       f"so there is a record to read it against.")
         rep.never_ran = False
         return True
 
@@ -648,7 +649,13 @@ def _anything_of_ours(install_dir: Path) -> str:
     try:
         from . import remix as _remix
         trex = _remix.find_runtime(install_dir)
-        if trex is not None and (trex / _remix.DLSSNR).is_file():
+        conf = Path(install_dir) / _remix.CONF
+        if trex is not None and (trex / _remix.DLSSNR).is_file() \
+                and any(_remix.option_set(conf, f"{p}.enable")
+                        for p in _remix.PREFIX.values()):
+            # The runtime file alone is not ours: a hand-installed fork has
+            # one too. The option beside it is what an install of ours
+            # writes into the mod's own rtx.conf.
             return f"{trex.name}/{_remix.DLSSNR}"
     except Exception:
         pass
@@ -663,13 +670,13 @@ def _anything_of_ours(install_dir: Path) -> str:
 # written) was told to go and start the game once and come back.
 # Only a traceback that went through this tool's own install path counts:
 # one out of the update check or the GUI says nothing about the install.
+# Only the modules that nothing but an install goes through. The download
+# and version modules (sources, net) are on the update check's path as well,
+# and a traceback out of THOSE is not evidence about an install - which is
+# what the folder scoping in installer.last_failure() is for.
 _INSTALL_FRAMES = ("installer.py", "optiscaler.py", "remix.py", "remixdl.py",
-                   "dxvk.py", "vulkan.py", "openxr.py",
-                   # The modules install() reaches THROUGH. installer.py is
-                   # almost always in the stack as well, but a list that
-                   # decides whether a crash counts must not depend on that.
-                   "sources.py", "net.py", "feedcfg.py", "reshade_ini.py",
-                   "mfg.py", "emulators.py", "refw.py", "reengine.py")
+                   "dxvk.py", "vulkan.py", "openxr.py", "feedcfg.py",
+                   "reshade_ini.py", "emulators.py", "refw.py", "reengine.py")
 
 # Read off the exception line, most specific first. The line itself is
 # always shown as well, so an unrecognised one still says something.
@@ -3481,7 +3488,7 @@ def _tool_log_lines(tail: str, game, install_dir, n: int = 15) -> list[str]:
 
 def issue_body(version: str, gpu_name: str, sm, driver: str, game, route: str,
                last_diag, autopilot_tail: str, autopilot_log_path,
-               install_dir, last_error: str = "",
+               install_dir, last_error: str = "", session_error: str = "",
                answers: dict | None = None, crash=None) -> str:
     """The text of a bug report, with the evidence already in it.
 
@@ -3570,6 +3577,13 @@ def issue_body(version: str, gpu_name: str, sm, driver: str, game, route: str,
         parts.append(_block("remix-dxvk.log", nr_lines, 1200))
     if last_error:
         parts.append(f"\n**Last error**\n```\n{last_error[-900:]}\n```\n")
+    elif session_error:
+        # Something went wrong in this session, but not while installing
+        # into this folder - worth having in the report, under a heading
+        # that says so. A replay reads the block above this one, so a
+        # traceback from the update check cannot be read as an install's.
+        parts.append(f"\n**Last error in this session (not from an install "
+                     f"into this folder)**\n```\n{session_error[-900:]}\n```\n")
     parts.append(_block(
         f"autopilot.log (`{autopilot_log_path}`)",
         _tool_log_lines(autopilot_tail or "", game, install_dir), 900))

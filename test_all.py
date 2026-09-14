@@ -8527,9 +8527,21 @@ def _broken_install(g, opt, **kw):
 _out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
     install=_broken_install, start=lambda g: (True, ""),
     wait=lambda *a, **k: [], seconds=1))
-check("an install that stopped leaves nothing to uninstall, and says so",
-      _out.installed == "" and "Nothing was left in the folder"
-      in _ap.summary(_out), _ap.summary(_out))
+check("an install that stopped points at what it had already written",
+      _out.installed == "" and _out.left == "feeder"
+      and "uninstall" in _ap.summary(_out), _ap.summary(_out))
+# ...and with nothing of ours in the folder at all, it says that instead of
+# sending somebody to uninstall a folder that holds nothing.
+_bare = Path(tempfile.mkdtemp(prefix="autopilot_bare_"))
+shutil.copyfile(X64, _bare / "Game.exe")
+_out_bare = _ap.run(games.manual(_bare), installer.Options(), ["feeder"],
+                    _ap.Hooks(install=_broken_install,
+                              start=lambda g: (True, ""),
+                              wait=lambda *a, **k: [], seconds=1))
+check("...and an empty folder is not offered an uninstall",
+      "Nothing of ours is in the folder" in _ap.summary(_out_bare),
+      _ap.summary(_out_bare))
+shutil.rmtree(_bare, ignore_errors=True)
 check("...and it is this route's answer, not the end of the pass",
       _out.tried == ["feeder", "optiscaler"], _out.tried)
 

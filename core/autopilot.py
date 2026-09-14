@@ -82,7 +82,8 @@ class Outcome:
     route: str = ""
     ok: bool = False
     stopped: str = ""
-    installed: str = ""        # the route whose files are in the folder now
+    installed: str = ""        # the route this pass installed and kept
+    left: str = ""             # what the folder's own record says is in it
 
     @property
     def note(self) -> str:
@@ -233,10 +234,15 @@ def attempt(game, opt, route: str, hooks: Hooks) -> Attempt:
         a.why = "the game was never seen running"
         return a
     a.started = True
-    for s in seen:
-        a.ours += list(s.ours)
-        a.missing += list(s.missing)
-        a.elsewhere += list(s.elsewhere)
+    # seen[0] is the game (watch.from_folder puts it first and that is the
+    # one remembered); the rest are its children and our own helpers, and
+    # their module lists are not what "did this install get in" means.
+    s = seen[0]
+    a.ours, a.missing, a.elsewhere = list(s.ours), list(s.missing), list(s.elsewhere)
+    others = [p.proc.name for p in seen[1:]]
+    if others:
+        hooks.log(f"  (also running from this folder: {', '.join(others[:3])})",
+                  "")
     # The module list is the whole point of the pass, and until it is
     # written down it exists only in this object: the report reads it back
     # through watch.last_sighting(), and the summary tells people the report
@@ -279,7 +285,7 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
     todo = routes[:MAX_ATTEMPTS]
     for i, route in enumerate(todo):
         if hooks.stop():
-            out.stopped = "stopped"
+            out.stopped = "you pressed stop"
             break
         a = attempt(game, opt, route, hooks)
         out.attempts.append(a)
@@ -292,6 +298,11 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
             # This route could not be put in place. The next one is a
             # different download and a different set of files.
             if i + 1 < len(todo):
+                if "refused to write" in a.why or "is running" in a.why:
+                    # Windows refused the file because the game has it open,
+                    # and the next route writes into the same folder.
+                    root = Path(game.install_dir)
+                    hooks.closed(root, _files(root)[1], hooks)
                 continue
             out.stopped = a.why or "the install did not finish"
             break
@@ -315,16 +326,26 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
                 break
     else:
         out.stopped = "every route tried"
-    # Only a route that really got onto the disk is in the folder.
+    # What is in the folder is what the RECORD says, whatever this pass
+    # managed to finish: an install that stopped part way writes its files
+    # and its record too, and saying "nothing was left" over that folder
+    # hides the uninstall that would clean it up.
     out.installed = next((a.route for a in reversed(out.attempts)
                           if a.installed), "")
+    try:
+        man = installer._previous_manifest(Path(game.install_dir)) or {}
+        out.left = str(man.get("path") or "") or out.installed
+    except Exception:
+        out.left = out.installed
     return out
 
 
 def _names(paths: list[str]) -> str:
     """The file names of what was loaded, without their paths."""
     seen = sorted({os.path.basename(p) for p in paths})
-    return ", ".join(seen[:3]) + (", ..." if len(seen) > 3 else "")
+    if len(seen) <= 3:
+        return ", ".join(seen)
+    return ", ".join(seen[:3]) + f" and {len(seen) - 3} more"
 
 
 # The two ends of the pass. Anything else in `stopped` is a sentence about
@@ -336,24 +357,32 @@ def summary(out: Outcome) -> str:
     """One line for the window, and for the person who has to decide."""
     if out.ok:
         last = out.attempts[-1]
-        return (f"{_names(last.ours)} from the {out.route} install are loaded "
-                f"in the game. Play for a few minutes, then press "
+        return (f"The {out.route} install is loaded in the game "
+                f"({_names(last.ours)}). Play for a few minutes, then press "
                 f"'did it work?'.")
     if not out.attempts:
         return "Nothing was tried."
     # What is in the folder NOW is the first thing the person needs: this
     # stops with an install in place, and leaving that unsaid is how
     # somebody ends up with a route they never chose and no idea of it.
-    where = (f" The {out.installed} route is what is installed in the folder "
-             f"now - 'uninstall' takes it back out."
-             if out.installed else " Nothing was left in the folder.")
+    if out.installed:
+        where = (f" The {out.installed} route is what is installed in the "
+                 f"folder now - 'uninstall' takes it back out.")
+    elif out.left:
+        where = (f" The install did not finish; what it had already written "
+                 f"is recorded as a {out.left} install, so 'uninstall' takes "
+                 f"that back out.")
+    else:
+        where = " Nothing of ours is in the folder."
     if out.stopped not in (_LOADED, _EXHAUSTED):
         # It stopped for a reason of this machine's: the game would not
         # close, the install did not finish, nobody started it. That
         # sentence is the answer - a summary about routes is not.
-        return (f"Stopped: {out.stopped}.{where}"
-                + (f" {out.note}" if out.note else ""))
-    return (f"Tried {', '.join(out.tried)} - the game ran each time and "
-            f"loaded none of what was written. Press 'report a bug': what "
-            f"the game had loaded is recorded and goes into the "
-            f"report.{where}")
+        said = out.stopped.rstrip(". ")
+        # The launch advice belongs only where nobody managed to start it.
+        advice = out.note if (out.attempts and not out.attempts[-1].started
+                              and out.note) else ""
+        return f"Stopped: {said}.{where}" + (f" {advice}" if advice else "")
+    return (f"Tried {', '.join(out.tried)} - nothing of ours ended up "
+            f"running in the game. Press 'report a bug': what the game had "
+            f"loaded is recorded and goes into the report.{where}")

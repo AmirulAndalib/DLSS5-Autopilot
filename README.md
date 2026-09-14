@@ -13,17 +13,18 @@ NVIDIA RTX 20 or newer
   different way. The tool reads the executable and the folder, offers every route
   the game allows, marks the one that fits your card, and leaves the
   choice yours.
-- **The game's own DLSS, kept up to date.** An install can also swap
-  super resolution (`nvngx_dlss.dll`), frame generation
-  (`nvngx_dlssg.dll`) and, for a game that ships one, ray reconstruction
-  (`nvngx_dlssd.dll`) for builds fetched from NVIDIA's own repository. The
-  game's file is backed up and comes back on uninstall, and **check
-  versions** later says which of your games has a part with a newer build.
+- **The game's own DLSS, kept up to date.** An install can also swap super
+  resolution (`nvngx_dlss.dll`), frame generation (`nvngx_dlssg.dll`) and,
+  for a game that ships one, ray reconstruction (`nvngx_dlssd.dll`) for
+  builds from NVIDIA's own repository; the game's file is backed up and
+  comes back on uninstall. **check versions** later says which of your games
+  has a part with a newer build.
   [How a swap works](#keeping-a-games-dlss-up-to-date).
 - **It can try it for you.** **install and try it for me** installs the
-  route, starts the game, reads which DLLs the game loaded and - when none
-  of ours are in it - installs the next route and goes round again, up to
-  three. A game with anti-cheat it never starts itself: it asks you to.
+  route, starts the game, reads which DLLs the game loaded and - when ours
+  are not in it - waits for you to close the game, installs the next route
+  and goes round again, up to three. A game with anti-cheat it never starts
+  itself: it asks you to. Tried on one machine so far.
 - **It tells you what happened.** Play, then press **did it work?**: it
   reads ReShade's log, the add-on's, OptiScaler's and Windows' own crash
   record, and says whether the model ran - and when it did not, which
@@ -45,10 +46,10 @@ NVIDIA RTX 20 or newer
   share are pooled into one list the tool reads before an install: once a
   game has five, you are told which route worked most often on it, and
   whether the one you picked did worse.
-- **It takes itself back out.** Uninstall restores every file it replaced
-  and removes only what it wrote.
 - **Nothing is bundled.** Each component is fetched from its own
   publisher, at run time, at a version the tool resolves that day.
+- **It takes itself back out.** Uninstall restores every file it replaced
+  and removes only what it wrote.
 
 > This repository holds installer logic only. No game files, no NVIDIA
 > binaries, no third-party code is redistributed - everything is fetched at
@@ -180,7 +181,7 @@ All three come from NVIDIA's own repository, read at its release tag, and
 the download is checked for being a 64-bit Windows DLL before anything is
 overwritten. The game's own file is backed up and comes back on uninstall.
 The ray-reconstruction dropdown starts on **keep the game's own**. The
-**nvngx_dlss** dropdown starts on the newest published build, and the
+**nvngx_dlss** dropdown starts on NVIDIA's own latest build, and the
 **keep the game's own** tick beside it - on by default - is what decides
 whether a game that has its own DLSS keeps it.
 
@@ -530,8 +531,9 @@ dlss5-autopilot.exe --video ["D:\DLSS5 Player"]     set up the video player
 - It writes only into the game folder you pick (plus, for Vulkan games, one
   per-user registry value it announces first and removes with the last
   Vulkan game), keeps its cache, its log, its settings, the scanned library
-  and `sightings.json` - the executable and DLL names it saw while a game it
-  installed into was running - in `%LOCALAPPDATA%\dlss5-autopilot`, never
+  and `sightings.json` - the path of the executable that ran and the DLLs it
+  had loaded, for a game it installed into - in
+  `%LOCALAPPDATA%\dlss5-autopilot`, never
   asks for administrator rights, and sends nothing anywhere: no telemetry,
   no account.
 - **Network access**, and nothing else: `reshade.me`,

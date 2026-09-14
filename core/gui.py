@@ -3513,7 +3513,7 @@ class App:
                 self.sm = None
         return self.sm
 
-    def _work_applies(self) -> bool:
+    def _work_applies(self, route: str | None = None) -> bool:
         """Is there a resolution dial on this route, for this game?
 
         OptiScaler: always - its model resolution (25-100%) is the fps lever.
@@ -3521,9 +3521,12 @@ class App:
         The add-on's own log line is "settled D3D11 work resolution=..%"; on
         DX12, OpenGL and the 32-bit helper the value is simply ignored, so the
         slider is disabled rather than lying about what it does.
+
+        `route` for the autopilot pass, which asks about routes that are not
+        the one on screen.
         """
         g = self.game
-        route = getattr(self, "route", dlss.FEEDER)
+        route = route or getattr(self, "route", dlss.FEEDER)
         if route == dlss.OPTI:
             return True
         if route != dlss.FEEDER:
@@ -3919,7 +3922,11 @@ class App:
         body = diagnose.issue_body(
             update.VERSION, name, sm, drv, g, route,
             self._last_diag, log.tail(60, 6000), log.path(), install_dir,
-            last_error=log.last_error(), answers=answers,
+            # The error the DIAGNOSIS read, so that replaying this report
+            # asks the question the tool answered. A session traceback that
+            # belongs to no install goes in under its own heading.
+            last_error=installer.last_failure(self.game.install_dir),
+            session_error=log.last_error(), answers=answers,
             crash=getattr(self, "_last_crash", None))
         try:
             from urllib.parse import quote
@@ -4343,13 +4350,21 @@ class App:
         settings for all of them made the later attempts weaker installs
         than the same route by hand.
         """
-        route = route or getattr(self, "route", None)
+        shown = getattr(self, "route", None)
+        route = route or shown
         if not hasattr(self, "cb_renodx"):
             return installer.Options(path=route or dlss.FEEDER)
+        # A dial belongs to the route it was shown for. _apply_route sets
+        # these per route, so handing another route the values on screen
+        # gave the OptiScaler attempt of a pass that started on the feeder a
+        # model resolution of 100% - the one dial that route exists for -
+        # and carried DXVK, MFG and VR into routes the window refuses them
+        # for. For any route but the one on screen, the tool's own defaults.
+        other = bool(route and shown and route != shown)
         val = self.cb_renodx.get()
         local = self.renodx_local if val.startswith("[local]") else None
         feed: dict = {}
-        if self._work_applies() and self.workres.get() != 100:
+        if self._work_applies(route) and not other and self.workres.get() != 100:
             feed["work_resolution"] = self.workres.get()
         pi = self.cb_preset.current()
         if pi > 0:
@@ -4359,7 +4374,11 @@ class App:
             feed["hdr"] = list(feedcfg.HDR.keys())[hi]
         clean = lambda v: None if (not v or v.startswith(("loading", "auto"))) else v
         nr: dict = {}
-        if route == dlss.OPTI and hasattr(self, "cb_nrpreset"):
+        if route == dlss.OPTI and other:
+            # Its own default, not the slider that was showing another
+            # route's 100%.
+            nr["WorkingScale"] = round(optiscaler.NR_SCALE_DEFAULT / 100, 2)
+        elif route == dlss.OPTI and hasattr(self, "cb_nrpreset"):
             nr["WorkingScale"] = round(self.workres.get() / 100, 2)
             if self.cb_nrpreset.current() > 0:
                 nr["Preset"] = list(optiscaler.NR_PRESETS.keys())[self.cb_nrpreset.current()]
@@ -4385,10 +4404,10 @@ class App:
             feeder_prerelease=self.cb_feederver.current() == 1,
             feeder_tag=(self.feeder_tags[self.cb_feederver.current() - 2]
                         if self.cb_feederver.current() >= 2 else ""),
-            dxvk=self.dxvk.get(),
-            fg=bool(self.fg.get()) and route == dlss.OPTI,
-            mfg=bool(self.mfg.get()),
-            vr=bool(self.vr.get()),
+            dxvk=self.dxvk.get() and not other,
+            fg=bool(self.fg.get()) and route == dlss.OPTI and not other,
+            mfg=bool(self.mfg.get()) and not other,
+            vr=bool(self.vr.get()) and not other,
             remix_swap=bool(self.remix_swap.get()) and
             route == dlss.REMIX,
             path=route or dlss.FEEDER,
@@ -4468,7 +4487,7 @@ class App:
                 f"This is an online game. ReShade add-ons and anti-cheat do not "
                 f"coexist: the game may refuse to start, delete the files, or "
                 f"ban the account. Nobody but you carries that risk.\n\n"
-                f"Install anyway?"):
+                f"Go on anyway?"):
             return
         offer = list(getattr(getattr(self, "support", None), "options", None)
                      or [getattr(self, "route", "") or opt.path])
@@ -4492,8 +4511,9 @@ class App:
                    f"  2. ask you to start the game - {why}\n")
                 + f"  3. read which DLLs the running game loaded (it reads the "
                   f"process; it writes nothing into it)\n"
-                  f"  4. if none of ours are in it, wait for you to close the "
-                  f"game, install the next route and go round again\n\n"
+                  f"  4. if ours are not in it - or the game loaded another "
+                  f"copy of the same name instead - wait for you to close "
+                  f"the game, install the next route and go round again\n\n"
                   f"Routes it may try, in order: {', '.join(routes)}.\n"
                   f"It stops after those, or when you press stop.\n\n"
                   f"Go ahead?"):
@@ -4551,22 +4571,31 @@ class App:
         self._idle()
         self._log("")
         self._log(f"> {autopilot.summary(out)}", "ok" if out.ok else "warn")
-        if not out.installed:
+        # Whatever is on the disk, including a route whose install stopped
+        # part way: that folder has files and a record, and leaving
+        # 'uninstall' greyed out over it is the opposite of what it needs.
+        left = out.installed or getattr(out, "left", "")
+        if not left:
             return
         # The window is about the route that is now on the disk, whatever
         # was picked before it. Through _apply_route, because that is what
         # moves the dropdown, the blurb, the warnings and what _opts() reads
         # - assigning self.route alone left the dropdown saying one thing
         # and the next INSTALL doing another (#30's shape).
-        self._select_route(out.installed)
+        self._select_route(left)
         self._forget_row(self.game)
         self._watch_this_game(self.game)
         try:
             self.btn_remove.config(state="normal")
         except tk.TclError:
             pass
-        self._log("")
-        self._route_instructions(out.installed)
+        # Only where there is a working install to give instructions for:
+        # after three routes that did not load, the next step is the bug
+        # report, not "press Home in the game". A video player has its own
+        # checklist and no in-game keys at all.
+        if out.ok and getattr(self.game, "kind", "") != "video":
+            self._log("")
+            self._route_instructions(left, running=True)
         if not out.ok and out.attempts and out.attempts[-1].started:
             self.btn_diag.focus_set()
 
@@ -4894,14 +4923,15 @@ class App:
                 self._offer_crash_report()
             self.root.after(60, self._pump)
 
-    def _route_instructions(self, route: str) -> None:
+    def _route_instructions(self, route: str, running: bool = False) -> None:
         """What to press in the game, for the route that was installed.
 
         Its own method because two paths end with an install now: the
         INSTALL button and the autopilot pass. The pass used to leave
         somebody with files in their folder and no idea what to open.
         """
-        self._log("> now launch the game and:", "head")
+        self._log("> in the game, now that it is running:" if running
+                  else "> now launch the game and:", "head")
         if route == dlss.OPTI:
             self._log(f"   1. press {reshade_ini.overlay_key_name('Insert')} to open "
                       f"the optiscaler overlay")
