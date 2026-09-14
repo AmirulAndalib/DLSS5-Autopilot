@@ -4329,9 +4329,18 @@ class App:
                   f"dlss {len(ds)}"
                   + (f", ray reconstruction {len(dd)}" if dd else ""))
 
-    def _opts(self) -> installer.Options:
+    def _opts(self, route: str | None = None) -> installer.Options:
+        """The settings on screen, for the route shown or for another one.
+
+        `route` is for the autopilot pass, which installs up to three: half
+        of Options is route-specific (the OptiScaler dials, frame
+        generation, the Remix runtime swap), so taking the first route's
+        settings for all of them made the later attempts weaker installs
+        than the same route by hand.
+        """
+        route = route or getattr(self, "route", None)
         if not hasattr(self, "cb_renodx"):
-            return installer.Options()
+            return installer.Options(path=route or dlss.FEEDER)
         val = self.cb_renodx.get()
         local = self.renodx_local if val.startswith("[local]") else None
         feed: dict = {}
@@ -4345,7 +4354,7 @@ class App:
             feed["hdr"] = list(feedcfg.HDR.keys())[hi]
         clean = lambda v: None if (not v or v.startswith(("loading", "auto"))) else v
         nr: dict = {}
-        if getattr(self, "route", None) == dlss.OPTI and hasattr(self, "cb_nrpreset"):
+        if route == dlss.OPTI and hasattr(self, "cb_nrpreset"):
             nr["WorkingScale"] = round(self.workres.get() / 100, 2)
             if self.cb_nrpreset.current() > 0:
                 nr["Preset"] = list(optiscaler.NR_PRESETS.keys())[self.cb_nrpreset.current()]
@@ -4372,12 +4381,12 @@ class App:
             feeder_tag=(self.feeder_tags[self.cb_feederver.current() - 2]
                         if self.cb_feederver.current() >= 2 else ""),
             dxvk=self.dxvk.get(),
-            fg=bool(self.fg.get()) and getattr(self, 'route', None) == dlss.OPTI,
+            fg=bool(self.fg.get()) and route == dlss.OPTI,
             mfg=bool(self.mfg.get()),
             vr=bool(self.vr.get()),
             remix_swap=bool(self.remix_swap.get()) and
-            getattr(self, 'route', None) == dlss.REMIX,
-            path=getattr(self, 'route', dlss.FEEDER),
+            route == dlss.REMIX,
+            path=route or dlss.FEEDER,
             native_dlss=bool(self.support and self.support.native_dlss),
             upscaler=str(getattr(self.support, 'upscaler', '') or ''),
             opti_proxy=("" if self.cb_proxy.current() <= 0
@@ -4441,6 +4450,21 @@ class App:
         if self.busy or not self.game:
             return
         g, opt = self.game, self._opts()
+        # The same warning INSTALL gives, before the button that installs up
+        # to three routes on its own. may_start() refuses to START an
+        # anti-cheat game; it says nothing about writing files into one.
+        try:
+            ac = anticheat.detect(g.install_dir, g.folder)
+        except Exception:
+            ac = None
+        if ac is not None and ac.present and not messagebox.askyesno(
+                APP,
+                f"{ac.summary} is installed in this game.\n\n"
+                f"This is an online game. ReShade add-ons and anti-cheat do not "
+                f"coexist: the game may refuse to start, delete the files, or "
+                f"ban the account. Nobody but you carries that risk.\n\n"
+                f"Install anyway?"):
+            return
         offer = list(getattr(getattr(self, "support", None), "options", None)
                      or [getattr(self, "route", "") or opt.path])
         # What order to try them in is not a guess: the shared results say
@@ -4450,6 +4474,8 @@ class App:
         # thread (#8, #18, #32).
         routes = autopilot.plan(getattr(self, "route", "") or opt.path, offer,
                                 getattr(self, "_community", None), g)
+        if not routes:                      # nothing this game is offered
+            return
         may, why = autopilot.may_start(g)
         if not messagebox.askyesno(
                 APP,
@@ -4461,8 +4487,8 @@ class App:
                    f"  2. ask you to start the game - {why}\n")
                 + f"  3. read which DLLs the running game loaded (it reads the "
                   f"process; it writes nothing into it)\n"
-                  f"  4. if none of ours are in it, install the next route and "
-                  f"ask you to start the game again\n\n"
+                  f"  4. if none of ours are in it, wait for you to close the "
+                  f"game, install the next route and go round again\n\n"
                   f"Routes it may try, in order: {', '.join(routes)}.\n"
                   f"It stops after those, or when you press stop.\n\n"
                   f"Go ahead?"):
@@ -4473,12 +4499,19 @@ class App:
         self.btn_next.config(state="disabled")
         self._log("")
         self._log(f"=== {g.name}: trying it for you ===", "head")
+        # Every route's settings, read HERE: _opts() reads Tk widgets and Tk
+        # variables, and this is the one place in this file that would have
+        # read them from a worker thread.
+        per_route = {r: self._opts(r) for r in routes}
 
         def work() -> None:
             try:
                 hooks = autopilot.Hooks(
                     install=lambda gg, oo: installer.install(
                         gg, oo, on_log=lambda t: self.q.put(("log", t))),
+                    # Read once per route, off the Tk thread but only from
+                    # widgets nothing else is touching while this runs.
+                    options=lambda base, route: per_route.get(route, base),
                     log=lambda t, kind="": self.q.put(("autolog", (t, kind))),
                     stop=lambda: self._auto_stop)
                 out = autopilot.run(g, opt, routes, hooks)
@@ -4497,7 +4530,14 @@ class App:
         self.btn_auto.config(state="disabled")
 
     def _autopilot_done(self, out) -> None:
-        """Say what the pass found, and leave the window usable."""
+        """Say what the pass found, and leave the window as an install does.
+
+        An install through INSTALL ends in _finish_ok, which forgets the
+        game's cached compatibility row, starts watching the folder, enables
+        uninstall and prints what to press in the game. A pass that installs
+        up to three routes and does none of that leaves somebody with files
+        in their folder, a disabled uninstall button and no instructions.
+        """
         self._auto_stop = False
         self.busy = False
         self.btn_auto.config(text="install and try it for me", state="normal",
@@ -4506,12 +4546,36 @@ class App:
         self._idle()
         self._log("")
         self._log(f"> {autopilot.summary(out)}", "ok" if out.ok else "warn")
-        # A route that got in changes what the window is about: the install
-        # on screen is that route now, not the one that was picked.
-        if out.ok and out.route:
-            self.route = out.route
+        if not out.installed:
+            return
+        # The window is about the route that is now on the disk, whatever
+        # was picked before it. Through _apply_route, because that is what
+        # moves the dropdown, the blurb, the warnings and what _opts() reads
+        # - assigning self.route alone left the dropdown saying one thing
+        # and the next INSTALL doing another (#30's shape).
+        self._select_route(out.installed)
+        self._forget_row(self.game)
+        self._watch_this_game(self.game)
+        try:
+            self.btn_remove.config(state="normal")
+        except tk.TclError:
+            pass
+        self._log("")
+        self._route_instructions(out.installed)
         if not out.ok and out.attempts and out.attempts[-1].started:
             self.btn_diag.focus_set()
+
+    def _select_route(self, route: str) -> None:
+        """Move the route dropdown to `route`, the way a person would."""
+        options = list(getattr(getattr(self, "support", None), "options", None)
+                       or [])
+        try:
+            if route in options and hasattr(self, "cb_route"):
+                self.cb_route.current(options.index(route))
+            self._apply_route(route)
+        except Exception:
+            log.exception("moving the window to the route that was installed")
+            self.route = route
 
     def _uninstall(self) -> None:
         if self.busy or not self.game:
@@ -4825,45 +4889,13 @@ class App:
                 self._offer_crash_report()
             self.root.after(60, self._pump)
 
-    def _finish_ok(self, rep: installer.Report) -> None:
-        self._idle()
-        # Only this game's row changed. Clearing them all used to be free;
-        # now that the rows are kept for the next launch it would throw the
-        # whole library's compatibility pass away and make the next start
-        # re-read every folder on the Tk thread (issues #8, #18, #32).
-        self._forget_row(self.game)
-        self.pb["value"] = 100
-        self.pblbl.config(text="")
-        self._log("")
-        self._log(f"> done - {len(rep.written)} files written", "ok")
-        # From here until the game is seen once, the process table is
-        # watched: what loads into the game is the evidence every "it never
-        # started" report was missing, and it only exists while it runs.
-        self._watch_this_game(self.game)
-        for n in rep.notes:
-            self._log(f"    {n}")
-        for w in rep.warnings:
-            self._log(f"!!  {w}", "warn")
-        if rep.skipped:
-            self._log(f"    left untouched: {', '.join(rep.skipped)}")
-        self._log("")
-        route = getattr(self, "route", dlss.FEEDER)
-        if self.game and getattr(self.game, "kind", "") == "video":
-            self._log("> now open the player and:", "head")
-            for line in video.CHECKLIST:
-                self._log(f"   {line}")
-            self._log("")
-            self._log("!! neural rendering re-draws EVERYTHING in the window, "
-                      "menus and subtitles included - use the player fullscreen "
-                      "(double-click the video). the first seconds after a "
-                      "seek or a resolution change look smeared while the "
-                      "history rebuilds.", "warn")
-            self._log("")
-            self._log("> watched something? come back and press 'did it work?' - "
-                      "it reads the logs and tells you what happened.", "head")
-            self.btn_remove.config(state="normal")
-            self.status.config(text="install complete - open the player")
-            return
+    def _route_instructions(self, route: str) -> None:
+        """What to press in the game, for the route that was installed.
+
+        Its own method because two paths end with an install now: the
+        INSTALL button and the autopilot pass. The pass used to leave
+        somebody with files in their folder and no idea what to open.
+        """
         self._log("> now launch the game and:", "head")
         if route == dlss.OPTI:
             self._log(f"   1. press {reshade_ini.overlay_key_name('Insert')} to open "
@@ -4982,8 +5014,50 @@ class App:
         self._log("> played it? come back and press 'did it work?' - it reads the "
                   "logs and tells you what happened.", "head")
         self._log("   leave this window open while you play: it watches for the "
-                  "game to start and notes which of these files it loads, which "
-                  "is what 'did it work?' cannot see once the game has closed.")
+                  "game to start and notes which of these files it loads. that "
+                  "is the one thing nothing can read back once the game has "
+                  "closed.")
+
+    def _finish_ok(self, rep: installer.Report) -> None:
+        self._idle()
+        # Only this game's row changed. Clearing them all used to be free;
+        # now that the rows are kept for the next launch it would throw the
+        # whole library's compatibility pass away and make the next start
+        # re-read every folder on the Tk thread (issues #8, #18, #32).
+        self._forget_row(self.game)
+        self.pb["value"] = 100
+        self.pblbl.config(text="")
+        self._log("")
+        self._log(f"> done - {len(rep.written)} files written", "ok")
+        # From here until the game is seen once, the process table is
+        # watched: what loads into the game is the evidence every "it never
+        # started" report was missing, and it only exists while it runs.
+        self._watch_this_game(self.game)
+        for n in rep.notes:
+            self._log(f"    {n}")
+        for w in rep.warnings:
+            self._log(f"!!  {w}", "warn")
+        if rep.skipped:
+            self._log(f"    left untouched: {', '.join(rep.skipped)}")
+        self._log("")
+        route = getattr(self, "route", dlss.FEEDER)
+        if self.game and getattr(self.game, "kind", "") == "video":
+            self._log("> now open the player and:", "head")
+            for line in video.CHECKLIST:
+                self._log(f"   {line}")
+            self._log("")
+            self._log("!! neural rendering re-draws EVERYTHING in the window, "
+                      "menus and subtitles included - use the player fullscreen "
+                      "(double-click the video). the first seconds after a "
+                      "seek or a resolution change look smeared while the "
+                      "history rebuilds.", "warn")
+            self._log("")
+            self._log("> watched something? come back and press 'did it work?' - "
+                      "it reads the logs and tells you what happened.", "head")
+            self.btn_remove.config(state="normal")
+            self.status.config(text="install complete - open the player")
+            return
+        self._route_instructions(route)
         self.btn_remove.config(state="normal")
         self.status.config(text="install complete")
 

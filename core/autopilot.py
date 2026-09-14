@@ -62,11 +62,18 @@ class Attempt:
     ours: list[str] = field(default_factory=list)
     missing: list[str] = field(default_factory=list)
     elsewhere: list[str] = field(default_factory=list)
-    note: str = ""
+    note: str = ""             # advice about the launch, never a reason
+    why: str = ""              # why this attempt could not answer
 
     @property
     def loaded(self) -> bool:
-        return bool(self.ours)
+        """Our files in the process, and none of them shadowed.
+
+        A name loaded from somewhere else while ours sits beside the game is
+        the exact fault this pass exists to find - ours being in the process
+        as well does not undo it, so it is not "it worked".
+        """
+        return bool(self.ours) and not self.elsewhere
 
 
 @dataclass
@@ -76,6 +83,11 @@ class Outcome:
     ok: bool = False
     stopped: str = ""
     installed: str = ""        # the route whose files are in the folder now
+
+    @property
+    def note(self) -> str:
+        """Whatever the last attempt had to say about starting the game."""
+        return self.attempts[-1].note if self.attempts else ""
 
     @property
     def tried(self) -> list[str]:
@@ -164,8 +176,16 @@ class Hooks:
     """
 
     def __init__(self, install=None, wait=None, start=None, log=None,
-                 stop=None, seconds: float = START_SECONDS, closed=None):
+                 stop=None, seconds: float = START_SECONDS, closed=None,
+                 options=None):
         self.install = install or installer.install
+        # Route by route, because half of Options is route-specific: the
+        # OptiScaler dials, frame generation, the Remix runtime swap. Taking
+        # the first route's Options for all three installed the second and
+        # third as weaker versions of themselves - a remix attempt that
+        # could never swap a runtime with no neural pass, which is the only
+        # reason that route exists.
+        self.options = options or (lambda opt, route: replace(opt, path=route))
         self.wait = wait or watch.wait_for
         self.start = start or globals()["start"]
         self.log = log or (lambda text, kind="": None)
@@ -184,31 +204,47 @@ def attempt(game, opt, route: str, hooks: Hooks) -> Attempt:
     """One route: install it, get the game up, read what it loaded."""
     a = Attempt(route=route)
     hooks.log(f"> {route}: installing", "head")
-    rep = hooks.install(game, replace(opt, path=route))
-    a.installed = bool(rep is None or getattr(rep, "complete", True))
-    if not a.installed:
-        a.note = "the install did not finish"
+    try:
+        hooks.install(game, hooks.options(opt, route))
+        a.installed = True
+    except Exception as e:
+        # An install that stops is this route's answer, not the pass's: a
+        # 5xx from one publisher, a route this game refuses, a file the
+        # game holds open. The next route is a different download and a
+        # different set of files, so it is still worth trying.
+        a.why = str(e).strip().splitlines()[0] if str(e).strip() else \
+            type(e).__name__
+        hooks.log(f"  {route}: the install stopped - {a.why}", "warn")
+        log.write(f"autopilot: {route} install failed: {e}", "warn")
         return a
     root = Path(game.install_dir)
     ours, exe = _files(root)
 
-    started, why = hooks.start(game)
-    a.note = why
+    started, note = hooks.start(game)
+    a.note = note                        # advice about the launch, not a reason
     if started:
         hooks.log(f"  started {Path(game.exe).name} - watching", "")
     else:
-        hooks.log(f"  start the game now - {why or 'watching for it'}", "warn")
+        hooks.log(f"  start the game now - {note or 'watching for it'}", "warn")
 
     seen = hooks.wait(root, ours, exe, seconds=hooks.seconds,
                       tick=lambda _s, _p: not hooks.stop())
     if not seen:
-        a.note = a.note or "the game did not start"
+        a.why = "the game was never seen running"
         return a
     a.started = True
     for s in seen:
         a.ours += list(s.ours)
         a.missing += list(s.missing)
         a.elsewhere += list(s.elsewhere)
+    # The module list is the whole point of the pass, and until it is
+    # written down it exists only in this object: the report reads it back
+    # through watch.last_sighting(), and the summary tells people the report
+    # carries it. It has to be true when they press the button.
+    try:
+        watch.remember(root, seen[0])
+    except Exception:
+        log.exception("recording what the game had loaded")
     return a
 
 
@@ -249,12 +285,21 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
         out.attempts.append(a)
         if a.loaded:
             out.ok, out.route = True, route
-            hooks.log(f"  {route}: {', '.join(sorted(set(a.ours))[:3])} "
-                      f"loaded in the game", "ok")
+            hooks.log(f"  {route}: {_names(a.ours)} loaded in the game", "ok")
             out.stopped = "loaded"
             break
+        if not a.installed:
+            # This route could not be put in place. The next one is a
+            # different download and a different set of files.
+            if i + 1 < len(todo):
+                continue
+            out.stopped = a.why or "the install did not finish"
+            break
         if not a.started:
-            out.stopped = a.note or "the game was never seen running"
+            # Why it could not answer - never the launch advice, which says
+            # nothing about what happened ("Steam game: it starts from the
+            # executable here..." is not a reason a pass stopped).
+            out.stopped = a.why or "the game was never seen running"
             break                               # nothing to learn from a rerun
         if a.elsewhere:
             hooks.log(f"  {route}: the game loaded {a.elsewhere[0]} from "
@@ -270,15 +315,30 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
                 break
     else:
         out.stopped = "every route tried"
-    out.installed = out.attempts[-1].route if out.attempts else ""
+    # Only a route that really got onto the disk is in the folder.
+    out.installed = next((a.route for a in reversed(out.attempts)
+                          if a.installed), "")
     return out
+
+
+def _names(paths: list[str]) -> str:
+    """The file names of what was loaded, without their paths."""
+    seen = sorted({os.path.basename(p) for p in paths})
+    return ", ".join(seen[:3]) + (", ..." if len(seen) > 3 else "")
+
+
+# The two ends of the pass. Anything else in `stopped` is a sentence about
+# this person's machine, and saying it beats any summary written in advance.
+_LOADED, _EXHAUSTED = "loaded", "every route tried"
 
 
 def summary(out: Outcome) -> str:
     """One line for the window, and for the person who has to decide."""
     if out.ok:
-        return (f"The {out.route} route is loaded in the game. Play for a "
-                f"few minutes, then press 'did it work?'.")
+        last = out.attempts[-1]
+        return (f"{_names(last.ours)} from the {out.route} install are loaded "
+                f"in the game. Play for a few minutes, then press "
+                f"'did it work?'.")
     if not out.attempts:
         return "Nothing was tried."
     # What is in the folder NOW is the first thing the person needs: this
@@ -286,11 +346,14 @@ def summary(out: Outcome) -> str:
     # somebody ends up with a route they never chose and no idea of it.
     where = (f" The {out.installed} route is what is installed in the folder "
              f"now - 'uninstall' takes it back out."
-             if out.installed else "")
-    last = out.attempts[-1]
-    if not last.started:
-        return f"Stopped: {out.stopped}.{where}"
+             if out.installed else " Nothing was left in the folder.")
+    if out.stopped not in (_LOADED, _EXHAUSTED):
+        # It stopped for a reason of this machine's: the game would not
+        # close, the install did not finish, nobody started it. That
+        # sentence is the answer - a summary about routes is not.
+        return (f"Stopped: {out.stopped}.{where}"
+                + (f" {out.note}" if out.note else ""))
     return (f"Tried {', '.join(out.tried)} - the game ran each time and "
-            f"loaded none of what was written. Press 'report a bug': the "
-            f"module list is in the report and it says what got there "
-            f"first.{where}")
+            f"loaded none of what was written. Press 'report a bug': what "
+            f"the game had loaded is recorded and goes into the "
+            f"report.{where}")

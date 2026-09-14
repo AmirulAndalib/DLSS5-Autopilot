@@ -83,6 +83,41 @@ def _header(text: str) -> dict:
     return out
 
 
+# The four verdicts diagnose.analyse() can only reach through the
+# `complete is False` branch, which returns before anything else is read.
+# A report carrying one of them proves the install record said "unfinished";
+# a report carrying any OTHER verdict proves it did not.
+UNFINISHED = (
+    "The install never finished - install again.",
+    "The install stopped for a reason of its own - see below.",
+    "The drive was full - free up space and install again.",
+    "The uninstall left files behind - close the game and uninstall again.",
+)
+
+
+def printed_verdict(text: str) -> str:
+    """The verdict the tool printed on the reporter's own machine."""
+    m = re.search(r"^\*\*Diagnosis\*\*:\s*(.+)$", text, re.M)
+    return m.group(1).strip() if m else ""
+
+
+def finished(text: str) -> dict:
+    """Whether the install record in that folder said the install finished.
+
+    Not in the report as a field, and it decides everything: the unfinished
+    branch returns before any log is read. Two things in the report settle
+    it - the verdict the machine printed (it proves which side of that
+    branch it came out of), and, when there is none, whether the report
+    carries a traceback out of the installer (#97, #103).
+    """
+    said = printed_verdict(text)
+    if said:
+        return {"complete": said not in UNFINISHED}
+    crashed = re.search(r"\*\*Last error\*\*(.*?)```", text, re.S) is not None \
+        and "installer.py" in text
+    return {"complete": not crashed}
+
+
 def folder_state(text: str) -> dict | None:
     """What the report says was in the folder, from its own file list.
 
@@ -353,7 +388,11 @@ def main() -> int:
               + (f", gone: {', '.join(gone)}" if gone else "")
               + ("" if state["manifest"] else ", NO install record"))
 
-    d = build(route, api, exe, logs, a.bitness, state=state)
+    # The same folder verdict_check builds, including whether the install
+    # record said "finished" - without it a report whose install died
+    # replayed one way here and another way in the corpus measurement.
+    d = build(route, api, exe, logs, a.bitness, state=state,
+              extra_manifest=finished(text) if a.report else None)
     show(d, f"issue #{a.issue}  route={route}  api={api}  exe={exe}",
          text if a.report else "")
     if a.keep:

@@ -3955,9 +3955,13 @@ check("our MFG overlay add-on is not reported as a foreign NGX hook",
 
 section("44. driver 616.64+: renodx-dlss5 is pinned to 4.55, and the fault is named")
 check("the pin constants exist", sources.DRIVER_FAULT_MIN == "616.64" and sources.DRIVER_FAULT_RENODX_PIN == "4.55")
+# find(), not index(): src_of() returns "" when the source cannot be read,
+# and "".index("") raises - which ends the run and makes every section after
+# it look like it passed.
+_isrc = src_of(installer.install)
 check("install() consults the driver before the OpenGL and feeder pins",
-      src_of(installer.install).index("DRIVER_FAULT_MIN")
-      < src_of(installer.install).index("OPENGL_RENODX_PIN"))
+      0 <= _isrc.find("DRIVER_FAULT_MIN") < _isrc.find("OPENGL_RENODX_PIN"),
+      (_isrc.find("DRIVER_FAULT_MIN"), _isrc.find("OPENGL_RENODX_PIN")))
 _d = _diag_dir("diag_drv_", feed=_FEED_OK, reshade=(
     'INFO | Registered add-on "DLSS 5 Feed" v0.14\n'
     "INFO | Redirecting IDXGIFactory2::CreateSwapChainForHwnd(...)\n"), bitness=32)
@@ -8208,7 +8212,11 @@ shutil.rmtree(_wdir, ignore_errors=True)
 
 check("the window watches a game it has installed into, and says so",
       "Recorder" in src_of(_gui.App._watch_this_game)
-      and "leave this window open while you play" in src_of(_gui.App._finish_ok))
+      and "leave this window open while you play"
+      in src_of(_gui.App._route_instructions))
+check("...and both paths that end in an install say what to press in the game",
+      "_route_instructions(" in src_of(_gui.App._finish_ok)
+      and "_route_instructions(" in src_of(_gui.App._autopilot_done))
 check("...and only where there is an install to watch",
       "_previous_manifest" in src_of(_gui.App._watch_this_game)
       and "if not man" in src_of(_gui.App._watch_this_game))
@@ -8466,6 +8474,94 @@ check("...and a game that never closes stops the pass instead of failing to "
 check("...and what is installed in the folder now is part of the answer",
       _out.installed == "feeder" and "uninstall" in _ap.summary(_out),
       _ap.summary(_out))
+
+# --- what the 1.9.0 gate found in the first cut of this pass --------------
+
+# A name loaded from somewhere else while ours sits beside the game is the
+# fault this pass exists to find. Ours being in the process as well does not
+# undo it, and it was being called a success.
+_a = _ap.Attempt(route="feeder", ours=[r"C:\g\nvngx_dlssnr.dll"],
+                 elsewhere=[r"C:\Windows\System32\dxgi.dll"])
+check("one of our files loaded while another is shadowed is not 'it worked'",
+      not _a.loaded)
+check("...and with nothing shadowed it is", _ap.Attempt(
+    route="feeder", ours=[r"C:\g\dxgi.dll"]).loaded)
+
+# The reason it stopped is the answer. A summary about routes, printed over
+# "the game is still running", sent that person to file a bug instead of
+# closing their game.
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(missing=["dxgi.dll"])],
+    closed=lambda folder, exe, hooks: False, seconds=1))
+check("a pass that stopped for a reason of this machine's says that reason",
+      "still running" in _ap.summary(_out)
+      and "report a bug" not in _ap.summary(_out), _ap.summary(_out))
+
+# An install that never finished leaves nothing behind, and saying "the X
+# route is what is installed now - uninstall takes it back out" about it is
+# two false statements in one sentence.
+def _broken_install(g, opt, **kw):
+    # install() raises on every path that stops part way, and records what
+    # it had written; it never returns a half report.
+    raise installer.InstallError("the download stopped")
+
+
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_broken_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [], seconds=1))
+check("an install that stopped leaves nothing to uninstall, and says so",
+      _out.installed == "" and "Nothing was left in the folder"
+      in _ap.summary(_out), _ap.summary(_out))
+check("...and it is this route's answer, not the end of the pass",
+      _out.tried == ["feeder", "optiscaler"], _out.tried)
+
+# The launch advice is not a reason. "Steam game: it starts from the
+# executable here, but if Steam wants to own the launch..." is not why a
+# pass stopped.
+_out = _ap.run(_g, installer.Options(), ["feeder"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, "Steam game: ...advice..."),
+    wait=lambda *a, **k: [], seconds=1))
+check("the advice about starting the game is never printed as the reason",
+      _out.stopped == "the game was never seen running", _out.stopped)
+
+# Half of Options is route-specific: taking the first route's settings for
+# all three installed the later ones as weaker versions of themselves.
+_asked: list = []
+_ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(missing=["dxgi.dll"])],
+    closed=lambda folder, exe, hooks: True,
+    options=lambda opt, route: (_asked.append(route),
+                                installer.replace(opt, path=route))[1],
+    seconds=1))
+check("each route is installed with the settings for THAT route",
+      _asked == ["feeder", "optiscaler"], _asked)
+check("...and the window can answer for a route that is not the one on screen",
+      _gui.App._opts.__code__.co_varnames[:2] == ("self", "route"))
+
+# The module list is the whole point of the pass, and the summary tells
+# people the report carries it.
+_remembered: list = []
+with patch.object(watch, "remember", lambda folder, s: _remembered.append(s)):
+    _ap.run(_g, installer.Options(), ["feeder"], _ap.Hooks(
+        install=_fake_install, start=lambda g: (True, ""),
+        wait=lambda *a, **k: [_sight(ours=[str(_d / "dxgi.dll")])], seconds=1))
+check("what the game had loaded is written down, not only shown once",
+      len(_remembered) == 1, _remembered)
+
+check("the window asks the anti-cheat question before it installs anything",
+      "anticheat.detect" in src_of(_gui.App._autopilot)
+      and "ban the account" in src_of(_gui.App._autopilot))
+check("...and the pass ends the way an install does",
+      all(w in src_of(_gui.App._autopilot_done)
+          for w in ("_select_route", "_forget_row", "_watch_this_game",
+                    "btn_remove", "_route_instructions")))
+check("...through _apply_route, so the dropdown and the next INSTALL agree",
+      "_apply_route" in src_of(_gui.App._select_route))
+check("a route list this game is not offered never reaches routes[0]",
+      "if not routes" in src_of(_gui.App._autopilot))
+
 
 check("the route order starts with the one the tool recommended",
       _ap.plan("optiscaler", ["feeder", "optiscaler", "bridge"])[0] == "optiscaler")

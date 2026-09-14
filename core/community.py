@@ -272,8 +272,8 @@ def next_route(data: dict, game, tried: str, offer: list[str] | None = None) -> 
     n, w, t = ranked[0]
     if mine_n and w * mine_n <= mine_w * t:
         return ""                    # nothing on offer does better
-    return (f"Nobody has reported this game yet. Across every game shared so "
-            f"far the {n} route worked in {w} of {t} tries"
+    return (f"Nobody has reported this game yet. Across every game shared, "
+            f"the {n} route worked in {w} of {t} tries"
             + (f", against {mine_w} of {mine_n} for {tried}" if mine_n else "")
             + " - it is the next one to try.")
 

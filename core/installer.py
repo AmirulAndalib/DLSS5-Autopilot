@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import struct
 import tempfile
@@ -653,14 +654,54 @@ def _is_win64_dll(p: Path, least: int = 200_000) -> tuple[bool, str]:
     return True, ""
 
 
+# The last install that failed, and the folder it was for. log.last_error()
+# is the last traceback ANYWHERE in the session - the update check failing
+# offline is one - and a rule that reads it as "this install crashed" told
+# somebody with no install at all that their install had crashed.
+LAST_FAILURE: dict = {}
+
+
+def note_failure(root, exc: BaseException) -> None:
+    """Record that an install into `root` stopped with this error."""
+    import traceback as _tb
+    LAST_FAILURE.clear()
+    LAST_FAILURE.update({
+        "root": str(root), "at": time.time(),
+        "text": "".join(_tb.format_exception(type(exc), exc,
+                                             exc.__traceback__))[-4000:]})
+
+
+def last_failure(root) -> str:
+    """The traceback of an install into this folder, or "".
+
+    Scoped to the folder on purpose: "what went wrong in this session" is
+    not the same question as "what went wrong with THIS install", and the
+    diagnosis is only ever asked the second one.
+    """
+    if not LAST_FAILURE:
+        return ""
+    try:
+        same = Path(LAST_FAILURE.get("root") or "").resolve() == Path(root).resolve()
+    except OSError:
+        same = str(LAST_FAILURE.get("root") or "") == str(root)
+    return str(LAST_FAILURE.get("text") or "") if same else ""
+
+
 def _swapped(was: str, label: str) -> str:
-    """"310.2.1 -> 310.8.0", or just the new build when there was nothing.
+    """"310.2.1 -> 310.9.1 (NVIDIA SDK)", or the build alone when nothing moved.
 
     A swap that says only what it put there leaves the person with no way
     to see what it was worth - and no way to notice, next time, that a
     launcher has quietly put the old runtime back.
+
+    The two sides are written differently and have to be compared as
+    numbers: `was` is the version stamped in the file on disk ("310.4.0"),
+    the label is the catalog's ("310.4.0 (NVIDIA SDK)"). Comparing the
+    strings printed an arrow between a build and itself on every reinstall.
     """
-    return f"{was} -> {label}" if was and was != label else label
+    num = re.match(r"[\d.]+", label or "")
+    same = was and num and was.rstrip(".0") == num.group(0).rstrip(".0")
+    return label if (not was or same) else f"{was} -> {label}"
 
 
 def _place_family(entries: list, want, dest: Path, rep, root: Path, dl,
@@ -1002,7 +1043,11 @@ def launcher_warning(g: games.Game) -> str:
     exe = getattr(g, "exe", None)
     if exe is None or not pe.launcher_like(exe):
         return ""
-    real = pe.real_exe_for(exe, list(getattr(g, "candidates", None) or []))
+    # `or None`: an empty list is not "nothing recorded" to real_exe_for -
+    # it is "these are the candidates", and it then skips the walk that
+    # finds the executable that actually draws.
+    real = pe.real_exe_for(exe, list(getattr(g, "candidates", None) or [])
+                           or None)
     return (f"{exe.name} looks like a launcher, not the game. A launcher "
             f"starts the game as a separate program, and nothing installed "
             f"beside it is loaded by the game."
@@ -3268,6 +3313,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                     "driver's optical flow engine")
 
     except PermissionError as e:
+        note_failure(root, e)
         _write_manifest(root, g, opt, rep, proxy, level, complete=False)
         raise InstallError(
             f"Windows refused to write a file:\n{e}\n\n"
@@ -3276,11 +3322,13 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
             f"what was written so far has been recorded, so 'Uninstall' can "
             f"clean up if you would rather start fresh.") from e
     except (sources.RateLimited, sources.Unavailable) as e:
+        note_failure(root, e)
         _write_manifest(root, g, opt, rep, proxy, level, complete=False)
         log("")
         log(str(e))
         raise InstallError(str(e)) from e
     except Exception as e:
+        note_failure(root, e)
         if net.is_disk_full(e):
             # Said in words, and recorded: the diagnosis reads this note
             # instead of telling someone with a full drive to install again.

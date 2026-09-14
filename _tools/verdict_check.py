@@ -49,34 +49,11 @@ BASELINE = HERE / "verdict_baseline.json"
 API_RE = re.compile(r"(DX9|DX10|DX11|DX12|Vulkan|OpenGL)")
 
 
-# The four verdicts diagnose.analyse() can only reach through the
-# `complete is False` branch, which returns before anything else is read.
-# A report carrying one of them proves the install record said "unfinished";
-# a report carrying any OTHER verdict proves it did not.
-UNFINISHED = (
-    "The install never finished - install again.",
-    "The install stopped for a reason of its own - see below.",
-    "The drive was full - free up space and install again.",
-    "The uninstall left files behind - close the game and uninstall again.",
-)
-
-
-def _finished(text: str) -> dict:
-    """Whether the install record in that folder said the install finished.
-
-    Not in the report as a field, and it decides everything: the unfinished
-    branch returns before any log is read. Two things in the report settle
-    it - the verdict the machine printed (it proves which side of that
-    branch it came out of), and, when there is none, whether the report
-    carries a traceback out of the installer, which is what a install that
-    stopped part way leaves behind (#97, #103).
-    """
-    said = printed_verdict(text)
-    if said:
-        return {"complete": said not in UNFINISHED}
-    crashed = re.search(r"\*\*Last error\*\*(.*?)```", text, re.S) is not None \
-        and "installer.py" in text
-    return {"complete": not crashed}
+# Both of these live in replay_report now: the tool a person replays a
+# report with by hand has to build the same folder this measures, or the
+# two answer different questions (#212).
+UNFINISHED = replay_report.UNFINISHED
+_finished = replay_report.finished
 
 
 def _answer(path: Path) -> dict:

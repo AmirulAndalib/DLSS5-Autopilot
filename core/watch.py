@@ -57,13 +57,24 @@ class _PROCESSENTRY32(ctypes.Structure):
                 ("szExeFile", ctypes.c_wchar * 260)]
 
 
+_API = None                    # built once: see _api()
+
+
 def _api():
     """kernel32/psapi with their argument types declared.
 
     Declared, because the defaults truncate: a HANDLE came back as a signed
     int and the second OpenProcess of a session raised "int too long to
     convert" instead of reading anything.
+
+    Built once. This is called from procs() and again for every process in
+    _image_path(), and the Recorder asks for a snapshot every few seconds
+    for as long as the window is open: on a 300-process machine that was
+    600 WinDLL constructions per snapshot, all of them identical.
     """
+    global _API
+    if _API is not None:
+        return _API
     k32 = ctypes.WinDLL("kernel32", use_last_error=True)
     psapi = ctypes.WinDLL("psapi", use_last_error=True)
     k32.OpenProcess.restype = w.HANDLE
@@ -78,7 +89,8 @@ def _api():
     psapi.EnumProcessModulesEx.argtypes = [w.HANDLE, ctypes.c_void_p, w.DWORD,
                                            ctypes.POINTER(w.DWORD), w.DWORD]
     psapi.GetModuleFileNameExW.argtypes = [w.HANDLE, w.LPVOID, w.LPWSTR, w.DWORD]
-    return k32, psapi
+    _API = (k32, psapi)
+    return _API
 
 
 @dataclass

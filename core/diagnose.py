@@ -328,10 +328,16 @@ def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
 
     True when it settled the question and wrote a verdict.
     """
+    # What the process would have to hold for this to say anything. With no
+    # install record there is nothing in it, and every sighting then comes
+    # back with ours, missing and elsewhere all empty - which used to read
+    # as "it has loaded none of the files here" about a list of none.
+    want = [f for f in (man.get("files") or [])
+            if isinstance(f, str)
+            and f.lower().endswith((".dll", ".addon64", ".addon32"))]
     try:
         from . import watch
-        seen = watch.inspect(install_dir, list(man.get("files") or []),
-                             exe=str(man.get("exe") or ""))
+        seen = watch.inspect(install_dir, want, exe=str(man.get("exe") or ""))
     except Exception:
         return False
     if not seen:
@@ -408,6 +414,20 @@ def _live_evidence(install_dir: Path, man: dict, rep: Report) -> bool:
                   "report.")
         rep.verdict = (f"Loaded into {running}, and no log was written - the "
                        f"proxy is reached and ReShade is not initialising.")
+        rep.never_ran = False
+        return True
+
+    if not want:
+        # Nothing was recorded for this folder, so "none of ours is in it"
+        # is a statement about an empty list. The game running is still a
+        # fact worth having, and it is the only one there is here.
+        rep.add(WARN, f"{running} is running, and there is no record of what "
+                      f"was installed here to look for.",
+                "The install record is what names the files to look for in "
+                "the process; without it this can say the game is up and "
+                "nothing more. Install again and the next run answers it.")
+        rep.verdict = (f"{running} is running - install again so there is a "
+                       f"record to read it against.")
         rep.never_ran = False
         return True
 
@@ -620,6 +640,18 @@ def _anything_of_ours(install_dir: Path) -> str:
                 return n
         except OSError:
             pass
+    # Nothing this tool writes on the Remix route sits beside the executable:
+    # the runtime files go inside .trex and the option into rtx.conf. Without
+    # this, a Remix install whose record is gone was told "nothing is
+    # installed in this folder" and _route_from_files' own .trex branch could
+    # never run, because it is gated on this answer.
+    try:
+        from . import remix as _remix
+        trex = _remix.find_runtime(install_dir)
+        if trex is not None and (trex / _remix.DLSSNR).is_file():
+            return f"{trex.name}/{_remix.DLSSNR}"
+    except Exception:
+        pass
     return ""
 
 
@@ -632,11 +664,20 @@ def _anything_of_ours(install_dir: Path) -> str:
 # Only a traceback that went through this tool's own install path counts:
 # one out of the update check or the GUI says nothing about the install.
 _INSTALL_FRAMES = ("installer.py", "optiscaler.py", "remix.py", "remixdl.py",
-                   "dxvk.py", "vulkan.py", "openxr.py")
+                   "dxvk.py", "vulkan.py", "openxr.py",
+                   # The modules install() reaches THROUGH. installer.py is
+                   # almost always in the stack as well, but a list that
+                   # decides whether a crash counts must not depend on that.
+                   "sources.py", "net.py", "feedcfg.py", "reshade_ini.py",
+                   "mfg.py", "emulators.py", "refw.py", "reengine.py")
 
 # Read off the exception line, most specific first. The line itself is
 # always shown as well, so an unrecognised one still says something.
 _CRASH_CAUSES = (
+    # urllib wraps the socket error, so the class name is usually gone by
+    # the time this reads the line: match what is left of it (#213's own
+    # line is "URLError: <urlopen error [Errno 11001] getaddrinfo failed>").
+    ("getaddrinfo", "this PC could not look up the download's address"),
     ("gaierror", "this PC could not look up the download's address"),
     ("ssl", "the secure connection to the download failed"),
     ("timed out", "the download timed out"),
@@ -647,8 +688,15 @@ _CRASH_CAUSES = (
     ("httperror", "the download server answered with an error"),
     ("permissionerror", "Windows refused a file the install had to write"),
     ("filenotfounderror", "a file the install expected was not there"),
-    ("nospace", "the drive filled up"),
-    ("oserror", "Windows refused a file the install had to write"),
+    # Windows says "[WinError 112] There is not enough space on the disk";
+    # Python's own OSError says "[Errno 28] No space left on device".
+    # Neither contains the word this used to look for, so a full drive was
+    # answered with "Windows refused a file" and "press INSTALL again".
+    ("no space left", "the drive filled up"),
+    ("not enough space", "the drive filled up"),
+    ("errno 28", "the drive filled up"),
+    ("winerror 112", "the drive filled up"),
+    ("oserror", "Windows would not let the install finish a file"),
     ("memoryerror", "this PC ran out of memory during the install"),
 )
 
@@ -779,6 +827,13 @@ def _stale_install(rep: "Report", man: dict) -> None:
     from . import update as _update
     was = str(man.get("tool") or "")
     if not was or was == _update.VERSION:
+        return
+    if _update._parse(was) > _update._parse(_update.VERSION):
+        # A rollback, or a shared machine. Telling that person their install
+        # is old and to press INSTALL would be two false statements.
+        rep.add(INFO, f"This folder was set up by version {was}, which is "
+                      f"newer than the {_update.VERSION} running now.",
+                "What is read below was written by that build.")
         return
     rep.add(INFO, f"This folder was set up by version {was}; "
                   f"you are running {_update.VERSION}.",
@@ -3318,7 +3373,10 @@ def _presence(install_dir: Path, man: dict, route: str) -> list[str]:
                 conf = install_dir / conf
             out.append(f"- {rx['key']}: "
                        f"{'set' if _remix.option_set(conf, rx['key']) else 'NOT SET'}")
-        return out
+        # The lines that are not about files - "install record: MISSING"
+        # above all - belong in a Remix report too. This branch returned
+        # before them, which is the class (#43, #194) that line exists for.
+        return out + extra
     # A ray-reconstruction runtime this install swapped, wherever the game
     # keeps it: invisible in a report otherwise, and exactly the kind of
     # thing that explains one.
