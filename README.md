@@ -13,6 +13,13 @@ NVIDIA RTX 20 or newer
   different way. The tool reads the executable and the folder, offers every route
   the game allows, marks the one that fits your card, and leaves the
   choice yours.
+- **The game's own DLSS, brought up to date.** An install can also swap
+  super resolution (`nvngx_dlss.dll`), frame generation
+  (`nvngx_dlssg.dll`) and, for a game that ships one, ray reconstruction
+  (`nvngx_dlssd.dll`) for builds fetched from NVIDIA's own repository. The
+  game's file is backed up and comes back on uninstall, and **check
+  versions** later says which of your games has a part with a newer build.
+  [How a swap works](#updating-a-games-dlss).
 - **It tells you what happened.** Play, then press **did it work?**: it
   reads ReShade's log, the add-on's, OptiScaler's and Windows' own crash
   record, and says whether the model ran - and when it did not, which
@@ -21,6 +28,15 @@ NVIDIA RTX 20 or newer
   your architecture, ReShade with add-on support, motion-vector shaders,
   DXVK for DirectX 9, a 64-bit helper for 32-bit games, frame generation
   where the card has it.
+- **Films, YouTube and whatever else is on the screen.** The same neural
+  pass runs in a portable MPC-HC - a file, a live YouTube link, a webcam -
+  or over a captured part of the desktop, half a second behind, for a
+  browser, an emulator or a game nothing may be injected into.
+  [Video, YouTube, webcam](#video-youtube-webcam).
+- **Nothing is written before you have seen it.** **What will happen?**
+  lists every file INSTALL would write, back up and remove, and writes
+  none of them; **aim for _ fps** works the settings out from what your own
+  last runs measured, says how sure it is, and applies nothing on its own.
 - **It reads what happened to everyone else.** Results people choose to
   share are pooled into one list the tool reads before an install: once a
   game has five, you are told which route worked most often on it, and
@@ -143,21 +159,38 @@ The first works in any D3D12 game on the optiscaler route; the second only
 raises a multiplier the game already has. NVIDIA's own multi-frame
 generation stays an RTX 50 feature.
 
-## Where the files come from
+## Updating a game's DLSS
 
-`nvngx_dlss.dll` (super resolution) and `nvngx_dlssg.dll` (frame generation)
-are fetched from NVIDIA's own repository, read at its release tag.
-`nvngx_dlssd.dll` (ray reconstruction) can be swapped the same way, and only
-for a game that already ships one - the dropdown does not appear otherwise,
-and not on the optiscaler or remix routes, whose install cannot act on it.
-The game's own file is backed up and comes back on uninstall, and the
-download is checked for being a 64-bit Windows DLL before anything is
-overwritten.
+A game ships the DLSS build it was released with and keeps it for as long
+as the studio does not patch one in. Newer builds of NVIDIA's runtimes
+sharpen the picture and cut the shimmer in the same game, on the same card,
+and the tool can put a newer one in:
+
+| | what it is | how it is chosen |
+|---|---|---|
+| `nvngx_dlss.dll` | super resolution - the upscaler itself | the **nvngx_dlss** dropdown on the game's card, with **keep the game's own** beside it |
+| `nvngx_dlssd.dll` | ray reconstruction - the denoiser a path-traced game uses | its own dropdown, shown only for a game that already ships one; not on the optiscaler or remix routes, whose install cannot act on it |
+| `nvngx_dlssg.dll` | frame generation | fetched when the route needs one, unless the game has its own and **keep the game's own** is ticked |
+
+All three come from NVIDIA's own repository, read at its release tag, and
+the download is checked for being a 64-bit Windows DLL before anything is
+overwritten. The game's own file is backed up and comes back on uninstall.
+Both dropdowns start on what the game shipped, so nothing is replaced
+unless it is picked.
+
+The parts a game was set up with are recorded, and **check versions** reads
+that record against what the publishers offer now: a game whose DLSS - or
+ReShade, or the neural-rendering runtime, or OptiScaler - has moved on is
+marked **update**, with how many of its parts have a newer build. Pressing
+INSTALL again fetches the newest of everything and keeps your settings and
+backups.
 
 A swap is worth knowing two things about: a launcher that verifies its files
 puts its own copy back, and in an online game an anti-cheat can treat a
 changed file as tampering. For anything you play online, leave these on
 "keep the game's own".
+
+## Where the files come from
 
 Neural rendering itself is not in NVIDIA's SDK. `nvngx_dlssnr.dll` comes
 from the community build that matches your card, which is what the next
@@ -246,16 +279,16 @@ matters.
 - **Overlay key**: ReShade opens its panel on Home and OptiScaler on
   Insert. A keyboard with neither can bind another key here, once, for
   every game.
-- **Ray reconstruction**: a game that ships `nvngx_dlssd.dll` can have it
-  replaced with a newer build. It is a swap - the game's own file is backed
-  up and comes back on uninstall - and the tool says what that means for a
-  launcher that verifies its files and for an online game's anti-cheat.
+- **nvngx_dlss** and **ray reconstruction**: the game's own DLSS runtimes,
+  replaceable with newer builds - see [Updating a game's
+  DLSS](#updating-a-games-dlss).
 - **What will happen?** lists what INSTALL would write, back up and remove,
   without writing anything.
 - **Before / after** puts the last two ReShade screenshots side by side.
 - **Check versions**: games you set up earlier are checked against what
-  their publishers offer now, and the game is marked **update** with
-  how many of its parts have a newer build.
+  their publishers offer now - DLSS, ReShade, the neural-rendering runtime,
+  OptiScaler - and the game is marked **update** with how many of its parts
+  have a newer build.
 - The tool updates itself: a new release downloads in the background, its
   SHA-256 is checked against the `SHA256SUMS.txt` GitHub published, and the
   top bar offers a one-click restart. `"auto_update": false` in
