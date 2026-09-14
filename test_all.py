@@ -29,6 +29,17 @@ X64 = Path(os.environ.get("DLSS5_TEST_X64",
 SRC_DIR = Path(__file__).resolve().parent
 
 
+def _diag_src() -> str:
+    """Every rule in the diagnosis, as text.
+
+    It was one file until 1.9.0 and src_of(diagnose) read it; the package's
+    __init__ holds no rules, so its parts are read instead.
+    """
+    from core import diagnose as _dp
+    return "\n".join(src_of(m) for m in (_dp.model, _dp.evidence, _dp.routes,
+                                         _dp.body, _dp.chain))
+
+
 def src_of(obj) -> str:
     """The source of a function or module, or "" when it cannot be read.
 
@@ -2686,14 +2697,14 @@ _d = _diag_dir("diag_standalone_", addons=False, reshade=_REG, path="standalone"
                files=["dxgi.dll", "standalone-dlssnr.addon64", "nvngx.dll"])
 (_d / "standalone-dlssnr.addon64").write_bytes(b"MZ")
 (_d / "nvngx.dll").write_bytes(b"MZ")
-_saved_log = diagnose.STANDALONE_LOG
+_saved_log = diagnose.model.STANDALONE_LOG
 _logd = Path(tempfile.mkdtemp(prefix="diag_salog_"))
-diagnose.STANDALONE_LOG = _logd / "standalone-dlssnr.log"
+diagnose.model.STANDALONE_LOG = _logd / "standalone-dlssnr.log"
 try:
     _r = diagnose.analyse(_d)
     check("no standalone log yet is not a failure",
           not _levels(_r, "bad") and "play once" in _r.verdict, _r.verdict)
-    diagnose.STANDALONE_LOG.write_text(
+    diagnose.model.STANDALONE_LOG.write_text(
         _ATTACH + "runtime dependency: nvngx_dlssnr.dll (109425288 bytes)\n"
         "required private runtime dependency missing\n", encoding="utf8")
     _r = diagnose.analyse(_d)
@@ -2704,7 +2715,7 @@ try:
     check("the folder's own nvngx.dll and add-on are not called a foreign hook",
           not any("Another DLSS hook" in w for w in _levels(_r, "warn")),
           str(_levels(_r, "warn")))
-    diagnose.STANDALONE_LOG.write_text(
+    diagnose.model.STANDALONE_LOG.write_text(
         "old session line from another game\n" + _ATTACH
         + "standalone contract ready: NR=on at 1920x1080, DLSS SR -> 3840x2160, "
           "DLSS-G=on, model=1, profile=sRGB\n"
@@ -2716,7 +2727,7 @@ try:
     check("a contract and frames in the log is Working",
           _r.verdict == "Working." and not _levels(_r, "bad")
           and any("VORT" in t for t in _levels(_r, "ok")), str(_r.findings))
-    diagnose.STANDALONE_LOG.write_text(
+    diagnose.model.STANDALONE_LOG.write_text(
         _ATTACH + "standalone contract ready: NR=on at 1920x1080\n"
         "active on present: per-frame reset / zero motion + fallback guides\n"
         "standalone pipeline FAILED at DLSS SR feature creation: 0xBAD00010\n",
@@ -2746,7 +2757,7 @@ try:
     check("on the native route a loaded standalone add-on is two add-ons",
           any("standalone" in b for b in _levels(_r, "bad")), str(_levels(_r, "bad")))
 finally:
-    diagnose.STANDALONE_LOG = _saved_log
+    diagnose.model.STANDALONE_LOG = _saved_log
 shutil.rmtree(_logd, ignore_errors=True)
 shutil.rmtree(_d, ignore_errors=True)
 
@@ -5137,8 +5148,8 @@ _vk_clean.layer_dir = lambda: _vk_clean_dir
 # is being tested is which answer comes first once it is. Asking this
 # machine's own registry instead made the result depend on whether the
 # reviewer happens to have a 32-bit ReShade installed.
-_layer_saved = diagnose._layer_state
-diagnose._layer_state = lambda man: (True, True)
+_layer_saved = diagnose.model._layer_state
+diagnose.model._layer_state = lambda man: (True, True)
 
 _d = Path(tempfile.mkdtemp(prefix="dxvklog_"))
 (_d / "dlss5-autopilot.json").write_text(json.dumps(
@@ -5162,7 +5173,7 @@ _os.utime(_d / "CoJGunslinger_d3d9.log", (1, 1))
 _r = diagnose.analyse(_d)
 check("...and a DXVK log older than the install is not evidence the game ran",
       "Not started since the install" in _r.verdict, _r.verdict)
-diagnose._layer_state = _layer_saved
+diagnose.model._layer_state = _layer_saved
 _vk_clean.layer_dir = _vk_saved_dir
 shutil.rmtree(_d, ignore_errors=True)
 
@@ -5247,8 +5258,8 @@ check("the tag comes out of a redirect, not the API",
 # The layer is registered for this game; what is under test is which answer
 # comes first once it is. Reading this machine's own registry made the
 # result depend on whether the reviewer has a 32-bit ReShade installed.
-_layer_saved = diagnose._layer_state
-diagnose._layer_state = lambda man: (True, True)
+_layer_saved = diagnose.model._layer_state
+diagnose.model._layer_state = lambda man: (True, True)
 _d = Path(tempfile.mkdtemp(prefix="gone84_"))
 (_d / "dlss5-autopilot.json").write_text(json.dumps(
     {"version": 1, "complete": True, "exe": "GTAIV.exe", "bitness": 32,
@@ -5269,7 +5280,7 @@ check("...and it says to restore them BEFORE installing again",
       or any("Restore" in f.detail and "before" in f.detail.lower()
              for f in _r.findings),
       [f.detail[:80] for f in _r.findings])
-diagnose._layer_state = _layer_saved
+diagnose.model._layer_state = _layer_saved
 shutil.rmtree(_d, ignore_errors=True)
 
 # The report form. Four of the nine reports on 1.7.3's first day arrived
@@ -5582,8 +5593,8 @@ _clash_dir = Path(tempfile.mkdtemp(prefix="vkclash_"))
 (_clash_dir / "ReShade64.json").write_text(json.dumps(_man), encoding="utf8")
 (_clash_dir / "ReShade32.json").write_text(json.dumps(_man), encoding="utf8")
 _vk.layer_dir = lambda: _clash_dir
-_layer_saved = diagnose._layer_state
-diagnose._layer_state = lambda man: (True, True)
+_layer_saved = diagnose.model._layer_state
+diagnose.model._layer_state = lambda man: (True, True)
 try:
     _r = diagnose.analyse(_d)
     check("a 32-bit game with the clashing name is told exactly that",
@@ -5595,7 +5606,7 @@ try:
           [f.detail[:60] for f in _r.findings])
 finally:
     _vk.layer_dir = _saved_dir
-    diagnose._layer_state = _layer_saved
+    diagnose.model._layer_state = _layer_saved
 shutil.rmtree(_d, ignore_errors=True)
 shutil.rmtree(_clash_dir, ignore_errors=True)
 
@@ -6589,11 +6600,11 @@ _dsa = _diag_dir("diag_standalone_tail_", path="standalone", provider=0,
                          "compiled 'a.fx'\n")
 # That log lives in LOCALAPPDATA, one file for every game: point the module at
 # a temporary one rather than writing over the machine's own.
-_sa_saved = diagnose.STANDALONE_LOG
+_sa_saved = diagnose.model.STANDALONE_LOG
 _sa_dir = Path(tempfile.mkdtemp(prefix="diag_salog_tail_"))
-diagnose.STANDALONE_LOG = _sa_dir / "standalone-dlssnr.log"
+diagnose.model.STANDALONE_LOG = _sa_dir / "standalone-dlssnr.log"
 try:
-    diagnose.STANDALONE_LOG.write_text(
+    diagnose.model.STANDALONE_LOG.write_text(
         "11:00:00 Standalone DLSS-NR + SR 1.7.17"
         + diagnose._STANDALONE_SESSION + "quality\n", encoding="utf8")
     _r = diagnose.analyse(_dsa)
@@ -6601,7 +6612,7 @@ try:
           not any("loaded no add-ons" in t for t in _levels(_r, "bad")),
           str(_levels(_r, "bad")))
 finally:
-    diagnose.STANDALONE_LOG = _sa_saved
+    diagnose.model.STANDALONE_LOG = _sa_saved
     shutil.rmtree(_sa_dir, ignore_errors=True)
 shutil.rmtree(_dsa, ignore_errors=True)
 
@@ -7838,7 +7849,7 @@ _ud = Path(tempfile.mkdtemp(prefix="userdata_"))
 _ulog = _ud / "Wardogs" / "Saved" / "Logs" / "Wardogs.log"
 _ulog.write_bytes(b"x")
 _later(_ulog)
-with patch.object(diagnose, "_user_data_roots", lambda: [_ud]):
+with patch.object(diagnose.model, "_user_data_roots", lambda: [_ud]):
     _v, _f = _no_log_verdict(exe="WardogsClient-Win64-Shipping.exe")
 check("an Unreal game writes under LOCALAPPDATA, and that counts too",
       "looks as though it ran" in _v, _v)
@@ -7953,7 +7964,7 @@ _spec = _ilu.spec_from_file_location("phrase_check",
                                      SRC_DIR / "_tools" / "phrase_check.py")
 _pcmod = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(_pcmod)
-_dg = (SRC_DIR / "core" / "diagnose.py").read_text(encoding="utf8")
+_dg = _diag_src()          # a package since 1.9.0, not one file
 _pairs = [pair for group in _pcmod.PHRASES.values() for pair in group]
 _missing = [c for _b, c in _pairs if c not in _dg]
 check("every phrase the rot check watches is one the diagnosis really reads",
@@ -8315,7 +8326,7 @@ check("...and it re-points the install the way the exe dropdown does",
 check("an add-on is looked for in the process, not only a .dll",
       ".addon64" in src_of(watch.inspect))
 check("the routes that log no frames say what the process had loaded",
-      src_of(diagnose).count("_loaded_note(install_dir, man, rep)") >= 2)
+      _diag_src().count("_loaded_note(install_dir, man, rep)") >= 2)
 check("a foreign hook is never named twice in the same warning (#190)",
       "dict.fromkeys(found)" in src_of(installer.other_ngx_hooks))
 
@@ -8746,10 +8757,10 @@ check("a standalone report says whether its two shaders are there",
 _zero = (_ATTACH + "current-frame guide handles: VORT=MISSING feed=MISSING\n"
          "same-frame optical-flow path unavailable; internal zero-motion "
          "fallback will be used\n")
-_saved_log, _logd2 = diagnose.STANDALONE_LOG, Path(tempfile.mkdtemp(prefix="sa2_"))
-diagnose.STANDALONE_LOG = _logd2 / "standalone-dlssnr.log"
+_saved_log, _logd2 = diagnose.model.STANDALONE_LOG, Path(tempfile.mkdtemp(prefix="sa2_"))
+diagnose.model.STANDALONE_LOG = _logd2 / "standalone-dlssnr.log"
 try:
-    diagnose.STANDALONE_LOG.write_text(_zero, encoding="utf8")
+    diagnose.model.STANDALONE_LOG.write_text(_zero, encoding="utf8")
     _r = diagnose.analyse(_d)
     check("both shaders in place: the answer is not 'go and find them'",
           any("zero-motion" in w for w in _levels(_r, "warn"))
@@ -8773,7 +8784,7 @@ try:
           str(_levels(_r, "bad")))
     shutil.rmtree(_old, ignore_errors=True)
 finally:
-    diagnose.STANDALONE_LOG = _saved_log
+    diagnose.model.STANDALONE_LOG = _saved_log
     shutil.rmtree(_logd2, ignore_errors=True)
     shutil.rmtree(_d, ignore_errors=True)
 
@@ -8920,6 +8931,51 @@ check("a report with no Remix lines carries none of this",
       ["remix"] is None)
 check("the Remix log is one of the blocks a report is taken apart into",
       _rr.BLOCKS.get("remix-dxvk.log") == "remix")
+
+
+section("1.9.0: the diagnosis is five files, and stays five files")
+
+# It was one 3,703-line module, and every fix in this project had to go into
+# it. It is split by what each part answers now; these checks are what keeps
+# it split. A part that grows past its share, a layer that imports upward,
+# or a name that stops being reachable under the old path fails here.
+from core import diagnose as _dpkg  # noqa: E402
+
+_parts = {"model": 400, "evidence": 1000, "routes": 900, "body": 500,
+          "chain": 1400}
+_sizes = {n: sum(1 for _ in open(SRC_DIR / "core" / "diagnose" / f"{n}.py",
+                                 encoding="utf8"))
+          for n in _parts}
+check("no part of the diagnosis has grown past its share",
+      all(_sizes[n] <= cap for n, cap in _parts.items()), _sizes)
+
+# model <- evidence <- routes/body <- chain. A part importing a later one is
+# a cycle waiting to happen, and the end of the split.
+_ALLOWED = {"model": set(), "evidence": {"model"},
+            "routes": {"model", "evidence"}, "body": {"model", "evidence"},
+            "chain": {"model", "evidence", "routes", "body"}}
+_upward = []
+for _n in _parts:
+    _txt = (SRC_DIR / "core" / "diagnose" / f"{_n}.py").read_text(encoding="utf8")
+    for _other in _parts:
+        if _other == _n or _other in _ALLOWED[_n]:
+            continue
+        if _re.search(r"^from \." + _other + r" import", _txt, _re.M) \
+                or _re.search(r"^from \. import .*\b" + _other + r"\b", _txt, _re.M):
+            _upward.append(f"{_n} imports {_other}")
+check("...and no part imports a later one", not _upward, _upward)
+
+check("every name the rest of the tree reaches is still under diagnose.",
+      all(hasattr(_dpkg, n) for n in
+          ("analyse", "issue_body", "Report", "Finding", "_manifest",
+           "_presence", "_live_evidence", "_crash_verdict", "_addon_switch",
+           "_feed_shaders", "_stale_install", "_install_crash")))
+# The three the suite and the replay tools patch are deliberately NOT copied
+# onto the package: a copy is a value that looks right and is not the one
+# the code reads.
+check("...and the patched three are only where they are patched",
+      not any(hasattr(_dpkg, n) for n in _dpkg.PATCHED)
+      and all(hasattr(_dpkg.model, n) for n in _dpkg.PATCHED), _dpkg.PATCHED)
 
 
 section("RESULT")

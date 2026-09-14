@@ -348,8 +348,8 @@ def machine(text: str, d: Path):
     reg = (True, True) if layer is None else (layer, layer)
     drv = re.search(r"driver\s+([\d.]+)", _header(text).get("gpu", ""))
     from core import gpu as _gpu
-    with patch.object(diagnose, "STANDALONE_LOG", sa), \
-            patch.object(diagnose, "_layer_state", lambda man: reg), \
+    with patch.object(diagnose.model, "STANDALONE_LOG", sa), \
+            patch.object(diagnose.model, "_layer_state", lambda man: reg), \
             patch.object(_gpu, "driver_version",
                          lambda: drv.group(1) if drv else None):
         yield

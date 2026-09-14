@@ -23,7 +23,7 @@ TOOLS = SRC / "_tools"
 
 # Which check guards which file. First match wins.
 GUARDS = (
-    ("core/diagnose.py", TOOLS / "verdict_check.py",
+    ("core/diagnose", TOOLS / "verdict_check.py",
      "every saved report, replayed"),
     ("core/pe.py", TOOLS / "detect_check.py",
      "what this machine's library detects as"),

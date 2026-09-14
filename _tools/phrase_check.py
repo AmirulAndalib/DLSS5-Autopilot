@@ -134,8 +134,14 @@ def _archives() -> dict:
 
 
 def main() -> int:
-    dsrc = Path(__file__).resolve().parent.parent / "core" / "diagnose.py"
-    dtext = dsrc.read_text(encoding="utf8", errors="replace")
+    # A package since 1.9.0: the phrases live in its parts, so read them
+    # all rather than one file that is no longer there.
+    _dpkg = Path(__file__).resolve().parent.parent / "core" / "diagnose"
+    dsrc = _dpkg if _dpkg.is_dir() else _dpkg.with_suffix(".py")
+    dtext = ("\n".join(f.read_text(encoding="utf8", errors="replace")
+                       for f in sorted(dsrc.glob("*.py")))
+             if dsrc.is_dir()
+             else dsrc.read_text(encoding="utf8", errors="replace"))
     bad = 0
     print("=" * 78)
     print("PHRASES THE DIAGNOSIS READS, IN THE BUILDS THAT WRITE THEM")

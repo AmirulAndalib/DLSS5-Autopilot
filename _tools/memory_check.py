@@ -66,7 +66,10 @@ SKIP = {
 def repo_text() -> str:
     """Everything this repository's own code says, in one string."""
     out = []
-    for p in list(SRC.glob("*.py")) + list((SRC / "core").glob("*.py")) \
+    # rglob under core/: a module here can be a package (core/diagnose/),
+    # and a note that names one of its functions was being read as a claim
+    # about something nothing defines.
+    for p in list(SRC.glob("*.py")) + list((SRC / "core").rglob("*.py")) \
             + list((SRC / "_tools").glob("*.py")) \
             + list((SRC / "_tools" / "hooks").glob("*.py")):
         try:
@@ -149,7 +152,9 @@ def check(mem: Path, show_all: bool) -> int:
 
         for mod, sym in DOTTED_RE.findall(t):
             checked += 1
-            if (SRC / "core" / f"{mod}.py").is_file() and sym not in code:
+            _mod_here = ((SRC / "core" / f"{mod}.py").is_file()
+                         or (SRC / "core" / mod).is_dir())
+            if _mod_here and sym not in code:
                 say.append(f"names {mod}.{sym}, which nothing defines")
 
         for ident in IDENT_RE.findall(t):
