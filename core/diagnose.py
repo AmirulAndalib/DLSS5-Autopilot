@@ -472,7 +472,10 @@ def _loaded_note(install_dir: Path, man: dict, rep: Report) -> None:
                 "in it. What the overlay still answers is whether the model "
                 "is switched on and drawing.")
     if seen.get("missing"):
-        rep.add(WARN, f"...and not {', '.join(seen['missing'])}.",
+        rep.add(WARN, (f"...and not {', '.join(seen['missing'])}."
+                       if loaded else
+                       f"When it last ran ({when}), the process did not have "
+                       f"{', '.join(seen['missing'])} loaded."),
                 "Written here, and not in the process when it last ran.")
 
 
@@ -649,13 +652,13 @@ def _anything_of_ours(install_dir: Path) -> str:
     try:
         from . import remix as _remix
         trex = _remix.find_runtime(install_dir)
-        conf = Path(install_dir) / _remix.CONF
-        if trex is not None and (trex / _remix.DLSSNR).is_file() \
-                and any(_remix.option_set(conf, f"{p}.enable")
-                        for p in _remix.PREFIX.values()):
-            # The runtime file alone is not ours: a hand-installed fork has
-            # one too. The option beside it is what an install of ours
-            # writes into the mod's own rtx.conf.
+        if trex is not None and (trex / _remix.DLSSNR).is_file():
+            # A Remix mod ships a runtime, not a neural one: nvngx_dlssnr.dll
+            # inside .trex is what an install of ours puts there. The option
+            # in rtx.conf would be better evidence still, but that file is
+            # the mod's own and other programs rewrite it (the foreign
+            # writers rule), and the installer may have written it a folder
+            # up - so the file is what this answers on.
             return f"{trex.name}/{_remix.DLSSNR}"
     except Exception:
         pass

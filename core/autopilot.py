@@ -165,7 +165,7 @@ def start(game) -> tuple[bool, str]:
     except Exception as e:                      # a store stub, a permission
         log.write(f"autopilot: could not start {exe.name}: {e}", "warn")
         return False, (f"{exe.name} would not start from here ({e}) - start "
-                       f"it the way you normally do and this carries on")
+                       f"it the way you normally do and this carries on.")
 
 
 class Hooks:
@@ -254,6 +254,20 @@ def attempt(game, opt, route: str, hooks: Hooks) -> Attempt:
     return a
 
 
+def _exe_name(game, root: Path) -> str:
+    """The executable to wait for: the record's, or the game's own.
+
+    A failed install leaves no record, and waiting on "" means waiting for
+    any process under the folder - which includes the 64-bit helper this
+    tool puts there itself.
+    """
+    name = _files(root)[1]
+    if name:
+        return name
+    exe = getattr(game, "exe", None)
+    return Path(exe).name if exe else ""
+
+
 def wait_closed(folder: Path, exe: str, hooks: Hooks,
                 seconds: float = CLOSE_SECONDS) -> bool:
     """Wait for the game to exit. True when it is gone.
@@ -298,19 +312,29 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
             # This route could not be put in place. The next one is a
             # different download and a different set of files.
             if i + 1 < len(todo):
-                if "refused to write" in a.why or "is running" in a.why:
+                if "refused to write" in a.why or "is running" in a.why \
+                        or "being used by another process" in a.why:
                     # Windows refused the file because the game has it open,
-                    # and the next route writes into the same folder.
+                    # and the next route writes into the same folder. If it
+                    # never closes, the next route fails the same way.
                     root = Path(game.install_dir)
-                    hooks.closed(root, _files(root)[1], hooks)
+                    if not hooks.closed(root, _exe_name(game, root), hooks):
+                        out.stopped = ("you pressed stop" if hooks.stop() else
+                                       "the game is still running - the files "
+                                       "it has open cannot be replaced while "
+                                       "it is up")
+                        break
                 continue
             out.stopped = a.why or "the install did not finish"
             break
         if not a.started:
             # Why it could not answer - never the launch advice, which says
             # nothing about what happened ("Steam game: it starts from the
-            # executable here..." is not a reason a pass stopped).
-            out.stopped = a.why or "the game was never seen running"
+            # executable here..." is not a reason a pass stopped). And a
+            # stop arrives here as "nothing came back", so it is asked
+            # about first: the person knows why it stopped.
+            out.stopped = ("you pressed stop" if hooks.stop()
+                           else a.why or "the game was never seen running")
             break                               # nothing to learn from a rerun
         if a.elsewhere:
             hooks.log(f"  {route}: the game loaded {a.elsewhere[0]} from "
@@ -320,8 +344,9 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
                       "warn")
         if i + 1 < len(todo):
             root = Path(game.install_dir)
-            if not hooks.closed(root, _files(root)[1], hooks):
-                out.stopped = ("the game is still running - the files it has "
+            if not hooks.closed(root, _exe_name(game, root), hooks):
+                out.stopped = ("you pressed stop" if hooks.stop() else
+                               "the game is still running - the files it has "
                                "open cannot be replaced while it is up")
                 break
     else:
@@ -369,9 +394,8 @@ def summary(out: Outcome) -> str:
         where = (f" The {out.installed} route is what is installed in the "
                  f"folder now - 'uninstall' takes it back out.")
     elif out.left:
-        where = (f" The install did not finish; what it had already written "
-                 f"is recorded as a {out.left} install, so 'uninstall' takes "
-                 f"that back out.")
+        where = (f" The folder's record says a {out.left} install is in it - "
+                 f"'uninstall' takes that back out.")
     else:
         where = " Nothing of ours is in the folder."
     if out.stopped not in (_LOADED, _EXHAUSTED):
@@ -383,6 +407,12 @@ def summary(out: Outcome) -> str:
         advice = out.note if (out.attempts and not out.attempts[-1].started
                               and out.note) else ""
         return f"Stopped: {said}.{where}" + (f" {advice}" if advice else "")
-    return (f"Tried {', '.join(out.tried)} - nothing of ours ended up "
-            f"running in the game. Press 'report a bug': what the game had "
-            f"loaded is recorded and goes into the report.{where}")
+    last = out.attempts[-1]
+    if last.elsewhere:
+        what = (f"the game loaded {_names(last.elsewhere)} from another "
+                f"folder, so the copy beside it is never reached")
+    else:
+        what = "nothing of ours ended up running in the game"
+    return (f"Tried {', '.join(out.tried)} - {what}. Press "
+            f"[ report a bug ]: what the game had loaded is recorded and "
+            f"goes into the report.{where}")

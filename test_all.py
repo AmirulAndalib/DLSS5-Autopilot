@@ -5910,7 +5910,10 @@ check("...including the Windows event and the tuning suggestion",
 
 # FEATURES: the failures worth sharing most are the ones that logged nothing.
 check("a session that never ran can still be shared",
-      'configure(state="normal")' in src_of(_gui.App._diagnose))
+      'configure(state="normal")' in src_of(_gui.App._diagnosed))
+check("...and the reading itself is off the Tk thread, like every long job",
+      "threading.Thread(target=work" in src_of(_gui.App._diagnose)
+      and "diagnose.analyse(" not in src_of(_gui.App._diagnosed))
 
 # FEATURES: the overlay key belongs on every route that has an overlay.
 _asrc = src_of(_gui.App._apply_route)
@@ -7677,8 +7680,13 @@ _readme_src = "".join((SRC_DIR / "core" / n).read_text(encoding="utf8")
 _named, _gone = 0, []
 for _b in _re.findall(r"[*][*]([^*\n]{2,40})[*][*]", _readme):
     _t = _b.strip().rstrip(".")
-    if not _t or _t[0].isupper() or "," in _t or len(_t.split()) > 5:
-        continue                       # a sentence or a heading, not a control
+    # A sentence or a heading, not a control. An ALL-CAPS single word is a
+    # control (INSTALL, AUTOPILOT) and was being skipped by the case test -
+    # which meant the two buttons that write to the disk were the two this
+    # check could not see, including the one this release renamed.
+    if not _t or "," in _t or len(_t.split()) > 5 \
+            or (_t[0].isupper() and not _t.isupper()):
+        continue
     _named += 1
     _probe = " ".join(_t.split()[:2]).strip(" ?:%-").lower()
     if _probe and _probe not in _readme_src:
@@ -8255,7 +8263,7 @@ check("...and never a route this game is not offered (#148)",
 check("...and nothing at all when no route has enough reports behind it",
       community.next_route({"games": {}}, _FakeGame("x.exe"), "feeder") == "")
 check("the window says it under a verdict that is not 'Working'",
-      "_what_next(rep)" in src_of(_gui.App._diagnose)
+      "_what_next(rep)" in src_of(_gui.App._diagnosed)
       and "next_route" in src_of(_gui.App._what_next)
       and "threading.Thread" in src_of(_gui.App._what_next))
 

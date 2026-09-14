@@ -133,10 +133,15 @@ def rows() -> list[dict]:
     return out
 
 
+def _num(s: str) -> int:
+    """#142 -> 142, and a filename that is not a number sorts last."""
+    m = re.match(r"\d+", s.lstrip("#"))
+    return int(m.group()) if m else 1 << 30
+
+
 def _who(rows_: list[dict], name: str, key) -> str:
     return ", ".join(sorted({f"#{r['issue']}" for r in rows_
-                             if (key(r) or "?") == name},
-                            key=lambda s: int(s[1:]))[:6])
+                             if (key(r) or "?") == name}, key=_num)[:6])
 
 
 def main() -> int:
@@ -168,7 +173,7 @@ def main() -> int:
           "in chain order")
     block("who can fix that", lambda r: r["who"])
     block("graphics api", lambda r: f"{r['api']} {r['bits']}-bit")
-    block("route", lambda r: r["route"])
+    block("route", lambda r: r.get("route"))
     block("driver", lambda r: r["driver"])
 
     print("\n  the shapes (api + where it stopped), biggest first")
@@ -178,8 +183,7 @@ def main() -> int:
             continue
         who = ", ".join(sorted({f"#{r['issue']}" for r in stuck
                                 if f"{r['api']} {r['bits']}-bit" == api
-                                and r["stage"] == st},
-                               key=lambda s: int(s[1:]))[:6])
+                                and r["stage"] == st}, key=_num)[:6])
         print(f"    {n:3}  {api:<13} {st:<32} {who}")
 
     print("\n  games reported more than once")

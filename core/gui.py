@@ -2899,15 +2899,40 @@ class App:
 
     # ------------------------------------------------------------ diagnose
     def _diagnose(self) -> None:
-        """Read the game's own logs back and say what happened."""
-        if not self.game:
+        """Read the game's own logs back and say what happened.
+
+        Off the Tk thread: since the diagnosis started asking the running
+        game what it had loaded, this walks the process table, opens every
+        process it can and resolves their image paths - which blocks on a
+        dead mapped drive, and used to block the window with it (#8, #18,
+        #32). The answer comes back through the queue.
+        """
+        if self.busy or not self.game:
             return
-        # The error of an install into THIS folder, not whatever went wrong
-        # last in this session: an update check that failed offline made the
-        # diagnosis tell somebody with no install at all that their install
-        # had crashed.
-        rep = diagnose.analyse(self.game.install_dir,
-                               installer.last_failure(self.game.install_dir))
+        self.busy = True
+        self.btn_diag.configure(state="disabled", text="reading...")
+        g = self.game
+
+        def work() -> None:
+            try:
+                # The error of an install into THIS folder, not whatever
+                # went wrong last in this session: an update check that
+                # failed offline made the diagnosis tell somebody with no
+                # install at all that their install had crashed.
+                rep = diagnose.analyse(g.install_dir,
+                                       installer.last_failure(g.install_dir))
+                self.q.put(("diagnosed", (g.install_dir, rep)))
+            except Exception:
+                log.exception("reading the logs back")
+                self.q.put(("diagfail", traceback.format_exc()))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _diagnosed(self, where, rep) -> None:
+        """What _diagnose found, on the Tk thread."""
+        self.busy = False
+        self.btn_diag.configure(state="normal", text="did it work?")
+        if self.game is None or Path(self.game.install_dir) != Path(where):
+            return          # they picked another game while it read
         self._last_diag = rep
         try:
             # Enabled for any diagnosis, not only for a session that logged:
@@ -4528,7 +4553,8 @@ class App:
                   f"  4. if ours are not in it - or the game loaded another "
                   f"copy of the same name instead - wait for you to close "
                   f"the game, install the next route and go round again\n\n"
-                  f"Routes it may try, in order: {', '.join(routes)}.\n"
+                  f"Routes it may try, in order: {', '.join(routes)}. It "
+                  f"installs the next one without asking again.\n"
                   f"It stops after those, or when you press stop.\n\n"
                   f"Go ahead?"):
             return
@@ -4537,7 +4563,7 @@ class App:
         self.btn_auto.config(text="stop", image="", command=self._autopilot_stop)
         self.btn_next.config(state="disabled")
         self._log("")
-        self._log(f"=== {g.name}: trying it for you ===", "head")
+        self._log(f"=== {g.name}: autopilot ===", "head")
         # Every route's settings, read HERE: _opts() reads Tk widgets and Tk
         # variables, and this is the one place in this file that would have
         # read them from a worker thread.
@@ -4589,7 +4615,16 @@ class App:
         # part way: that folder has files and a record, and leaving
         # 'uninstall' greyed out over it is the opposite of what it needs.
         left = out.installed or getattr(out, "left", "")
-        if not left:
+        options = list(getattr(getattr(self, "support", None), "options", None)
+                       or [])
+        if left and options and left not in options:
+            # The record is from an earlier session and names a route this
+            # game is not offered now. Say what is in the folder, but do not
+            # move the window to a route the dropdown does not have (#30).
+            self._log(f"> the folder's record says a {left} install is in "
+                      f"it - 'uninstall' takes that out.", "warn")
+            left = ""
+        if not left and not (out.installed or getattr(out, "left", "")):
             return
         # The window is about the route that is now on the disk, whatever
         # was picked before it. Through _apply_route, because that is what
@@ -4886,6 +4921,12 @@ class App:
                               "into it.", "ok")
                     self._enter_install()
                     self._show(3)
+                elif kind == "diagnosed":
+                    self._diagnosed(*payload)
+                elif kind == "diagfail":
+                    self.busy = False
+                    self.btn_diag.configure(state="normal", text="did it work?")
+                    self._log(str(payload), "err")
                 elif kind == "autolog":
                     text, level = payload
                     self._log(text, level)

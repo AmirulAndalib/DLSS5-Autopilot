@@ -15,6 +15,7 @@ check - those say the parts are right, this says the thing still runs.
 import json
 import sys
 import tempfile
+import time
 import tkinter as tk
 from pathlib import Path
 
@@ -39,6 +40,21 @@ def ok(what, cond, extra=""):
     print(("  PASS  " if cond else "  FAIL  ") + what + (f"   {extra}" if extra else ""))
     if not cond:
         FAILS.append(what)
+
+
+def settle(r, app, until, seconds: float = 20.0) -> bool:
+    """Pump the window until `until()` is true - the way a person waits.
+
+    The long jobs in this window answer through the queue, so a click and
+    one update() is not the whole of pressing a button any more.
+    """
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        r.update()
+        if until():
+            return True
+        time.sleep(0.05)
+    return until()
 
 
 def close(r):
@@ -183,7 +199,7 @@ app.target_fps.set("60")
 app._on_target()
 try:
     app._diagnose()
-    root.update()
+    settle(root, app, lambda: app._last_diag is not None)
     ok("the diagnosis runs from the button", app._last_diag is not None,
        app._last_diag.verdict if app._last_diag else "")
     ok("...and it says Working for a healthy session",
