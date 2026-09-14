@@ -20,11 +20,12 @@ NVIDIA RTX 20 or newer
   comes back on uninstall. **check versions** later says which of your games
   has a part with a newer build.
   [How a swap works](#keeping-a-games-dlss-up-to-date).
-- **It can try it for you.** **AUTOPILOT** installs the
-  route, starts the game, reads which DLLs the game loaded and - when ours
-  are not in it - waits for you to close the game, installs the next route
-  and goes round again, up to three. A game with anti-cheat it never starts
-  itself: it asks you to. Tried on one machine so far.
+- **It can try it for you.** **AUTOPILOT** installs the route, starts the
+  game, reads which DLLs the game loaded and - when ours are not in it, or
+  the game loaded another copy of the same name instead - waits for you to
+  close the game, installs the next route and goes round again, up to
+  three. A game with anti-cheat it never starts itself: it asks you to.
+  Tried on one machine so far.
 - **It tells you what happened.** Play, then press **did it work?**: it
   reads ReShade's log, the add-on's, OptiScaler's and Windows' own crash
   record, and says whether the model ran - and when it did not, which
@@ -78,6 +79,9 @@ current version of every part each time it runs.
 3. Press **INSTALL**. The log says what went where. Then start the game and
    press the key the tool named; **did it work?** reads the game's logs
    afterwards and reports what happened.
+   Or press **AUTOPILOT** instead: it installs, starts the game itself,
+   reads which DLLs the running game loaded, and tries the next route when
+   ours are not in it. Tried on one machine so far.
 
 Uninstall removes exactly what was written, restores anything it replaced,
 and nothing else.
@@ -638,6 +642,8 @@ core/diagnose.py      logs -> verdict, bug-report body
 core/wincrash.py      Windows' own Application Error record
 core/autotune.py      the work area to reach a frame rate, from what it cost
 core/community.py     what other people found in this game
+core/autopilot.py     install, start the game, read what loaded, try the next
+core/watch.py         which processes are up, and which DLLs are in them
 core/reportui.py      the two questions a bug report needs answered
 core/components.py    are the installed parts still current?
 core/update.py / selfupdate.py    update check, verified swap-in

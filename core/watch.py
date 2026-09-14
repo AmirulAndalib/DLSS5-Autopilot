@@ -363,14 +363,14 @@ def last_sighting(folder: Path, since: float = 0.0) -> dict:
 class Recorder:
     r"""Watch the folders we have installed into, and write down what starts.
 
-    One thread, one snapshot of the process table every few seconds - the
-    snapshot costs about 35 ms on a machine with 300 processes, which is
-    what makes this affordable at all. It reads; it never writes anything
-    into a game folder and never touches a process it was not asked about.
+    One thread, one snapshot of the process table every few seconds. It
+    reads; it never writes anything into a game folder and never touches a
+    process it was not asked about.
 
-    Stops itself: a folder is watched until the game has been seen once, and
-    the whole thread stops when there is nothing left to watch, so a window
-    left open overnight is not polling anything.
+    A folder is watched until its game has been seen once, and the thread
+    stops with the last one - so a game that is started keeps this alive for
+    a few seconds, and a game that is never started keeps one four-second
+    poll alive until the window is closed.
     """
 
     def __init__(self, every: float = 4.0, settle: float = 8.0):
