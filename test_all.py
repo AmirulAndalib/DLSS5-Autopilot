@@ -486,6 +486,11 @@ def _button_texts(w, out=None):
 _LIVE_BUTTONS = _button_texts(_r)
 _AUTOROW = (_app.btn_auto.master is _app.autorow,
             len(_app.autorow.winfo_children()))
+# The mark on it, drawn rather than shipped: a square the height of the
+# text, beside the label, and actually painted (a blank image is a gap).
+_AUTO_ICON = (_app._auto_img.width(), _app._auto_img.height(),
+              str(_app.btn_auto.cget("compound")),
+              _app._auto_img.get(1, _app._auto_img.height() // 2))
 
 # a folder that has gone away must not abandon the whole list
 _ghost = games.Game(name="Ghost", folder=Path("Z:/gone"))
@@ -8439,8 +8444,39 @@ check("a folder with anti-cheat in it is never started by this tool",
 check("...and the reason names what was found", "EasyAntiCheat" in _why, _why)
 shutil.rmtree(_ac, ignore_errors=True)
 
+# Switching route under a game that is still up cannot work: the installer
+# replaces the very DLLs Windows has mapped into it. This loop is what put
+# the game there, so it waits for it to go.
+_closed_calls: list = []
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(missing=["dxgi.dll"])],
+    closed=lambda folder, exe, hooks: (_closed_calls.append(folder), True)[1],
+    seconds=1))
+check("the game is waited out before the next route is installed",
+      len(_closed_calls) == 1 and _out.tried == ["feeder", "optiscaler"],
+      (_closed_calls, _out.tried))
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(missing=["dxgi.dll"])],
+    closed=lambda folder, exe, hooks: False, seconds=1))
+check("...and a game that never closes stops the pass instead of failing to "
+      "replace a file it has open",
+      _out.tried == ["feeder"] and "still running" in _out.stopped, _out.stopped)
+check("...and what is installed in the folder now is part of the answer",
+      _out.installed == "feeder" and "uninstall" in _ap.summary(_out),
+      _ap.summary(_out))
+
 check("the route order starts with the one the tool recommended",
       _ap.plan("optiscaler", ["feeder", "optiscaler", "bridge"])[0] == "optiscaler")
+# Which route goes SECOND is not the dropdown's order: it is the one other
+# people's results say rescued this game.
+_shared: dict = {"games": {}}
+_said = "In this game the bridge route is reported working by 3 of 4."
+with patch.object(community, "next_route", lambda *a, **k: _said):
+    _order = _ap.plan("feeder", ["feeder", "optiscaler", "bridge"], _shared, _g)
+check("...and the route the shared results rescued this game with goes next",
+      _order == ["feeder", "bridge", "optiscaler"], _order)
 
 
 # The button is in the window, on a row of its own, and it says what it does
@@ -8452,6 +8488,9 @@ check("the window has the button this pass is driven from",
       [b for b in _LIVE_BUTTONS if "try" in b])
 check("...on a row of its own, not squeezed in beside the five that write nothing",
       _AUTOROW == (True, 2), _AUTOROW)
+check("...and it carries a mark of its own, painted at the text's height",
+      _AUTO_ICON[0] == _AUTO_ICON[1] >= 9 and _AUTO_ICON[2] == "left"
+      and tuple(_AUTO_ICON[3])[:3] != (0, 0, 0), _AUTO_ICON)
 check("...and it can be stopped, without stopping mid-install",
       "stop after this route" in src_of(_gui.App._autopilot_stop).lower()
       or "after this route" in src_of(_gui.App._autopilot_stop))

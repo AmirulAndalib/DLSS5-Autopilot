@@ -356,6 +356,29 @@ def _flow_row(bar: tk.Frame, lead: tk.Widget, buttons: list, gap: int,
     bar.bind("<Configure>", lay, add="+")
 
 
+def _autopilot_glyph(size: int) -> tk.PhotoImage:
+    r"""The mark on the one button that starts somebody's game: a play
+    triangle inside a bracket, drawn here rather than shipped as a file.
+
+    Tk's own PhotoImage, filled a row at a time: no image library, no asset
+    to lose, and it scales with the rest of the window because the size
+    comes from px(). blank() leaves every pixel transparent, so whatever
+    the button's own background is stays the background.
+    """
+    n = max(9, int(size))
+    img = tk.PhotoImage(width=n, height=n)
+    img.blank()
+    # One shape and no ornament: at 13 px a bracket around the triangle
+    # reads as a stray line, not as a bracket (looked at, in a capture of
+    # this window, before it went in).
+    for y in range(n):
+        d = abs(y - (n - 1) / 2)                 # distance from the middle
+        run = int(round((n - 1) * (1 - 2 * d / max(1, n - 1))))
+        if run > 0:
+            img.put(AMBER, to=(0, y, run, y + 1))
+    return img
+
+
 def _button_bar(bar: tk.Frame, lead: tk.Widget, buttons: list, gap: int,
                 keep: tuple) -> None:
     """A title and a row of buttons that always stays one line.
@@ -2692,7 +2715,9 @@ class App:
         # five buttons that write nothing (#144).
         self.autorow = tk.Frame(f, bg=BG)
         self.autorow.pack(side="bottom", fill="x", pady=(8, 0))
+        self._auto_img = _autopilot_glyph(px(13))
         self.btn_auto = ttk.Button(self.autorow, text="install and try it for me",
+                                   image=self._auto_img, compound="left",
                                    command=self._autopilot)
         self.btn_auto.pack(side="left")
         tk.Label(self.autorow,
@@ -3461,7 +3486,11 @@ class App:
 
         def work() -> None:
             try:
-                entry = community.for_game(community.fetch(), drv_g)
+                data = community.fetch()
+                # Kept: the autopilot pass reads it to decide which route to
+                # try second, and it may not download on the Tk thread.
+                self._community = data
+                entry = community.for_game(data, drv_g)
                 lines = community.advice(entry, route,
                                          gpu.driver_version() or "")
             except Exception:
@@ -4414,7 +4443,13 @@ class App:
         g, opt = self.game, self._opts()
         offer = list(getattr(getattr(self, "support", None), "options", None)
                      or [getattr(self, "route", "") or opt.path])
-        routes = autopilot.plan(getattr(self, "route", "") or opt.path, offer)
+        # What order to try them in is not a guess: the shared results say
+        # which route rescued THIS game on somebody else's machine, and that
+        # one goes second, before the rest of the dropdown. Read from the
+        # copy already fetched for this game - never a download on the Tk
+        # thread (#8, #18, #32).
+        routes = autopilot.plan(getattr(self, "route", "") or opt.path, offer,
+                                getattr(self, "_community", None), g)
         may, why = autopilot.may_start(g)
         if not messagebox.askyesno(
                 APP,

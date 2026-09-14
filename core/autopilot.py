@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -45,6 +46,11 @@ MAX_ATTEMPTS = 3
 # How long to wait for the game to appear before giving up on this pass.
 # A cold start off a hard disk with a launcher in front of it is slow.
 START_SECONDS = 300.0
+
+# And how long to wait for it to close again before the next route. The
+# installer cannot replace a DLL the running game has mapped in, so this
+# loop has to wait for the game it just started to go away.
+CLOSE_SECONDS = 600.0
 
 
 @dataclass
@@ -69,6 +75,7 @@ class Outcome:
     route: str = ""
     ok: bool = False
     stopped: str = ""
+    installed: str = ""        # the route whose files are in the folder now
 
     @property
     def tried(self) -> list[str]:
@@ -157,13 +164,15 @@ class Hooks:
     """
 
     def __init__(self, install=None, wait=None, start=None, log=None,
-                 stop=None, seconds: float = START_SECONDS):
+                 stop=None, seconds: float = START_SECONDS, closed=None):
         self.install = install or installer.install
         self.wait = wait or watch.wait_for
         self.start = start or globals()["start"]
         self.log = log or (lambda text, kind="": None)
         self.stop = stop or (lambda: False)
         self.seconds = seconds
+        self.closed = closed or (lambda folder, exe, hooks: wait_closed(
+            folder, exe, hooks))
 
 
 def _files(root: Path) -> tuple[list[str], str]:
@@ -203,14 +212,39 @@ def attempt(game, opt, route: str, hooks: Hooks) -> Attempt:
     return a
 
 
+def wait_closed(folder: Path, exe: str, hooks: Hooks,
+                seconds: float = CLOSE_SECONDS) -> bool:
+    """Wait for the game to exit. True when it is gone.
+
+    The installer replaces the very DLLs the running game has mapped in, and
+    Windows does not allow that: switching route under a game that is still
+    up is a PermissionError, and this loop is what puts the game there in
+    the first place. So it asks, and waits.
+    """
+    end = time.monotonic() + max(1.0, seconds)
+    said = False
+    while time.monotonic() < end:
+        if not watch.from_folder(Path(folder), exe=exe):
+            return True
+        if hooks.stop():
+            return False
+        if not said:
+            hooks.log("  close the game and this carries on with the next "
+                      "route", "warn")
+            said = True
+        time.sleep(2.0)
+    return not watch.from_folder(Path(folder), exe=exe)
+
+
 def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
     """Try each route in turn until the game has our files in it."""
     hooks = hooks or Hooks()
     out = Outcome()
-    for route in routes[:MAX_ATTEMPTS]:
+    todo = routes[:MAX_ATTEMPTS]
+    for i, route in enumerate(todo):
         if hooks.stop():
             out.stopped = "stopped"
-            return out
+            break
         a = attempt(game, opt, route, hooks)
         out.attempts.append(a)
         if a.loaded:
@@ -218,17 +252,25 @@ def run(game, opt, routes: list[str], hooks: Hooks | None = None) -> Outcome:
             hooks.log(f"  {route}: {', '.join(sorted(set(a.ours))[:3])} "
                       f"loaded in the game", "ok")
             out.stopped = "loaded"
-            return out
+            break
         if not a.started:
             out.stopped = a.note or "the game was never seen running"
-            return out                          # nothing to learn from a rerun
+            break                               # nothing to learn from a rerun
         if a.elsewhere:
             hooks.log(f"  {route}: the game loaded {a.elsewhere[0]} from "
                       f"somewhere else, not ours", "warn")
         else:
             hooks.log(f"  {route}: the game ran and loaded none of our files",
                       "warn")
-    out.stopped = "every route tried"
+        if i + 1 < len(todo):
+            root = Path(game.install_dir)
+            if not hooks.closed(root, _files(root)[1], hooks):
+                out.stopped = ("the game is still running - the files it has "
+                               "open cannot be replaced while it is up")
+                break
+    else:
+        out.stopped = "every route tried"
+    out.installed = out.attempts[-1].route if out.attempts else ""
     return out
 
 
@@ -239,9 +281,16 @@ def summary(out: Outcome) -> str:
                 f"few minutes, then press 'did it work?'.")
     if not out.attempts:
         return "Nothing was tried."
+    # What is in the folder NOW is the first thing the person needs: this
+    # stops with an install in place, and leaving that unsaid is how
+    # somebody ends up with a route they never chose and no idea of it.
+    where = (f" The {out.installed} route is what is installed in the folder "
+             f"now - 'uninstall' takes it back out."
+             if out.installed else "")
     last = out.attempts[-1]
     if not last.started:
-        return f"Stopped: {out.stopped}."
+        return f"Stopped: {out.stopped}.{where}"
     return (f"Tried {', '.join(out.tried)} - the game ran each time and "
             f"loaded none of what was written. Press 'report a bug': the "
-            f"module list is in the report and it says what got there first.")
+            f"module list is in the report and it says what got there "
+            f"first.{where}")
