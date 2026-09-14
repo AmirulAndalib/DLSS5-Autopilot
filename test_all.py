@@ -8337,6 +8337,35 @@ check("the window hands the diagnosis the tool's own last error",
       "log.last_error()" in src_of(_gui.App._diagnose))
 
 
+section("1.9.0: which build set this folder up (#215)")
+
+# A report arrived on 1.5.0 while 1.8.2 was current, and nothing in the
+# folder or the report said so: the install record carried the version of
+# its own SCHEMA, never the version of the tool that wrote it.
+_d = Path(tempfile.mkdtemp(prefix="manver_"))
+shutil.copyfile(X64, _d / "Game.exe")
+_g = games.manual(_d)
+installer._write_manifest(_d, _g, installer.Options(), installer.Report(),
+                          "dxgi.dll", "", complete=True)
+_man = json.loads((_d / installer.MANIFEST).read_text(encoding="utf8"))
+check("the install record says which build of this tool wrote it",
+      _man.get("tool") == update.VERSION, _man.get("tool"))
+
+_rep = diagnose.Report()
+diagnose._stale_install(_rep, {**_man, "tool": "1.5.0"})
+check("a folder set up by another build is said so, with both versions",
+      any("1.5.0" in f_.title and update.VERSION in f_.title
+          for f_ in _rep.findings), [f_.title for f_ in _rep.findings])
+check("...as a finding, never as a verdict of its own",
+      not _rep.verdict and all(f_.level == "info" for f_ in _rep.findings))
+_rep = diagnose.Report()
+diagnose._stale_install(_rep, _man)
+diagnose._stale_install(_rep, {"complete": True})
+check("...and nothing is said for this build, or for a record without the key",
+      not _rep.findings, [f_.title for f_ in _rep.findings])
+shutil.rmtree(_d, ignore_errors=True)
+
+
 section("1.9.0: 'check both shaders are there' is a question we can answer "
         "ourselves (#212)")
 

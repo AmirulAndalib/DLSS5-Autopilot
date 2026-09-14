@@ -767,6 +767,26 @@ def _feed_shaders(install_dir: Path | None,
     return recorded, gone
 
 
+def _stale_install(rep: "Report", man: dict) -> None:
+    """Note when another build of this tool set the folder up.
+
+    Every rule under this one reads files that build wrote, and half the
+    reports that arrive on an old version are answered with a fix that
+    shipped months ago (#215 came in on 1.5.0). Said as a finding and never
+    as a verdict: the install may work perfectly, and what is wrong with it
+    is decided by the rules below, not by its age.
+    """
+    from . import update as _update
+    was = str(man.get("tool") or "")
+    if not was or was == _update.VERSION:
+        return
+    rep.add(INFO, f"This folder was set up by version {was}; "
+                  f"you are running {_update.VERSION}.",
+            "Press INSTALL again so it gets this build's files and fixes - "
+            "your settings and backups are kept. Everything below is read "
+            "from what that older install wrote.")
+
+
 def _missing_core(install_dir: Path, man: dict) -> list[str]:
     """Recorded files that the install wrote and are no longer there."""
     out = []
@@ -1932,6 +1952,13 @@ def analyse(install_dir: Path, last_error: str = "") -> Report:
     # had just died on a DNS lookup).
     if not _anything_of_ours(install_dir) and _crash_verdict(rep, last_error):
         return rep
+
+    # Which build of this tool set the folder up. A finding, never a
+    # verdict: the install may well still work, but every rule below reads
+    # files an older build wrote, and "install again" is the whole fix.
+    # Nothing is said when the record does not carry it - the key is new,
+    # and a record without it is silence, not an old build.
+    _stale_install(rep, man)
 
     if rep.route == "optiscaler":
         return _analyse_optiscaler(install_dir, rep, since, man)

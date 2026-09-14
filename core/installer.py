@@ -47,7 +47,8 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from . import (emulators, anticheat, dlss, dxvk, feedcfg, games, gpu, mfg, net,
-               optiscaler, pe, prefs, reengine, refw, remix, reshade_ini, sources, vulkan)
+               optiscaler, pe, prefs, reengine, refw, remix, reshade_ini, sources,
+               update, vulkan)
 # Imported by name as well: inside the Options class body the field
 # `dlss: str | None` shadows the module, so `dlss.FEEDER` would read the
 # field's default (None) instead of the module attribute.
@@ -1878,6 +1879,11 @@ def _write_manifest(root: Path, g: games.Game, opt: Options, rep: Report,
     try:
         _write_atomic(root / MANIFEST, json.dumps({
             "version": 1,
+            # Which BUILD of this tool set the folder up. The report carries
+            # the version that is running now; nothing said what wrote the
+            # install, so a folder built by 1.5.0 and diagnosed by 1.8.2
+            # looked the same as one installed a minute ago (#215).
+            "tool": update.VERSION,
             "complete": complete,
             "exe": g.exe.name if g.exe else None,
             "bitness": g.bitness,
