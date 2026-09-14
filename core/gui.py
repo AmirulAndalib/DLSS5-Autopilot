@@ -21,7 +21,7 @@ from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from . import (anticheat, autotune, community, components, diagnose, dlss,
+from . import (anticheat, autopilot, autotune, community, components, diagnose, dlss,
                dxvk, feedcfg, reengine, wincrash,
                games, gpu, library, pe, profiles, video,
                installer, log, net, optiscaler, prefs, reshade_ini, selfupdate,
@@ -244,6 +244,14 @@ class Scroller(tk.Frame):
         # compare against: winfo_height() is still the old value until the
         # geometry manager has run, and the bar would appear a beat late.
         have = self._h or self._canvas.winfo_height()
+        # ...but never more than the height it actually GOT. Asking for the
+        # full content height does not mean pack can spare it - the log has
+        # a floor of its own - and comparing against the request alone said
+        # "it fits" while the last setting was off the bottom of a window
+        # with no scrollbar (100%: 635 px of form into the 618 it was given).
+        real = self._canvas.winfo_height()
+        if real > 1:
+            have = min(have, real)
         need = self.content_height() > have + 2
         if need and not self._bar.winfo_ismapped():
             # Before the canvas: the canvas is packed with expand=True and
@@ -2679,6 +2687,20 @@ class App:
         ttk.Button(act, text="open folder",
                    command=lambda: self.game and webbrowser.open(str(self.game.install_dir)))\
             .pack(side="left")
+        # Its own row: this one starts the game, watches it and can install a
+        # second route on its own, which is not a thing to squeeze in beside
+        # five buttons that write nothing (#144).
+        self.autorow = tk.Frame(f, bg=BG)
+        self.autorow.pack(side="bottom", fill="x", pady=(8, 0))
+        self.btn_auto = ttk.Button(self.autorow, text="install and try it for me",
+                                   command=self._autopilot)
+        self.btn_auto.pack(side="left")
+        tk.Label(self.autorow,
+                 text="installs, starts the game, reads what it loaded, and "
+                      "tries the next route if nothing of ours got in",
+                 bg=BG, fg=DIM, font=font(8), anchor="w")\
+            .pack(side="left", padx=(10, 0))
+
         # Its own row, shown only when the watcher saw the game start from a
         # different executable than the one this install went beside. Two
         # controls in one row is the shape nothing tests (#144), and this
@@ -2758,7 +2780,16 @@ class App:
             h = f.winfo_height()
             if h < 50:
                 return
-            spare = h - act.winfo_reqheight() - act2.winfo_reqheight() - px(16)
+            # Every row packed to the bottom of this page, not just the two
+            # that were here when this was written: a row nobody subtracts
+            # is height the settings are handed and do not have, and the
+            # scroller then believes it fits (100%: 635 px of content into
+            # 613 px, no scrollbar, the last setting off the window).
+            taken = act.winfo_reqheight() + act2.winfo_reqheight() \
+                + self.autorow.winfo_reqheight()
+            if self.wrongexe.winfo_ismapped():
+                taken += self.wrongexe.winfo_reqheight()
+            spare = h - taken - px(16)
             rows = max(1, int(self.log.cget("height")))
             row = max(1, (self.log.winfo_reqheight() + px(20)) // rows)
             # The settings get what they need, but never more than the
@@ -4371,6 +4402,82 @@ class App:
                     self.q.put(("fail", traceback.format_exc()))
         threading.Thread(target=work, daemon=True).start()
 
+    def _autopilot(self) -> None:
+        r"""Install, start the game, read what it loaded, try the next route.
+
+        The consent screen is the point of this, not a formality: it starts
+        somebody's game and it can install a second route without asking
+        again, so it says both, in those words, before anything happens.
+        """
+        if self.busy or not self.game:
+            return
+        g, opt = self.game, self._opts()
+        offer = list(getattr(getattr(self, "support", None), "options", None)
+                     or [getattr(self, "route", "") or opt.path])
+        routes = autopilot.plan(getattr(self, "route", "") or opt.path, offer)
+        may, why = autopilot.may_start(g)
+        if not messagebox.askyesno(
+                APP,
+                f"{g.name}\n\n"
+                f"This will:\n"
+                f"  1. install the {routes[0]} route\n"
+                + (f"  2. start {g.exe.name if g.exe else 'the game'}\n"
+                   if may else
+                   f"  2. ask you to start the game - {why}\n")
+                + f"  3. read which DLLs the running game loaded (it reads the "
+                  f"process; it writes nothing into it)\n"
+                  f"  4. if none of ours are in it, install the next route and "
+                  f"ask you to start the game again\n\n"
+                  f"Routes it may try, in order: {', '.join(routes)}.\n"
+                  f"It stops after those, or when you press stop.\n\n"
+                  f"Go ahead?"):
+            return
+        self.busy = True
+        self._auto_stop = False
+        self.btn_auto.config(text="stop", command=self._autopilot_stop)
+        self.btn_next.config(state="disabled")
+        self._log("")
+        self._log(f"=== {g.name}: trying it for you ===", "head")
+
+        def work() -> None:
+            try:
+                hooks = autopilot.Hooks(
+                    install=lambda gg, oo: installer.install(
+                        gg, oo, on_log=lambda t: self.q.put(("log", t))),
+                    log=lambda t, kind="": self.q.put(("autolog", (t, kind))),
+                    stop=lambda: self._auto_stop)
+                out = autopilot.run(g, opt, routes, hooks)
+                self.q.put(("autopilot", out))
+            except installer.InstallError as e:
+                self.q.put(("autofail", str(e)))
+            except Exception:
+                log.exception("the autopilot pass")
+                self.q.put(("autofail", traceback.format_exc()))
+        threading.Thread(target=work, daemon=True).start()
+
+    def _autopilot_stop(self) -> None:
+        """Stop after the route it is on - never mid-install."""
+        self._auto_stop = True
+        self._log("> stopping after this route", "warn")
+        self.btn_auto.config(state="disabled")
+
+    def _autopilot_done(self, out) -> None:
+        """Say what the pass found, and leave the window usable."""
+        self._auto_stop = False
+        self.busy = False
+        self.btn_auto.config(text="install and try it for me", state="normal",
+                             command=self._autopilot)
+        self.btn_next.config(state="normal")
+        self._idle()
+        self._log("")
+        self._log(f"> {autopilot.summary(out)}", "ok" if out.ok else "warn")
+        # A route that got in changes what the window is about: the install
+        # on screen is that route now, not the one that was picked.
+        if out.ok and out.route:
+            self.route = out.route
+        if not out.ok and out.attempts and out.attempts[-1].started:
+            self.btn_diag.focus_set()
+
     def _uninstall(self) -> None:
         if self.busy or not self.game:
             return
@@ -4632,6 +4739,14 @@ class App:
                               "into it.", "ok")
                     self._enter_install()
                     self._show(3)
+                elif kind == "autolog":
+                    text, level = payload
+                    self._log(text, level)
+                elif kind == "autopilot":
+                    self._autopilot_done(payload)
+                elif kind == "autofail":
+                    self._autopilot_done(autopilot.Outcome(stopped=str(payload)))
+                    self._log(str(payload), "err")
                 elif kind == "removed":
                     self._idle()
                     self._forget_row(self.game)

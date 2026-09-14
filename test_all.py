@@ -470,6 +470,23 @@ _dead = sorted(n for n in _ticked_names() - _FOREIGN_TICKS
 # never had that box (#148); 'feeder pre-release' was a dropdown entry.
 check("every 'tick X' the tool says names a checkbox that exists", not _dead, _dead)
 
+
+def _button_texts(w, out=None):
+    out = [] if out is None else out
+    if w.winfo_class() in ("TButton", "Button"):
+        out.append(str(w.cget("text")).lower())
+    for c in w.winfo_children():
+        _button_texts(c, out)
+    return out
+
+
+# Read here, while this window is still up: the suite destroys it long
+# before the sections that ask about it, and a check that cannot run is not
+# a check that passed.
+_LIVE_BUTTONS = _button_texts(_r)
+_AUTOROW = (_app.btn_auto.master is _app.autorow,
+            len(_app.autorow.winfo_children()))
+
 # a folder that has gone away must not abandon the whole list
 _ghost = games.Game(name="Ghost", folder=Path("Z:/gone"))
 _ghost.exe = Path("Z:/gone/x.exe")
@@ -8335,6 +8352,117 @@ check("...and a report replayed by hand gets what the corpus check measures",
       and "replay_report.last_error(" in src_of(_vc._answer))
 check("the window hands the diagnosis the tool's own last error",
       "log.last_error()" in src_of(_gui.App._diagnose))
+
+
+section("1.9.0: the pass that installs, watches the game and tries the next "
+        "route")
+
+from core import autopilot as _ap  # noqa: E402
+
+# The two biggest classes in the corpus - "the install stopped part way" and
+# "nothing we wrote ever loaded" - are 32 of 87 reports, and both are
+# answerable in the minute after an install, by the machine. This is that
+# minute: install, get the game up, read its module list, and when our files
+# are not in the process try the route that might be.
+_d = Path(tempfile.mkdtemp(prefix="autopilot_"))
+shutil.copyfile(X64, _d / "Game.exe")
+_g = games.manual(_d)
+installer._write_manifest(_d, _g, installer.Options(), installer.Report(),
+                          "dxgi.dll", "", complete=True)
+
+_seen: list[str] = []
+
+
+def _fake_install(g, opt, **kw):
+    _seen.append("install:" + opt.path)
+    r = installer.Report()
+    r.complete = True
+    return r
+
+
+def _sight(ours=(), elsewhere=(), missing=()):
+    s = watch.Sighting(proc=watch.Proc(pid=1, ppid=0, name="Game.exe",
+                                       path=str(_d / "Game.exe")),
+                       loaded=watch.Loaded(pid=1, exe="Game.exe"))
+    s.ours, s.elsewhere, s.missing = list(ours), list(elsewhere), list(missing)
+    return s
+
+
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(ours=[str(_d / "dxgi.dll")])], seconds=1))
+check("a route whose files are in the running game is where it stops",
+      _out.ok and _out.route == "feeder" and _out.tried == ["feeder"], _out.tried)
+check("...and the pass says what to do with that", "did it work?" in _ap.summary(_out))
+
+_seen.clear()
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler", "bridge"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(elsewhere=[r"C:\Windows\System32\dxgi.dll"],
+                                 missing=["dxgi.dll"])], seconds=1))
+check("a game that loaded somebody else's dxgi.dll makes it try the next route",
+      not _out.ok and _out.tried == ["feeder", "optiscaler", "bridge"], _out.tried)
+check("...installing each one, and no more than three",
+      _seen == ["install:feeder", "install:optiscaler", "install:bridge"], _seen)
+check("...and it ends by asking for the report that carries the module list",
+      "report a bug" in _ap.summary(_out))
+
+# A game that never comes up says nothing about the route, so running the
+# same pass again with a different one would be three installs for nothing.
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (False, "start it yourself"),
+    wait=lambda *a, **k: [], seconds=1))
+check("a game that was never seen running stops the pass, not the route list",
+      not _out.ok and _out.tried == ["feeder"] and _out.stopped, _out.stopped)
+
+_stop = {"n": 0}
+
+
+def _stopper():
+    _stop["n"] += 1
+    return _stop["n"] > 1
+
+
+_out = _ap.run(_g, installer.Options(), ["feeder", "optiscaler"], _ap.Hooks(
+    install=_fake_install, start=lambda g: (True, ""),
+    wait=lambda *a, **k: [_sight(missing=["dxgi.dll"])], stop=_stopper, seconds=1))
+check("...and 'stop' is read before every route, so it never runs on",
+      len(_out.attempts) <= 1, _out.tried)
+
+# Starting somebody's game is not always ours to do.
+_ac = Path(tempfile.mkdtemp(prefix="autopilot_ac_"))
+shutil.copyfile(X64, _ac / "Game.exe")
+(_ac / "EasyAntiCheat.exe").write_bytes(b"MZ")
+_ok, _why = _ap.may_start(games.manual(_ac))
+check("a folder with anti-cheat in it is never started by this tool",
+      not _ok and "anti-cheat" in _why, _why)
+check("...and the reason names what was found", "EasyAntiCheat" in _why, _why)
+shutil.rmtree(_ac, ignore_errors=True)
+
+check("the route order starts with the one the tool recommended",
+      _ap.plan("optiscaler", ["feeder", "optiscaler", "bridge"])[0] == "optiscaler")
+
+
+# The button is in the window, on a row of its own, and it says what it does
+# before it does it: it starts somebody's game and it can install a second
+# route without asking again (#144 is the shape of hiding that in a corner).
+# Both facts were read off the live window at the top of this file.
+check("the window has the button this pass is driven from",
+      "install and try it for me" in _LIVE_BUTTONS,
+      [b for b in _LIVE_BUTTONS if "try" in b])
+check("...on a row of its own, not squeezed in beside the five that write nothing",
+      _AUTOROW == (True, 2), _AUTOROW)
+check("...and it can be stopped, without stopping mid-install",
+      "stop after this route" in src_of(_gui.App._autopilot_stop).lower()
+      or "after this route" in src_of(_gui.App._autopilot_stop))
+_ask = src_of(_gui.App._autopilot)
+check("the consent screen says it will start the game and install a second route",
+      "start" in _ask and "install the next route" in _ask and "Go ahead?" in _ask)
+check("...and the pass itself runs off the Tk thread",
+      "threading.Thread(target=work" in _ask and "autopilot.run(" in _ask)
+check("...and never names a route this game is not offered (#148)",
+      "remix" not in _ap.plan("feeder", ["feeder", "optiscaler"]))
+shutil.rmtree(_d, ignore_errors=True)
 
 
 section("1.9.0: what the swap was worth, in numbers")
