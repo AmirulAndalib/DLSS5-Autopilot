@@ -488,6 +488,21 @@
     }
    }
   },
+  "inzoi-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "inZOI",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "jdm-win64-shipping.exe": {
    "drivers": {
     "616.92": {
@@ -895,6 +910,6 @@
    }
   }
  },
- "generated": "2026-09-14T19:56:12Z",
- "reports": 74
+ "generated": "2026-09-14T20:18:55Z",
+ "reports": 75
 }
