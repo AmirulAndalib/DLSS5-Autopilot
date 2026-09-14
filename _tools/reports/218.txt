@@ -1,0 +1,41 @@
+**Did the game start?** it never started
+
+**What happened**
+it doesnt start
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 4060 Ti (sm_89), driver 616.92
+- game: Max Payne
+- exe: MaxPayne.exe
+- arch/api: 32-bit / DX9 (loads d3d9.dll at run time (d3d8to9.dll beside the exe imports it); no static graphics import)
+- route: remix
+
+**Diagnosis**: Not run yet, or the Remix runtime never loaded.
+- [warn] The Remix runtime has not written a log yet.
+
+**Files in the folder**
+- .trex: found at C:\game zone\Max Payne\.trex
+- .trex/d3d9.dll: present
+- .trex/nvngx_dlssnr.dll: present
+- .trex/remix_nvngx.dll: present
+- runtime flavour: neural
+- rtx.neuralRendering.enable: set
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**remix-dxvk.log**
+```
+(none)
+```
+
+
+PS max payne rtx remix mod

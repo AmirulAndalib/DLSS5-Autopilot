@@ -1303,11 +1303,29 @@ def _analyse_remix(install_dir: Path, rep: "Report", since: float,
     p = _remix.log_path(install_dir)
     text = _tail(p, 300_000)
     if not text:
+        # A runtime we swapped in is the first thing to suspect when the
+        # game stopped starting: it is a different d3d9.dll from the one
+        # the mod was built and tested with, and a game that reaches Remix
+        # through a translator of its own (d3d8to9, dgVoodoo) is the case
+        # nobody upstream runs (#218, Max Payne).
+        swapped = bool((man.get("components") or {}).get("remix_runtime"))
         rep.add(WARN, "The Remix runtime has not written a log yet.",
                 f"It writes {Path(_remix.LOG)} the moment it starts. Either "
                 f"the game has not been run since installing, or Remix is not "
                 f"loading at all - check the game's own d3d9.dll (the Remix "
                 f"bridge) is still beside the executable.")
+        if swapped:
+            rep.add(BAD, "This install swapped the mod's own Remix runtime.",
+                    "If the game stopped starting after the install, that is "
+                    "the first thing to undo: the community runtime is a "
+                    "different d3d9.dll from the one the mod ships, and a "
+                    "game that reaches Remix through a translator of its own "
+                    "(d3d8to9, dgVoodoo) is not a case it is tested on. "
+                    "Press uninstall - the mod's runtime comes back - and "
+                    "install again with 'swap the Remix runtime' unticked.")
+            rep.verdict = ("The swapped Remix runtime is the first suspect - "
+                           "uninstall puts the mod's own back.")
+            return rep
         rep.verdict = "Not run yet, or the Remix runtime never loaded."
         rep.never_ran = True
         return rep
@@ -3376,6 +3394,13 @@ def _presence(install_dir: Path, man: dict, route: str) -> list[str]:
                 out.append(f"- {trex.name}/{n}: {state}")
             out.append(f"- runtime flavour: "
                        f"{_remix.runtime_flavour(trex) or 'no DLSS 5 pass'}")
+            # Whether the runtime in there is the mod's own or one this
+            # install swapped in: the first thing to suspect when a game
+            # stops starting, and nothing in the report said it (#218).
+            out.append("- Remix runtime: "
+                       + ("swapped by this install (the mod's own is backed "
+                          "up)" if (man.get("components") or {}).get("remix_runtime")
+                          else "the mod's own, left alone"))
         rx = man.get("remix") or {}
         if rx.get("key"):
             conf = Path(rx.get("conf") or "")

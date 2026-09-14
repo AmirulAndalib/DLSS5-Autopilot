@@ -8793,6 +8793,30 @@ check("...and a runtime with no neural pass is still told apart",
                     )).verdict)
 shutil.rmtree(_d, ignore_errors=True)
 
+# #218: "it doesnt start" on a Max Payne Remix mod, and the answer was
+# "not run yet". A runtime this install swapped in is a different d3d9.dll
+# from the one the mod ships, and a game that reaches Remix through a
+# translator of its own (d3d8to9) is not a case anybody upstream runs.
+_rx_swapped = _rx_list + ("- Remix runtime: swapped by this install "
+                          "(the mod's own is backed up)\n")
+_st2 = _rr.folder_state(_rx_swapped)
+check("the report says whether the runtime in .trex is the mod's or ours",
+      _st2["remix"]["swapped"] is True
+      and _rr.folder_state(_rx_list)["remix"]["swapped"] is False, _st2["remix"])
+_d2 = _rr.build("remix", "DX9", "MaxPayne.exe", {}, bitness=32, state=_st2)
+_r2 = diagnose.analyse(_d2)
+check("...and a swapped runtime with no Remix log is named as the first suspect",
+      "swapped Remix runtime" in _r2.verdict
+      and any("swapped the mod's own" in f_.title for f_ in _r2.findings),
+      _r2.verdict)
+_d3 = _rr.build("remix", "DX9", "MaxPayne.exe", {}, bitness=32,
+                state=_rr.folder_state(_rx_list))
+check("...while the mod's own runtime keeps the older answer",
+      "Not run yet" in diagnose.analyse(_d3).verdict,
+      diagnose.analyse(_d3).verdict)
+shutil.rmtree(_d2, ignore_errors=True)
+shutil.rmtree(_d3, ignore_errors=True)
+
 check("a report with no Remix lines carries none of this",
       _rr.folder_state("**Files in the folder**\n- dxgi.dll: present\n")
       ["remix"] is None)

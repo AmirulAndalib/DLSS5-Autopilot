@@ -385,6 +385,27 @@
   "route": "feeder",
   "verdict": "Inconclusive - the feed did not get far enough to tell."
  },
+ "217": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
+   "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
+   "warn: The add-on flagged your nvngx_dlssnr as an untested build.",
+   "info: This route leaves no frame log of its own."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "bridge",
+  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
+ },
+ "218": {
+  "findings": [
+   "warn: The Remix runtime has not written a log yet."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "remix",
+  "verdict": "Not run yet, or the Remix runtime never loaded."
+ },
  "22": {
   "findings": [
    "warn: The game has not been started since the install.",

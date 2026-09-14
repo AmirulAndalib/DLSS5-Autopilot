@@ -1,0 +1,40 @@
+**Did the game start?** it started and ran
+
+**What happened**
+dlss 5 not work, panel reshade work
+
+---
+- version: 1.8.2
+- gpu: NVIDIA GeForce RTX 3060 Laptop GPU (sm_86), driver 616.92
+- game: X-Plane 12
+- exe: X-Plane.exe
+- arch/api: 64-bit / DX11 (imports d3d11.dll statically)
+- route: bridge
+
+**Diagnosis**: Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames.
+- [ok] ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0
+- [ok] ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517
+- [warn] The add-on flagged your nvngx_dlssnr as an untested build.
+- [info] This route leaves no frame log of its own.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-bridge.addon64: present
+- renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+
+**ReShade.log**
+```
+22:20:19:741 [36800] | WARN  | Ignoring LoadLibrary('bcrypt.dll') call to avoid possible deadlock.
+22:20:20:645 [42632] | INFO  | Registered add-on "DLSS 5 Bridge 1.4.12" v1.4.12.0 using ReShade API version 18.
+22:20:20:894 [42632] | INFO  | Registered add-on "DLSS 5 Neural Rendering" v0.2026.828.517 using ReShade API version 18.
+22:20:21:136 [40504] | WARN  | Ignoring LoadLibrary('api-ms-win-appmodel-runtime-l1-1-2') call to avoid possible deadlock.
+22:20:21:572 [42632] | WARN  | [DLSS 5 Neural Rendering] DLSS5 Generic: signed runtime sha256 6EB209E764F39872625DEBD6ABAF45E2BB6322F6F270F781F70C059AE30B3927 (custom runtime accepted; untested build,
+22:20:28:604 [42632] | INFO  | Redirecting IDXGIFactory2::CreateSwapChainForHwnd(this = 000001567D1BAD60, pDevice = 000001567D331D70, hWnd = 00000000000314D0, pDesc = 00000021CC8FC248, pFullscreenDesc
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

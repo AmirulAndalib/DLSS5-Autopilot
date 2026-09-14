@@ -146,7 +146,7 @@ def folder_state(text: str) -> dict | None:
     named = False
     layer: bool | None = None
     remix: dict = {"trex": False, "files": {}, "flavour": "", "key": "",
-                   "key_set": False}
+                   "key_set": False, "swapped": False}
     for line in m.group(1).splitlines():
         line = line.strip()
         if not line.startswith("- ") or ":" not in line:
@@ -166,6 +166,11 @@ def folder_state(text: str) -> dict | None:
         if "/" in low and low.split("/")[0].endswith(".trex"):
             remix["files"][name.split("/", 1)[1]] = state.startswith("present")
             remix["trex"] = True
+            named = True
+            continue
+        if low == "remix runtime":
+            # "swapped by this install" / "the mod's own, left alone"
+            remix["swapped"] = state.lower().startswith("swapped")
             named = True
             continue
         if low == "runtime flavour":
@@ -240,6 +245,10 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
     rx = (state or {}).get("remix")
     if rx:
         man["remix"] = {"key": rx["key"], "conf": remix.CONF} if rx["key"] else {}
+        if rx.get("swapped"):
+            comp = dict(man.get("components") or {})
+            comp["remix_runtime"] = "swapped"
+            man["components"] = comp
     man.update(extra_manifest or {})
     if write_manifest:
         (d / "dlss5-autopilot.json").write_text(json.dumps(man), encoding="utf8")
