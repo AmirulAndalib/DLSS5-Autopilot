@@ -2888,7 +2888,12 @@ class App:
         """Read the game's own logs back and say what happened."""
         if not self.game:
             return
-        rep = diagnose.analyse(self.game.install_dir, log.last_error())
+        # The error of an install into THIS folder, not whatever went wrong
+        # last in this session: an update check that failed offline made the
+        # diagnosis tell somebody with no install at all that their install
+        # had crashed.
+        rep = diagnose.analyse(self.game.install_dir,
+                               installer.last_failure(self.game.install_dir))
         self._last_diag = rep
         try:
             # Enabled for any diagnosis, not only for a session that logged:

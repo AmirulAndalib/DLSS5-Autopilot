@@ -8363,8 +8363,25 @@ check("...and a report without one hands over nothing",
 check("...and a report replayed by hand gets what the corpus check measures",
       "replay_report.machine(" in src_of(_vc._answer)
       and "replay_report.last_error(" in src_of(_vc._answer))
-check("the window hands the diagnosis the tool's own last error",
-      "log.last_error()" in src_of(_gui.App._diagnose))
+check("the window hands the diagnosis the error of an install into THIS folder",
+      "installer.last_failure(" in src_of(_gui.App._diagnose)
+      and "log.last_error()" not in src_of(_gui.App._diagnose))
+check("...and the installer records the folder its own failure was for",
+      all(w in src_of(installer.install) for w in ("note_failure(root, e)",))
+      and src_of(installer.install).count("note_failure(") >= 3)
+_lf = Path(tempfile.mkdtemp(prefix="lastfail_"))
+installer.LAST_FAILURE.clear()
+check("...and nothing is claimed about a folder no install was attempted in",
+      installer.last_failure(_lf) == "")
+try:
+    raise installer.InstallError("the download stopped")
+except installer.InstallError as _e:
+    installer.note_failure(_lf, _e)
+check("...while the folder it WAS attempted in gets its traceback",
+      "the download stopped" in installer.last_failure(_lf)
+      and installer.last_failure(_lf / "elsewhere") == "")
+installer.LAST_FAILURE.clear()
+shutil.rmtree(_lf, ignore_errors=True)
 
 
 section("1.9.0: the pass that installs, watches the game and tries the next "
