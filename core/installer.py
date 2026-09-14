@@ -704,6 +704,27 @@ def last_failure(root) -> str:
     return str(LAST_FAILURE.get("text") or "") if same else ""
 
 
+def _ask_for_the_pass(root: Path, opt, log) -> None:
+    """Set the DLSS 5 add-on's own switch, after ReShade.ini is ours.
+
+    Its default is on, so this is for one case and it is the silent one:
+    somebody who switched the pass off in the overlay once. ReShade.ini
+    keeps that per game forever.
+
+    After the backup, never before: Ini.save() creates the file, and asking
+    for the switch first made the install back up a ReShade.ini it had just
+    written itself - which uninstall would then put back.
+    """
+    if opt.path == ROUTE_RENODX:
+        return                      # ShortFuse's add-on, its own section
+    try:
+        if reshade_ini.enable_dlss5_addon(root):
+            log(f"      [{reshade_ini.ADDON_SECTION}] "
+                f"{reshade_ini.ADDON_SWITCH}=1 (the add-on's own switch)")
+    except OSError:
+        pass                        # a folder we cannot write is said elsewhere
+
+
 def _swapped(was: str, label: str) -> str:
     """"310.2.1 -> 310.9.1 (NVIDIA SDK)", or the build alone when nothing moved.
 
@@ -3230,6 +3251,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
             _backup(root / "ReShade.ini", rep, root)
             _backup(root / "ReShadePreset.ini", rep, root)
             reshade_ini.write_reshade_ini(root, opt.provider)
+            _ask_for_the_pass(root, opt, log)
             reshade_ini.write_preset(root, opt.provider)
             src = reshade_ini.carry_over(root, [Path(x) for x in prefs.installs()])
             if src is not None:
@@ -3252,6 +3274,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
             # only has to load the add-ons sitting next to the executable.
             _backup(root / "ReShade.ini", rep, root)
             reshade_ini.write_addon_only_ini(root)
+            _ask_for_the_pass(root, opt, log)
             if opt.path == ROUTE_RENODX:
                 reshade_ini.enable_renodx_dlss_nr(root)
                 log("      [RENODX-DLSS] NeuralRenderingEnabled=1")

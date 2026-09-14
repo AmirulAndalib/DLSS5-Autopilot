@@ -875,11 +875,14 @@ def _addon_switch(install_dir: Path, rep: "Report") -> str:
         if state.get("overlay_seen"):
             rep.add(INFO, "The add-on has written no settings of its own yet.",
                     f"ReShade.ini has no [{_ini.ADDON_SECTION}] section, so "
-                    f"the add-on is running on its defaults - which have the "
-                    f"neural pass on.")
+                    f"nobody has switched the neural pass either way in this "
+                    f"game - the overlay's DLSS 5 tab says where it stands.")
             return "default"
         return ""
-    on = str(switch).strip() not in ("0", "", "false", "False")
+    value = str(switch).strip().lower()
+    if not value:
+        return ""                   # the key is there with nothing in it
+    on = value not in ("0", "false", "off", "no")
     if on:
         rep.add(OK, "The add-on's own switch is on.",
                 f"ReShade.ini beside the game has "
@@ -890,7 +893,9 @@ def _addon_switch(install_dir: Path, rep: "Report") -> str:
             f"ReShade.ini beside the game has "
             f"[{_ini.ADDON_SECTION}] {_ini.ADDON_SWITCH}={switch}. Open the "
             f"ReShade overlay in the game and tick it back on in the DLSS 5 "
-            f"tab - or press INSTALL again, which sets it.")
+            f"tab. Installing again will not do it for you: a switch you "
+            f"turned off is left alone, because turning it back on behind "
+            f"you would be worse.")
     return "off"
 
 
@@ -1352,10 +1357,13 @@ def _analyse_remix(install_dir: Path, rep: "Report", since: float,
         # nobody upstream runs (#218, Max Payne).
         swapped = bool((man.get("components") or {}).get("remix_runtime"))
         rep.add(WARN, "The Remix runtime has not written a log yet.",
-                f"It writes {Path(_remix.LOG)} the moment it starts. Either "
-                f"the game has not been run since installing, or Remix is not "
-                f"loading at all - check the game's own d3d9.dll (the Remix "
-                f"bridge) is still beside the executable.")
+                f"It writes {Path(_remix.LOG)} the moment it starts, and "
+                f"there is none."
+                + ("" if swapped else
+                   " Either the game has not been run since installing, or "
+                   "Remix is not loading at all - check the game's own "
+                   "d3d9.dll (the Remix bridge) is still beside the "
+                   "executable."))
         if swapped:
             rep.add(BAD, "This install swapped the mod's own Remix runtime.",
                     "If the game stopped starting after the install, that is "
@@ -1367,6 +1375,10 @@ def _analyse_remix(install_dir: Path, rep: "Report", since: float,
                     "install again with 'swap the Remix runtime' unticked.")
             rep.verdict = ("The swapped Remix runtime is the first suspect - "
                            "uninstall puts the mod's own back.")
+            # The game left no log of its own: the Windows fault record is
+            # still allowed to rewrite this, as it is for every other
+            # absent-log verdict.
+            rep.never_ran = True
             return rep
         rep.verdict = "Not run yet, or the Remix runtime never loaded."
         rep.never_ran = True
@@ -2876,7 +2888,12 @@ def analyse(install_dir: Path, last_error: str = "") -> Report:
         # Half of what that overlay would show is in ReShade.ini, beside
         # the game: the add-on writes its own switch there. Asking somebody
         # to go and read it was 14 of the first 96 reports.
-        switch = _addon_switch(install_dir, rep)
+        # Only where that add-on is the one installed: the renodx route
+        # ships ShortFuse's ([RENODX-DLSS]) and upstream ships
+        # matiasLombo's, and a key left by an earlier install would have
+        # been read as theirs.
+        switch = (_addon_switch(install_dir, rep)
+                  if rep.route in ("native", "bridge") else "")
         rep.add(INFO, "This route leaves no frame log of its own.",
                 (f"Open the ReShade overlay and check the {panel}: it shows "
                  f"the live state, frame by frame.") if switch else
@@ -2892,6 +2909,9 @@ def analyse(install_dir: Path, last_error: str = "") -> Report:
             "The add-ons are loaded and the neural pass is switched off in "
             "the add-on itself - turn it on in the overlay."
             if switch == "off" else
+            f"Add-ons loaded and the switch is on. This route logs no "
+            f"frames, so the {panel} is the only live picture."
+            if switch == "on" else
             f"Add-ons loaded. Confirm in the {panel} - this "
             f"route does not log frames.")
         # Half of that confirmation is a fact we already have.
@@ -3472,11 +3492,11 @@ def _presence(install_dir: Path, man: dict, route: str) -> list[str]:
     try:
         from . import reshade_ini as _ini2
         st = _ini2.addon_state(install_dir)
-        if st:
+        if st and route in ("native", "bridge", "feeder"):
             extra.append(f"- DLSS 5 add-on switch: "
                          + (f"{_ini2.ADDON_SWITCH}={st['switch']}"
                             if st.get("switch") is not None else
-                            "not written yet (running on its defaults)"))
+                            f"no [{_ini2.ADDON_SECTION}] line in ReShade.ini"))
     except Exception:
         pass
     rr = (man.get("components") or {}).get("dlssd")

@@ -113,6 +113,15 @@ def printed_verdict(text: str) -> str:
     return m.group(1).strip() if m else ""
 
 
+# How many of the reports that carry a printed verdict the replay answers
+# the way the reporter's own machine did. It is not 100% and it should not
+# be: a verdict that was WRONG on their machine and is right here is a
+# difference we went and made. So it is a ratchet - this number may go up,
+# and a drop means the replay has started answering a question the tool
+# does not ask. Raise it whenever it rises; never lower it to get green.
+REPRODUCTION_FLOOR = 31
+
+
 def reproduction(new: dict) -> tuple[int, int, list[str]]:
     """How many reports the replay answers the way the machine did."""
     same, total, off = 0, 0, []
@@ -195,10 +204,12 @@ def main() -> int:
         print("=" * 78)
         print(f"REPLAY vs THE MACHINE: {same} of {total} report(s) that carry "
               f"a printed verdict come back the same")
+        print(f"(the floor is {REPRODUCTION_FLOOR}: this may rise, and a "
+              f"fall means the replay drifted from the tool)")
         print("=" * 78)
         for ln in off:
             print(ln)
-        return 0
+        return 0 if same >= REPRODUCTION_FLOOR else 1
 
     if a.list or a.only:
         for n, r in new.items():

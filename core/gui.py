@@ -466,12 +466,24 @@ class Tip:
         self.master = master
         self.win: tk.Toplevel | None = None
         self._after = None
+        # A tooltip that survives alt-tab, a minimise or the page changing
+        # is a rectangle floating over somebody else's window.
+        try:
+            top = master.winfo_toplevel()
+            for ev in ("<Unmap>", "<FocusOut>"):
+                top.bind(ev, lambda _e: self.hide(), add="+")
+        except tk.TclError:
+            pass
 
     def show(self, text: str, x: int, y: int, delay: int = 250) -> None:
         self.hide()
         if not text.strip():
             return
-        self._after = self.master.after(delay, lambda: self._pop(text, x, y))
+        try:
+            self._after = self.master.after(delay,
+                                            lambda: self._pop(text, x, y))
+        except tk.TclError:
+            self._after = None      # the widget is going away
 
     def _pop(self, text: str, x: int, y: int) -> None:
         self._after = None
@@ -486,11 +498,21 @@ class Tip:
                            wraplength=px(420))
             lbl.pack()
             win.update_idletasks()
-            sw = win.winfo_screenwidth()
-            sh = win.winfo_screenheight()
-            x = min(max(0, x + px(14)), max(0, sw - win.winfo_width() - px(8)))
-            y = min(max(0, y + px(18)), max(0, sh - win.winfo_height() - px(8)))
-            win.wm_geometry(f"+{int(x)}+{int(y)}")
+            w, h = win.winfo_width(), win.winfo_height()
+            sw, sh = win.winfo_screenwidth(), win.winfo_screenheight()
+            px_, py = x + px(14), y + px(18)
+            # Only clamp on the screen the pointer is on: another monitor
+            # has coordinates outside this one, and clamping would throw the
+            # tip back onto the primary display.
+            if 0 <= x < sw:
+                px_ = min(px_, max(0, sw - w - px(8)))
+                if px_ <= x <= px_ + w:        # would sit under the pointer
+                    px_ = max(0, x - w - px(14))
+            if 0 <= y < sh:
+                py = min(py, max(0, sh - h - px(8)))
+                if py <= y <= py + h:
+                    py = max(0, y - h - px(10))
+            win.wm_geometry(f"+{int(px_)}+{int(py)}")
             self.win = win
         except tk.TclError:
             self.win = None
@@ -559,7 +581,7 @@ class Prose(tk.Text):
         self.tag_configure("driver", foreground=AMBER, lmargin1=px(6),
                            lmargin2=ind, spacing1=px(2))
         self.tag_configure("bad", foreground=RUST, spacing3=px(3))
-        self.tag_configure("hint", foreground=AMBER, underline=True)
+        self.tag_configure("hint", foreground=DIM, underline=True)
         self.configure(state="disabled")
         self.bind("<Configure>", lambda _e: self.after_idle(self._fit))
         # What a route IS and what it will not sit beside is worth reading
@@ -568,6 +590,7 @@ class Prose(tk.Text):
         self._tip = Tip(self)
         self._hidden = ""
         self.tag_bind("hint", "<Enter>", self._on_hint)
+        self.tag_bind("hint", "<Button-1>", self._on_hint)
         self.tag_bind("hint", "<Leave>", lambda _e: self._tip.hide())
         self.bind("<Leave>", lambda _e: self._tip.hide())
 
@@ -575,18 +598,23 @@ class Prose(tk.Text):
         self._tip.show(self._hidden, e.x_root, e.y_root)
 
     # Lines that change what happens stay on screen whatever else is
-    # hidden: this PC cannot run the route, the driver faults on it, the
-    # executable Windows protects. Somebody who never moves the pointer
-    # still reads those.
-    ALWAYS = ("bad", "driver")
+    # hidden: this PC cannot run the route, the driver faults on it, what
+    # must not be in the folder, what to switch off in the game first, the
+    # executable Windows protects. Only the description folds - it says what
+    # a route IS, which is read once; the rest is acted on before INSTALL,
+    # every time. The first cut of this folded the lot, and a usable route
+    # on a good driver left the card as one underlined line.
+    ALWAYS = ("bad", "driver", "warn", "note")
 
     def show(self, parts: list[tuple[str, str]], fold: bool = True) -> None:
         """parts: (tag, text) pairs, one per line.
 
-        `fold`: keep the description and the warnings that decide the
-        outcome, and put the rest - what this route will not sit beside -
-        behind a marker the pointer opens.
+        `fold`: keep the lines that decide what happens - this PC cannot
+        run the route, the driver faults on it, what must not be in the
+        folder, what to turn off first - and put the description behind a
+        marker the pointer opens.
         """
+        self._tip.hide()        # it belongs to the text about to go
         keep = list(parts)
         self._hidden = ""
         if fold:
@@ -605,8 +633,7 @@ class Prose(tk.Text):
         if self._hidden:
             if keep:
                 self.insert("end", "\n")
-            self.insert("end", "what this route is, and what it will not sit "
-                               "beside", "hint")
+            self.insert("end", "what this route is", "hint")
         self.configure(state="disabled")
         self.after_idle(self._fit)
 
@@ -2602,7 +2629,8 @@ class App:
         self.cb_nrstyle.current(0)
         self.nrhint = Hint(inner, "the rest of the model's dials are in "
                                   "OptiScaler's own overlay, live, while the "
-                                  "game runs - Insert opens it.")
+                                  "game runs.")
+        self._sync_nrhint()
         # Which OptiScaler + DLSS-NR build goes in (#21).
         self.lbl_optibuild = tk.Label(inner, text="optiscaler build", bg=PANEL,
                                       fg=DIM, font=font(9))
@@ -2850,6 +2878,11 @@ class App:
                                    image=self._auto_img, compound="left",
                                    command=self._autopilot)
         self.btn_auto.pack(side="left")
+        tk.Label(self.autorow,
+                 text="installs, starts the game, and tries the next route "
+                      "if nothing of ours got in",
+                 bg=BG, fg=DIM, font=font(8), anchor="w")\
+            .pack(side="left", padx=(10, 0))
         self.autohint = Hint(
             self.autorow,
             "installs the route, starts the game, waits for it to settle and "
@@ -3783,6 +3816,16 @@ class App:
         # Rebuilding the page is the only way they agree with each other.
         self._enter_install()
         self.btn_next.config(state="normal" if ok else "disabled")
+
+    def _sync_nrhint(self) -> None:
+        """The overlay key is rebindable, so the sentence has to ask."""
+        try:
+            key = reshade_ini.overlay_key_name(optiscaler.OVERLAY_KEY)
+            self.nrhint.set_hint("the rest of the model's dials are in "
+                                 "OptiScaler's own overlay, live, while the "
+                                 f"game runs - {key} opens it.")
+        except Exception:
+            pass
 
     def _on_route(self, _e=None) -> None:
         """The user picked a different route; re-tune what is shown."""

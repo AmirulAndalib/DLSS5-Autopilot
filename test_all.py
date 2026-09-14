@@ -335,7 +335,8 @@ shutil.rmtree(d, ignore_errors=True)
 # ---------------------------------------------------------------- 6. vulkan
 section("6. vulkan layer handling")
 before = vulkan.existing_registration()
-check("existing ReShade registration is detected or absent", True, str(before))
+check("existing ReShade registration is detected or absent",
+      before is None or isinstance(before, Path), repr(before))
 # Ours can legitimately be the active one on this PC (a Vulkan-layer game of
 # ours is installed here); what must hold is that it points at our folder
 # and the manifest is really there.
@@ -3313,8 +3314,26 @@ except Exception as e:
     check("install twice / uninstall clean", False, f"{type(e).__name__}: {e}")
 shutil.rmtree(_d, ignore_errors=True)
 
+# Not "covered structurally" - that was a literal True, which passes with
+# both gates deleted. Ask the two previews instead.
+_re_d = Path(tempfile.mkdtemp(prefix="reeng_"))
+shutil.copyfile(X64, _re_d / "re2.exe")
+(_re_d / "re_chunk_000.pak").write_bytes(b"x")
+_g_re = games.manual(_re_d)
+
+
+def _preview_says(path, word):
+    try:
+        pv = installer.preview(_g_re, installer.Options(path=path))
+    except Exception:
+        return False
+    return any(word in str(x) for x in
+               (list(getattr(pv, "warnings", [])) + list(getattr(pv, "notes", []))))
+
+
 check("the remix route is never bothered with the RE Engine warning",
-      True)  # covered structurally: both call sites gate on opt.path != ROUTE_REMIX
+      not _preview_says(dlss.REMIX, "RE Engine"))
+shutil.rmtree(_re_d, ignore_errors=True)
 
 # ------------------------------------------------- 32. fetching a Remix mod
 section("32. a Remix mod is fetched only when the release is a complete one")
@@ -5628,9 +5647,10 @@ check("...so picking Home is told back as Home, on either route",
       and _key_name_is("route default", 0, "Insert") == "Insert"
       and _key_name_is("route default", 0, "Home") == "Home")
 _src = src_of(installer.install)
+_i_key, _i_carry = (_src.find("reshade_ini.set_overlay_key"),
+                    _src.find("reshade_ini.carry_over"))
 check("ReShade's binding is written after carry_over, which would undo it",
-      _src.index("reshade_ini.set_overlay_key")
-      > _src.index("reshade_ini.carry_over"))
+      0 <= _i_carry < _i_key, (_i_carry, _i_key))
 check("...and OptiScaler's goes in with the rest of its configuration",
       "optiscaler.set_overlay_key" in _src)
 shutil.rmtree(_d, ignore_errors=True)
@@ -5889,10 +5909,11 @@ check("the feeder's settled frame rate is read, not its loading screen",
 
 # LOGIC: one unreadable appmanifest must not empty the library.
 _steam_src = src_of(games.scan_steam)
+_i_acf, _i_fold = (_steam_src.find("for acf in manifests:"),
+                   _steam_src.find("for f in folders:"))
 check("a manifest that cannot be read skips that file, not the loop",
-      "for acf in manifests:" in _steam_src
-      and "continue" in _steam_src[_steam_src.index("for acf in manifests:"):
-                                   _steam_src.index("for f in folders:")])
+      0 <= _i_acf < _i_fold
+      and "continue" in _steam_src[_i_acf:_i_fold], (_i_acf, _i_fold))
 
 # LOGIC: sharing a result crashed on any machine with no NVIDIA card.
 check("a card that could not be detected does not crash the share button",
@@ -6195,8 +6216,9 @@ check("install and uninstall both drop the remembered walk",
 
 # Issue #93: Windows' own tar.exe is not always built with LZMA.
 _x7 = src_of(optiscaler.extract_7z)
+_i_7z, _i_tar = _x7.find("_seven_zip()"), _x7.find("_tar_exe()")
 check("a .7z is opened with 7-Zip before Windows' tar.exe",
-      _x7.index("_seven_zip()") < _x7.index("_tar_exe()"), "order")
+      0 <= _i_7z < _i_tar, (_i_7z, _i_tar))
 check("...and the LZMA failure says what to install",
       "lzma" in _x7.lower() and "7-zip.org" in _x7.lower())
 check("...and 7-Zip is looked for on PATH and in Program Files",
@@ -6979,8 +7001,8 @@ check("the report's ReShade.log excerpt does not pull hook lines from an "
 # binding changes the selection before any window-level handler runs.
 _gsrc_w = src_of(_gui.App.__init__)
 check("the dropdown class binding for the wheel is taken away",
-      'unbind_class(cls, "<MouseWheel>")' in _gsrc_w
-      or "unbind_class" in _gsrc_w, "no unbind_class in App.__init__")
+      'unbind_class(cls, "<MouseWheel>")' in _gsrc_w,
+      "no unbind_class(cls, <MouseWheel>) in App.__init__")
 
 section("1.8.1: self-update relaunch, the MFG unlock's new shape, a bad cached "
         "archive, OptiScaler's update nag (#136 #141 #140 #51)")
@@ -7668,7 +7690,8 @@ check("the first screen says the tool reads the logs afterwards, not only "
       "that it installs",
       "did it work?" in _readme[:3000] and "uninstall" in _readme[:3000].lower())
 check("...and that nothing is bundled",
-      "bundled" in _readme[:3000].lower() or "bundles nothing" in _readme[:3000])
+      _re.search(r"nothing is bundled|bundles nothing",
+                 _readme[:3000], _re.I) is not None)
 
 # Every control the README names in bold has to exist. A renamed button
 # leaves the document telling people to press something that is not there -
@@ -7904,6 +7927,13 @@ _vc = _ilu2.module_from_spec(_vspec)
 _vspec.loader.exec_module(_vc)
 _vbase = json.loads((SRC_DIR / "_tools" / "verdict_baseline.json").read_text(encoding="utf8"))
 _vnow = _vc.answers()
+# The replay has to keep answering like the machine the report came from.
+# Nothing measured this: verdict_check compared the replay against its own
+# saved answers, so the two could drift together and stay green forever.
+_vsame, _vtotal, _voff = _vc.reproduction(_vnow)
+check("the replay still answers like the machine each report came from",
+      _vtotal >= 60 and _vsame >= _vc.REPRODUCTION_FLOOR,
+      f"{_vsame} of {_vtotal}, floor {_vc.REPRODUCTION_FLOOR}")
 _vmoved = _vc._diff(_vbase, _vnow)
 check("the corpus is every real report with logs, not a handful",
       len(_vnow) >= 80, len(_vnow))
@@ -7982,8 +8012,11 @@ check("...and the other mod's DLL is untouched, with no loader of ours beside it
       (_cp / "version.dll").read_bytes().startswith(b"MZCyberEngineTweaks")
       and not (_cp / "version.dll.dlss5-autopilot-backup").exists()
       and not (_cp / "RTX40MFGCore.dll").exists())
+_left141 = sorted(_m141.remove_leftovers(_cp, _files))
+check("...and every name it reports is really gone from the disk",
+      not any((_cp / n).exists() for n in _left141), _left141)
 check("a reinstall that no longer wants it takes the plugins copy back out",
-      sorted(_m141.remove_leftovers(_cp, _files)) ==
+      _left141 ==
       ["RTX40MFG-UI.addon64", "plugins/RTX40MFG.asi", "plugins/RTX40MFGCore.dll"]
       or not (_cp / "plugins" / "RTX40MFG.asi").exists())
 check("the preview and the step list know about that route too",
@@ -8139,9 +8172,10 @@ _refused = watch.Loaded(pid=1, refused="the process is protected")
 check("a refused module list is unknown, never 'nothing of ours is loaded'",
       not _refused.known and _refused.paths == [])
 _esrc = src_of(diagnose._explain_no_log)
+_i_live, _i_guess = _esrc.find("_live_evidence"), _esrc.find("The likeliest reason")
 check("the diagnosis asks the running process before it offers a guess",
       "_live_evidence(install_dir, man, rep)" in _esrc
-      and _esrc.index("_live_evidence") < _esrc.index("The likeliest reason"))
+      and 0 <= _i_live < _i_guess, (_i_live, _i_guess))
 _lsrc = src_of(diagnose._live_evidence)
 for _shape in ("will not say what it", "is running from", "from somewhere else",
                "has loaded none of the files"):
@@ -8230,7 +8264,8 @@ check("...and only where there is an install to watch",
       "_previous_manifest" in src_of(_gui.App._watch_this_game)
       and "if not man" in src_of(_gui.App._watch_this_game))
 check("the watcher writes nothing into a game folder",
-      "LOCALAPPDATA" in src_of(watch).split("RECORD =")[1][:200])
+      "LOCALAPPDATA" in (src_of(watch).split("RECORD =") + [""])[1][:200],
+      "RECORD = ... is not where it was")
 
 
 # --- what to try next, said with its numbers --------------------------------
@@ -8252,11 +8287,9 @@ class _FakeGame:
         self.name = "test"
 
 
+_nr = community.next_route(_shared, _FakeGame("nobody-has-this.exe"), "feeder")
 check("after a route fails, the next one to try is named with its rate",
-      "next one to try" in community.next_route(
-          _shared, _FakeGame("nobody-has-this.exe"), "feeder")
-      or community.next_route(_shared, _FakeGame("nobody-has-this.exe"),
-                              "feeder") == "")
+      "next one to try" in _nr and _re.search(r"\d+ of \d+", _nr), _nr)
 check("...and never a route this game is not offered (#148)",
       community.next_route(_shared, _FakeGame("nobody-has-this.exe"),
                            "feeder", ["feeder"]) == "")
@@ -8621,7 +8654,7 @@ check("the window has the button this pass is driven from",
       any("autopilot" in b for b in _LIVE_BUTTONS),
       [b for b in _LIVE_BUTTONS if b.strip()][:8])
 check("...on a row of its own, not squeezed in beside the five that write nothing",
-      _AUTOROW == (True, 2), _AUTOROW)
+      _AUTOROW == (True, 3), _AUTOROW)
 check("...in the colour that says it writes to the disk, like INSTALL",
       _AUTO_STYLE == "Accent.TButton", _AUTO_STYLE)
 check("...and it carries a mark of its own, painted at the text's height",
@@ -8822,6 +8855,40 @@ check("...and 'off' is the answer itself, with the way to turn it on",
 (_sw / "ReShade.ini").write_text("[ADDON]\nOverlayCollapsed=x\n", encoding="utf8")
 check("...and an overlay that has been opened with nothing written is defaults",
       diagnose._addon_switch(_sw, diagnose.Report()) == "default")
+shutil.rmtree(_sw, ignore_errors=True)
+
+# The install asks for the pass in the add-on's own section - and never
+# argues with somebody who turned it off on purpose, which is why the
+# "switched off" finding does not tell them to install again.
+_sw = Path(tempfile.mkdtemp(prefix="addonsw2_"))
+check("an install asks for the neural pass in the add-on's own section",
+      reshade_ini.enable_dlss5_addon(_sw) is True
+      and reshade_ini.addon_state(_sw)["switch"] == "1")
+check("...and leaves a switch that is already there alone",
+      reshade_ini.enable_dlss5_addon(_sw) is False)
+(_sw / "ReShade.ini").write_text("[RenoDX.DLSS5]\nNeuralUplift=0\n",
+                                 encoding="utf8")
+check("...including one somebody turned off on purpose",
+      reshade_ini.enable_dlss5_addon(_sw) is False
+      and reshade_ini.addon_state(_sw)["switch"] == "0")
+_rep = diagnose.Report()
+diagnose._addon_switch(_sw, _rep)
+check("...so the finding does not send them to press INSTALL again",
+      not any("INSTALL again" in (f_.detail or "") for f_ in _rep.findings),
+      [f_.detail for f_ in _rep.findings])
+check("...and the install asks for it AFTER ReShade.ini is ours",
+      "_ask_for_the_pass(root, opt, log)" in src_of(installer.install)
+      and "enable_dlss5_addon" in src_of(installer._ask_for_the_pass))
+# Asking before the backup made the install back up a ReShade.ini it had
+# just written itself, and uninstall then put our file back as if it were
+# the game's.
+_own = Path(tempfile.mkdtemp(prefix="askpass_"))
+installer._ask_for_the_pass(_own, installer.Options(path=dlss.FEEDER),
+                            lambda *_a, **_k: None)
+check("...and it is the only writer of that file at that point",
+      (_own / "ReShade.ini").is_file()
+      and not (_own / "ReShade.ini.dlss5-autopilot-backup").exists())
+shutil.rmtree(_own, ignore_errors=True)
 shutil.rmtree(_sw, ignore_errors=True)
 
 # #218: "it doesnt start" on a Max Payne Remix mod, and the answer was
