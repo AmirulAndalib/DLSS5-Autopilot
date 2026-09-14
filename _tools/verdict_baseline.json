@@ -348,12 +348,12 @@
  },
  "211": {
   "findings": [
-   "bad: Nothing of this tool is in this folder."
+   "warn: The Remix runtime ran but says nothing about DLSS-NR."
   ],
-  "never_ran": true,
-  "ran": false,
-  "route": "",
-  "verdict": "Nothing is installed in this folder - install first."
+  "never_ran": false,
+  "ran": true,
+  "route": "remix",
+  "verdict": "Remix ran; the neural pass was never even attempted."
  },
  "212": {
   "findings": [

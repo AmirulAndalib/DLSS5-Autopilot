@@ -43,6 +43,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core import diagnose   # noqa: E402
+from core import remix     # noqa: E402
 
 # The report template's own headings, so a pasted issue can be taken apart.
 BLOCKS = {
@@ -50,6 +51,11 @@ BLOCKS = {
     "dlss5-feed.log": "feed",
     "OptiScaler.log": "opti",
     "standalone-dlssnr.log": "standalone",
+    # The Remix runtime's own log is the ONLY one that applies on that
+    # route, and it was not in this list: both remix reports replayed with
+    # no log, no .trex and no rtx.conf, so every rule in _analyse_remix has
+    # never seen a real report.
+    "remix-dxvk.log": "remix",
 }
 ADDONS = ("dlss5-feed.addon64", "renodx-dlss5.addon64")
 
@@ -102,17 +108,45 @@ def folder_state(text: str) -> dict | None:
     files: dict[str, bool] = {}
     named = False
     layer: bool | None = None
+    remix: dict = {"trex": False, "files": {}, "flavour": "", "key": "",
+                   "key_set": False}
     for line in m.group(1).splitlines():
         line = line.strip()
         if not line.startswith("- ") or ":" not in line:
             continue
         name, _, state = line[2:].partition(":")
         name, state = name.strip(), state.strip()
+        low = name.lower()
+        # The Remix route first, and before the prefix list below: ".trex"
+        # is a prefix of ".trex/d3d9.dll" too, so every runtime file was
+        # swallowed by that list and the branch meant for them was dead
+        # code. That is why #211 - a folder with a whole Remix runtime in
+        # it - replayed as a folder nobody had ever installed into.
+        if low == ".trex":
+            remix["trex"] = not state.upper().startswith("MISSING")
+            named = named or remix["trex"]
+            continue
+        if "/" in low and low.split("/")[0].endswith(".trex"):
+            remix["files"][name.split("/", 1)[1]] = state.startswith("present")
+            remix["trex"] = True
+            named = True
+            continue
+        if low == "runtime flavour":
+            # "neural", "uplift", or "no DLSS 5 pass" for a runtime with none.
+            remix["flavour"] = "" if state.startswith("no ") else state
+            named = True
+            continue
+        if low.startswith("rtx."):
+            # The conf key, printed only when the install record carries one.
+            remix["key"] = name
+            remix["key_set"] = state.lower().startswith("set")
+            named = True
+            continue
         # Lines that describe a registration or a folder rather than a file
         # beside the game: they answer "is the install recorded", not "is
         # this file on disk", and there is nothing to create for them.
-        if name.lower().startswith(("reshade openxr", "reshade ", ".trex",
-                                    "optiscaler build", "runtime flavour",
+        if name.lower().startswith(("reshade openxr", "reshade ",
+                                    "optiscaler build",
                                     "the game's own upscaler")):
             if "vulkan layer" in name.lower():
                 # "registered" / "NOT REGISTERED": the layer is a registry
@@ -122,9 +156,6 @@ def folder_state(text: str) -> dict | None:
                 named = True
             else:
                 named = named or "registered" in state.lower()
-            continue
-        if "/" in name and name.split("/")[0].endswith(".trex"):
-            named = True
             continue
         files[name] = state.startswith("present") or state.startswith("not written")
         if re.match(r"(dxgi|d3d9|d3d10|d3d11|d3d12|opengl32|winmm|version|"
@@ -140,7 +171,8 @@ def folder_state(text: str) -> dict | None:
         if layer is None:
             layer = files.get("(vulkan layer)", False)
         files.pop("(vulkan layer)", None)
-    return {"files": files, "manifest": named, "proxy": proxy, "layer": layer}
+    return {"files": files, "manifest": named, "proxy": proxy, "layer": layer,
+            "remix": remix if (remix["trex"] or remix["key"]) else None}
 
 
 def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
@@ -168,6 +200,9 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
         write_manifest = bool(state["manifest"])
     man = {"version": 1, "complete": True, "exe": exe, "bitness": bitness,
            "api": api, "proxy": proxy, "path": route, "files": files}
+    rx = (state or {}).get("remix")
+    if rx:
+        man["remix"] = {"key": rx["key"], "conf": remix.CONF} if rx["key"] else {}
     man.update(extra_manifest or {})
     if write_manifest:
         (d / "dlss5-autopilot.json").write_text(json.dumps(man), encoding="utf8")
@@ -181,7 +216,40 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
                       ("opti", "OptiScaler.log")):
         if logs.get(key):
             (d / name).write_text(logs[key], encoding="utf8")
+    if rx:
+        _build_remix(d, rx)
+    if logs.get("remix"):
+        p = d / remix.LOG
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(logs["remix"], encoding="utf8")
     return d
+
+
+def _build_remix(d: Path, rx: dict) -> None:
+    """Put the Remix runtime back, as the report describes it.
+
+    `runtime_flavour()` reads the fork's option prefix out of the runtime
+    binary itself, so the flavour the report printed is written INTO the
+    stand-in d3d9.dll - a zero-byte file would be read as a runtime with no
+    neural pass, which is a different verdict and the wrong one.
+    """
+    if not rx["trex"]:
+        return
+    trex = d / remix.TREX
+    trex.mkdir(parents=True, exist_ok=True)
+    present = dict(rx["files"])
+    # The runtime DLL is what `find_runtime` looks for: no report describes
+    # a .trex without one (`_presence` prints nothing else when it is gone).
+    present.setdefault(remix.RUNTIME_DLL, True)
+    for name, there in present.items():
+        if not there:
+            continue
+        body = b"MZ"
+        if name == remix.RUNTIME_DLL and rx["flavour"]:
+            body += remix.PREFIX.get(rx["flavour"], "").encode("ascii")
+        (trex / name).write_bytes(body)
+    if rx["key"] and rx["key_set"]:
+        (d / remix.CONF).write_text(f"{rx['key']} = True\n", encoding="utf8")
 
 
 def show(d: Path, label: str) -> None:

@@ -8336,6 +8336,61 @@ check("the window hands the diagnosis the tool's own last error",
       "log.last_error()" in src_of(_gui.App._diagnose))
 
 
+section("1.9.0: the Remix route had never been replayed (#211)")
+
+# ".trex" is a prefix of ".trex/d3d9.dll", so the prefix list that skips the
+# folder line swallowed every runtime file too and the branch written for
+# them was dead code. A folder with a whole Remix runtime in it replayed as
+# a folder nobody had ever installed into, and the remix-dxvk.log block was
+# not in BLOCKS at all - so no rule in _analyse_remix had ever seen a real
+# report. Both remix reports in the corpus went through that.
+_rx_list = (
+    "**Files in the folder**\n"
+    "- .trex: found at H:\\game zone\\NFS\\Need for Speed Carbon\\.trex\n"
+    "- .trex/d3d9.dll: present\n"
+    "- .trex/nvngx_dlssnr.dll: present\n"
+    "- .trex/remix_nvngx.dll: present\n"
+    "- runtime flavour: neural\n"
+    "- rtx.neuralRendering.enable: set\n")
+_st = _rr.folder_state(_rx_list)
+check("a Remix runtime in the list is read as one, not as an empty folder",
+      _st["manifest"] is True and _st["remix"]["trex"] is True, _st)
+check("...with its files, its flavour and the conf key the record carried",
+      _st["remix"]["files"] == {"d3d9.dll": True, "nvngx_dlssnr.dll": True,
+                                "remix_nvngx.dll": True}
+      and _st["remix"]["flavour"] == "neural"
+      and (_st["remix"]["key"], _st["remix"]["key_set"])
+      == ("rtx.neuralRendering.enable", True), _st["remix"])
+check("...and none of those lines is mistaken for a file beside the game",
+      _st["files"] == {} and _st["proxy"] == "", _st["files"])
+
+_d = _rr.build("remix", "DX9", "NFSC.exe", {"remix": "[RTX] hello\n"},
+               bitness=32, state=_st)
+check("the replay puts the runtime back where find_runtime looks for it",
+      remix.find_runtime(_d) == _d / ".trex", str(_d))
+check("...with the fork's own marker in it, so the flavour is read back",
+      remix.runtime_flavour(_d / ".trex") == "neural")
+check("...and the conf key set, so 'switched off in rtx.conf' does not fire",
+      remix.option_set(_d / remix.CONF, "rtx.neuralRendering.enable"))
+check("...and the Remix log where the diagnosis reads it",
+      remix.log_path(_d).is_file())
+_r = diagnose.analyse(_d)
+check("a Remix report is answered by the Remix rules now",
+      _r.route == "remix" and "Nothing is installed" not in _r.verdict, _r.verdict)
+check("...and a runtime with no neural pass is still told apart",
+      "no neural pass" in diagnose.analyse(
+          _rr.build("remix", "DX9", "NFSC.exe", {},
+                    state={**_st, "remix": {**_st["remix"], "flavour": ""}}
+                    )).verdict)
+shutil.rmtree(_d, ignore_errors=True)
+
+check("a report with no Remix lines carries none of this",
+      _rr.folder_state("**Files in the folder**\n- dxgi.dll: present\n")
+      ["remix"] is None)
+check("the Remix log is one of the blocks a report is taken apart into",
+      _rr.BLOCKS.get("remix-dxvk.log") == "remix")
+
+
 section("RESULT")
 _REACHED_RESULT = True
 if FAILS:
