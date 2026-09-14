@@ -20,7 +20,7 @@ NVIDIA RTX 20 or newer
   comes back on uninstall. **check versions** later says which of your games
   has a part with a newer build.
   [How a swap works](#keeping-a-games-dlss-up-to-date).
-- **It can try it for you.** **install and try it for me** installs the
+- **It can try it for you.** **AUTOPILOT** installs the
   route, starts the game, reads which DLLs the game loaded and - when ours
   are not in it - waits for you to close the game, installs the next route
   and goes round again, up to three. A game with anti-cheat it never starts

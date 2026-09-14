@@ -491,6 +491,7 @@ _AUTOROW = (_app.btn_auto.master is _app.autorow,
 _AUTO_ICON = (_app._auto_img.width(), _app._auto_img.height(),
               str(_app.btn_auto.cget("compound")),
               _app._auto_img.get(1, _app._auto_img.height() // 2))
+_AUTO_STYLE = str(_app.btn_auto.cget("style"))
 
 # a folder that has gone away must not abandon the whole list
 _ghost = games.Game(name="Ghost", folder=Path("Z:/gone"))
@@ -8609,10 +8610,12 @@ check("...and the route the shared results rescued this game with goes next",
 # route without asking again (#144 is the shape of hiding that in a corner).
 # Both facts were read off the live window at the top of this file.
 check("the window has the button this pass is driven from",
-      "install and try it for me" in _LIVE_BUTTONS,
-      [b for b in _LIVE_BUTTONS if "try" in b])
+      any("autopilot" in b for b in _LIVE_BUTTONS),
+      [b for b in _LIVE_BUTTONS if b.strip()][:8])
 check("...on a row of its own, not squeezed in beside the five that write nothing",
       _AUTOROW == (True, 2), _AUTOROW)
+check("...in the colour that says it writes to the disk, like INSTALL",
+      _AUTO_STYLE == "Accent.TButton", _AUTO_STYLE)
 check("...and it carries a mark of its own, painted at the text's height",
       _AUTO_ICON[0] == _AUTO_ICON[1] >= 9 and _AUTO_ICON[2] == "left"
       and tuple(_AUTO_ICON[3])[:3] != (0, 0, 0), _AUTO_ICON)

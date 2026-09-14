@@ -11,6 +11,7 @@ start    the welcome before a first scan, reached from the name in the corner
 """
 from __future__ import annotations
 
+import math
 import queue
 import threading
 import time
@@ -356,26 +357,38 @@ def _flow_row(bar: tk.Frame, lead: tk.Widget, buttons: list, gap: int,
     bar.bind("<Configure>", lay, add="+")
 
 
-def _autopilot_glyph(size: int) -> tk.PhotoImage:
-    r"""The mark on the one button that starts somebody's game: a play
-    triangle inside a bracket, drawn here rather than shipped as a file.
+def _autopilot_glyph(size: int, fg: str = AMBER) -> tk.PhotoImage:
+    r"""An aircraft yoke, for the button that flies the thing itself.
 
-    Tk's own PhotoImage, filled a row at a time: no image library, no asset
-    to lose, and it scales with the rest of the window because the size
-    comes from px(). blank() leaves every pixel transparent, so whatever
-    the button's own background is stays the background.
+    Two horns with a crossbar between them, flat across the top and bottom -
+    the silhouette of a control yoke, which is what "autopilot" means on the
+    only instrument panel everybody has seen a picture of.
+
+    Drawn here rather than shipped as a file: Tk's own PhotoImage, filled a
+    row at a time, so there is no image library, no asset to lose, and it
+    scales with the window because the size comes from px(). blank() leaves
+    every pixel transparent, so the button's own background stays.
     """
-    n = max(9, int(size))
+    n = max(11, int(size))
     img = tk.PhotoImage(width=n, height=n)
     img.blank()
-    # One shape and no ornament: at 13 px a bracket around the triangle
-    # reads as a stray line, not as a bracket (looked at, in a capture of
-    # this window, before it went in).
+    c = (n - 1) / 2.0
+    r = c
+    t = max(1.0, n / 6.5)              # stroke
+    flat = r * 0.62                    # how much of the top and bottom is cut
     for y in range(n):
-        d = abs(y - (n - 1) / 2)                 # distance from the middle
-        run = int(round((n - 1) * (1 - 2 * d / max(1, n - 1))))
-        if run > 0:
-            img.put(AMBER, to=(0, y, run, y + 1))
+        dy = y - c
+        if abs(dy) > flat:
+            continue                   # the flat top and bottom of a yoke
+        outer = math.sqrt(max(0.0, r * r - dy * dy))
+        ri = r - t
+        inner = math.sqrt(max(0.0, ri * ri - dy * dy)) if abs(dy) < ri else 0.0
+        if abs(dy) <= t / 2 or inner <= 0:
+            img.put(fg, to=(int(round(c - outer)), y,      # the crossbar
+                            int(round(c + outer)) + 1, y + 1))
+        else:
+            for a, b in ((c - outer, c - inner), (c + inner, c + outer)):
+                img.put(fg, to=(int(round(a)), y, int(round(b)) + 1, y + 1))
     return img
 
 
@@ -2715,8 +2728,9 @@ class App:
         # five buttons that write nothing (#144).
         self.autorow = tk.Frame(f, bg=BG)
         self.autorow.pack(side="bottom", fill="x", pady=(8, 0))
-        self._auto_img = _autopilot_glyph(px(13))
-        self.btn_auto = ttk.Button(self.autorow, text="install and try it for me",
+        self._auto_img = _autopilot_glyph(px(15), BG)
+        self.btn_auto = ttk.Button(self.autorow, text=" AUTOPILOT",
+                                   style="Accent.TButton",
                                    image=self._auto_img, compound="left",
                                    command=self._autopilot)
         self.btn_auto.pack(side="left")
@@ -4520,7 +4534,7 @@ class App:
             return
         self.busy = True
         self._auto_stop = False
-        self.btn_auto.config(text="stop", command=self._autopilot_stop)
+        self.btn_auto.config(text="stop", image="", command=self._autopilot_stop)
         self.btn_next.config(state="disabled")
         self._log("")
         self._log(f"=== {g.name}: trying it for you ===", "head")
@@ -4565,8 +4579,8 @@ class App:
         """
         self._auto_stop = False
         self.busy = False
-        self.btn_auto.config(text="install and try it for me", state="normal",
-                             command=self._autopilot)
+        self.btn_auto.config(text=" AUTOPILOT", state="normal",
+                             image=self._auto_img, command=self._autopilot)
         self.btn_next.config(state="normal")
         self._idle()
         self._log("")
