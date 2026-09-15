@@ -226,6 +226,21 @@
     }
    }
   },
+  "dyinglightgame.exe": {
+   "drivers": {
+    "616.64": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Dying Light",
+   "routes": {
+    "renodx": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "eden.exe": {
    "drivers": {
     "616.56": {
@@ -963,6 +978,6 @@
    }
   }
  },
- "generated": "2026-09-15T04:49:26Z",
- "reports": 79
+ "generated": "2026-09-15T05:54:02Z",
+ "reports": 80
 }
