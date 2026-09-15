@@ -729,6 +729,21 @@
     }
    }
   },
+  "outlaws.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Star Wars Outlaws (2024)",
+   "routes": {
+    "standalone": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "painkiller.exe": {
    "drivers": {
     "616.64": {
@@ -993,6 +1008,6 @@
    }
   }
  },
- "generated": "2026-09-15T06:59:07Z",
- "reports": 81
+ "generated": "2026-09-15T07:55:45Z",
+ "reports": 82
 }
