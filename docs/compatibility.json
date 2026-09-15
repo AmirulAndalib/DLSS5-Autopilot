@@ -575,6 +575,21 @@
     }
    }
   },
+  "hotwheels3-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "HOT WHEELS Infinite Rush",
+   "routes": {
+    "bridge": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "indianawindowsstore-wingdk-shipping.exe": {
    "drivers": {
     "610.88": {
@@ -1076,6 +1091,6 @@
    }
   }
  },
- "generated": "2026-09-15T21:16:34Z",
- "reports": 89
+ "generated": "2026-09-15T21:23:39Z",
+ "reports": 90
 }
