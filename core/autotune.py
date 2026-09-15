@@ -164,6 +164,33 @@ def measure(text_feed: str, text_opti: str, route: str,
                     source="the feed's frame-rate line")
 
 
+# A config written this long after the log stopped is a config written for
+# the NEXT session, not the one that was played. A minute of slack: an
+# install writes the cfg and the game may still be flushing its log.
+CONFIG_GRACE = 60
+
+
+def config_name(route: str) -> str:
+    """The file this route's add-on reads its work area from."""
+    return "OptiScaler.ini" if route == "optiscaler" else "dlss5-feed.cfg"
+
+
+def written_after(install_dir, route: str, log_path) -> bool:
+    """Was the work area written after the session it would be read for?
+
+    An install rewrites the config. Pressing "did it work?" afterwards
+    without playing again reads the NEW work area against the OLD log, and
+    what comes out of that is a frame rate attributed to a setting nobody
+    played at - then published.
+    """
+    from pathlib import Path as _P
+    try:
+        cfg = _P(install_dir) / config_name(route)
+        return cfg.stat().st_mtime > _P(log_path).stat().st_mtime + CONFIG_GRACE
+    except OSError:
+        return False
+
+
 def ran_at_exact(install_dir, route: str) -> int | None:
     """The work area in the add-on's own config, or None if it is not there.
 
@@ -214,8 +241,9 @@ def _key(install_dir) -> str:
 
 def history(install_dir) -> list[dict]:
     all_ = prefs.get(HISTORY_KEY) or {}
-    rows = all_.get(_key(install_dir)) or []
-    return [r for r in rows if isinstance(r, dict)]
+    rows = all_.get(_key(install_dir))
+    return [r for r in (rows if isinstance(rows, list) else [])
+            if isinstance(r, dict)]
 
 
 def remember(install_dir, m: Measured) -> None:
@@ -237,9 +265,11 @@ def remember(install_dir, m: Measured) -> None:
     all_[_key(install_dir)] = rows[-MAX_SAMPLES:]
     if len(all_) > MAX_GAMES:
         def newest(item):
+            # item[1] is whatever is in the file under that game's key.
             # Same file, same junk: settings.json is read back off a disk,
             # and a raise here happens inside the diagnosis.
-            seen = [int(r["at"]) for r in (item[1] or [])
+            seen = [int(r["at"])
+                    for r in (item[1] if isinstance(item[1], list) else [])
                     if isinstance(r, dict)
                     and isinstance(r.get("at"), (int, float))
                     and not isinstance(r.get("at"), bool)]
@@ -366,6 +396,13 @@ def cost_lines(rows: list[dict], latest: Measured | None) -> list[str]:
         out.append("this route writes down what the model cost but not "
                    "your frame rate, so there is no fps here - only the "
                    "cost of the dial itself.")
+    if not getattr(latest, "from_config", True):
+        # The row marked "(this session)" is the slider's number, not the
+        # add-on's. Said here, because the table otherwise reads as a
+        # measurement of a setting nobody confirmed.
+        out.append("the work area above is the slider's: the add-on's own "
+                   "config could not be read, so which setting this session "
+                   "ran at is not certain.")
     return out
 
 

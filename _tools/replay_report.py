@@ -74,9 +74,15 @@ def _blocks(text: str) -> dict:
 
 
 def _header(text: str) -> dict:
-    """version / gpu / game / exe / arch/api / route out of the report head."""
+    """The head of a report, key by key.
+
+    "work area" is in the list because it is printed there: a key the
+    report carries and the replay ignores is a key nobody can reproduce
+    from.
+    """
     out = {}
-    for k in ("version", "gpu", "game", "exe", "arch/api", "route"):
+    for k in ("version", "gpu", "game", "exe", "arch/api", "route",
+              "work area"):
         m = re.search(r"^- " + re.escape(k) + r":\s*(.+)$", text, re.M)
         if m:
             out[k] = m.group(1).strip()
@@ -226,7 +232,7 @@ def folder_state(text: str) -> dict | None:
 
 def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
           extra_manifest: dict | None = None,
-          state: dict | None = None) -> Path:
+          state: dict | None = None, work_area: str = "") -> Path:
     d = Path(tempfile.mkdtemp(prefix="replay_"))
     proxy = "dxgi.dll"
     files = [proxy] + (list(ADDONS) if route == "feeder" else [])
@@ -283,6 +289,19 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
         p = d / remix.LOG
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(logs["remix"], encoding="utf8")
+    if work_area:
+        digits = re.search(r"(\d+)", work_area)
+        if digits:
+            n = int(digits.group(1))
+            if route == "optiscaler":
+                (d / "OptiScaler.ini").write_text(
+                    f"[DlssNr]\nWorkingScale={n / 100:.3f}\n", encoding="utf8")
+            else:
+                cfg = d / "dlss5-feed.cfg"
+                was = cfg.read_text(encoding="utf8") if cfg.exists() else ""
+                if "work_resolution" not in was:
+                    cfg.write_text(was + f"work_resolution={n}\n",
+                                   encoding="utf8")
     return d
 
 
@@ -416,7 +435,9 @@ def main() -> int:
     # record said "finished" - without it a report whose install died
     # replayed one way here and another way in the corpus measurement.
     d = build(route, api, exe, logs, a.bitness, state=state,
-              extra_manifest=finished(text) if a.report else None)
+              extra_manifest=finished(text) if a.report else None,
+              work_area=(_header(text).get("work area", "") if a.report
+                         else ""))
     show(d, f"issue #{a.issue}  route={route}  api={api}  exe={exe}",
          text if a.report else "")
     if a.keep:

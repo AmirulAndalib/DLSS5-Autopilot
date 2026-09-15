@@ -499,6 +499,10 @@ def _button_texts(w, out=None):
 _LIVE_BUTTONS = _button_texts(_r)
 _AUTOROW = (_app.btn_auto.master is _app.autorow,
             len(_app.autorow.winfo_children()))
+# ...and what the row says, so "experimental" cannot quietly leave it.
+_AUTOROW_TEXT = " ".join(
+    str(w.cget("text")) for w in _app.autorow.winfo_children()
+    if "text" in w.keys())
 # The mark on it, drawn rather than shipped: a square the height of the
 # text, beside the label, and actually painted (a blank image is a gap).
 _AUTO_ICON = (_app._auto_img.width(), _app._auto_img.height(),
@@ -5497,6 +5501,17 @@ check("a hand-written block cannot stop the workflow",
       and _hrow["optiscaler"]["res"] == 70, _hrow)
 check("...and the route it is filed under is the one the tool asks about",
       list(_hrow) == ["optiscaler"], list(_hrow))
+_mixed_case = [_comm.block({"v": 1, "exe": "case.exe", "game": "C",
+                            "route": r, "result": "worked", "res": 70})
+               for r in ("feeder", "Feeder", "FEEDER ")]
+with tempfile.TemporaryDirectory() as _td:
+    _agg.issues = lambda repo, token: [{"body": b} for b in _mixed_case]
+    _agg.OUT = Path(_td) / "compatibility.json"
+    _agg.main()
+    _case = json.loads(_agg.OUT.read_text(encoding="utf8"))["games"]["case.exe"]
+check("one route, however it was typed into the issue",
+      list(_case["routes"]) == ["feeder"]
+      and _case["measured"]["feeder"]["n"] == 3, _case)
 check("...and nothing that is not a number reaches the published file",
       "Infinity" not in json.dumps(_bad) and "NaN" not in json.dumps(_bad))
 
@@ -5671,6 +5686,8 @@ check("the record is built from the same route the measurement is checked "
 check("the cost table is printed whether or not a target was typed",
       _tune_src.index("cost_lines") < _tune_src.index("if not target"),
       "the table is behind the target check")
+check("the rows it was solved from are dropped with it",
+      "_measured_rows" in src_of(_gui.App._forget_last_session))
 check("what the session cost is kept for the shared result",
       "self._measured = m" in _tune_src
       and "_measured_for(" in src_of(_gui.App._share_result)
@@ -6174,12 +6191,73 @@ check("the history is kept per route, so the solve keeps both its legs",
 # report about one of those numbers used to arrive without it.
 _wd = Path(tempfile.mkdtemp(prefix="workarea_"))
 (_wd / "dlss5-feed.cfg").write_text("work_resolution=65\n", encoding="utf8")
+class _DialGame(_FakeGame):
+    """The feeder honours the work area here: 64-bit, D3D11."""
+    api = "DX11"
+    bitness = 64
+
+
 _body = diagnose.issue_body("1.9.0", "RTX 4060 Ti", 89, "616.92",
-                            _FakeGame(), "feeder", None, "", None, _wd)
+                            _DialGame(), "feeder", None, "", None, _wd)
 check("the bug report carries the work area the add-on was told to use",
       "- work area: 65%" in _body, _body[:400])
+for _r in ("remix", "standalone", "native", "bridge"):
+    check(f"...and not on {_r}, whose add-on never reads that file",
+          "work area" not in diagnose.issue_body(
+              "1.9.0", "RTX 4060 Ti", 89, "616.92", _FakeGame(), _r, None,
+              "", None, _wd))
+
+
+class _DX12Game(_DialGame):
+    api = "DX12"
+
+
+class _Bit32Game(_DialGame):
+    bitness = 32
+
+
+# The feeder honours work_resolution on the 64-bit D3D11 path only, and
+# writes the key into every install - so without the same rule the slider
+# uses, a DX12 report carries a number its own add-on ignores.
+for _g, _what in ((_DX12Game(), "a DX12 game"), (_Bit32Game(), "a 32-bit one")):
+    check(f"...and not for {_what}, where the feeder ignores the key",
+          "work area" not in diagnose.issue_body(
+              "1.9.0", "RTX 4060 Ti", 89, "616.92", _g, "feeder", None,
+              "", None, _wd), _what)
+check("the report's keys are all keys the replay reads back",
+      "work area" in (Path(__file__).resolve().parent / "_tools"
+                      / "replay_report.py").read_text(encoding="utf8"))
+check("a guessed work area is said to be a guess, in the table",
+      any("the slider's" in ln for ln in _tune.cost_lines(
+          [], _tune.Measured(route="optiscaler", resolution=75,
+                             model_ms=7.2, from_config=False))))
+
+# An install rewrites the config. Reading it against the log of a session
+# played before that install attributes a frame rate to a setting nobody
+# played at - and then publishes it.
+_cd = Path(tempfile.mkdtemp(prefix="stale_"))
+(_cd / "dlss5-feed.log").write_text("x", encoding="utf8")
+(_cd / "dlss5-feed.cfg").write_text("work_resolution=100\n", encoding="utf8")
+_now = time.time()
+os.utime(_cd / "dlss5-feed.log", (_now - 3600, _now - 3600))
+os.utime(_cd / "dlss5-feed.cfg", (_now, _now))
+check("a work area written after the session is not this session's",
+      _tune.written_after(_cd, "feeder", _cd / "dlss5-feed.log"))
+os.utime(_cd / "dlss5-feed.cfg", (_now - 7200, _now - 7200))
+check("...and one written before it is",
+      not _tune.written_after(_cd, "feeder", _cd / "dlss5-feed.log"))
+check("...a missing file says nothing either way",
+      not _tune.written_after(_cd, "feeder", _cd / "no-such.log"))
+_ms = src_of(_gui.App._measure_session)
+check("the window checks it before it believes the config",
+      "written_after" in _ms and _ms.index("ran_at_exact") < _ms.index("written_after"))
+check("...and a guessed work area is never recorded as a session",
+      "from_config" in src_of(_gui.App._autotuned)
+      and src_of(_gui.App._autotuned).index("from_config")
+      < src_of(_gui.App._autotuned).index("autotune.remember"))
+
 _body2 = diagnose.issue_body("1.9.0", "RTX 4060 Ti", 89, "616.92",
-                             _FakeGame(), "feeder", None, "", None,
+                             _DialGame(), "feeder", None, "", None,
                              Path(tempfile.mkdtemp(prefix="nowork_")))
 check("...and says nothing where no config answers",
       "work area" not in _body2)
@@ -8972,10 +9050,18 @@ check("...in the colour that says it writes to the disk, like INSTALL",
 check("...and it carries a mark of its own, painted at the text's height",
       _AUTO_ICON[0] == _AUTO_ICON[1] >= 9 and _AUTO_ICON[2] == "left"
       and tuple(_AUTO_ICON[3])[:3] != (0, 0, 0), _AUTO_ICON)
+# It ends the pass once the install it is running finishes - it does not
+# go on to start the game. The line used to promise the whole route.
+_stop_src = src_of(_gui.App._autopilot_stop)
 check("...and it can be stopped, without stopping mid-install",
-      "stop after this route" in src_of(_gui.App._autopilot_stop).lower()
-      or "after this route" in src_of(_gui.App._autopilot_stop))
+      "stopping when this install finishes" in _stop_src
+      and "mid-install" in _stop_src, _stop_src)
+check("...and the pass reads that while it waits, not after the route",
+      "stop" in src_of(_ap.attempt) and "stop" in src_of(_ap.wait_closed))
 _ask = src_of(_gui.App._autopilot)
+check("...and says, where it is pressed, that it is experimental",
+      "experimental" in _ask.lower()
+      and "experimental" in _AUTOROW_TEXT.lower(), _AUTOROW_TEXT)
 check("the consent screen says it will start the game and install a second route",
       "start" in _ask and "install the next route" in _ask and "Go ahead?" in _ask)
 check("...and the pass itself runs off the Tk thread",

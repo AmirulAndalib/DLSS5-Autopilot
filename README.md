@@ -45,10 +45,11 @@ NVIDIA RTX 20 or newer
   every file INSTALL would write, back up and remove, and writes none of
   them; **aim for _ fps** works the settings out from what your own last
   runs measured, says how sure it is, and applies nothing on its own.
-- **It tells you what it costs.** On the routes with a work-area dial, it
-  reads what the model cost from the add-on's own log and prints the price
-  of that setting - and of the settings you did not use, in milliseconds a
-  frame.
+- **It tells you what it costs.** On optiscaler and the feeder's 64-bit
+  D3D11 path it reads the last session back out of the add-on's own log -
+  the model's own cost where that is logged, the frame rate where it is
+  not - and prints the price of that setting and of the ones you did not
+  use, in milliseconds a frame.
 - **It reads what happened to everyone else.** Results people choose to
   share are pooled into one list the tool reads before an install: once a
   game has five, you are told which route worked most often on it, and

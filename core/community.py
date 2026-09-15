@@ -238,11 +238,16 @@ def measured_note(entry: dict | None, route: str = "") -> str:
     # and the other two are clauses that do not inherit it.
     line = (f"{n} shared results where this game worked on the {name} "
             f"route say what they ran at: a {int(res)}% work area")
-    ms, fps = row.get("ms"), row.get("fps")
+    def number(key):
+        v = row.get(key)
+        return (float(v) if isinstance(v, (int, float))
+                and not isinstance(v, bool) and v else None)
+
+    ms, fps = number("ms"), number("fps")
     if ms:
-        line += f". The model cost about {float(ms):.1f} ms a frame there"
+        line += f". The model cost about {ms:.1f} ms a frame there"
     if fps:
-        line += f", at around {float(fps):.0f} fps"
+        line += f", at around {fps:.0f} fps"
     return line + "."
 
 

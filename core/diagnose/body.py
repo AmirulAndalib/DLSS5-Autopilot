@@ -292,11 +292,29 @@ def _tool_log_lines(tail: str, game, install_dir, n: int = 15) -> list[str]:
     return _last_lines(text, n, keep)
 
 
-def _work_area(install_dir, route: str) -> str:
+def _has_dial(game, route: str) -> bool:
+    """Does this route, in this game, have a work area the add-on reads?
+
+    The same rule the slider uses: OptiScaler always, the feeder on the
+    64-bit D3D11 path only. Every feeder install writes work_resolution
+    into its cfg, so without this a DX12 or 32-bit feeder report would
+    carry a number its own add-on ignores - and the window says as much
+    three lines away.
+    """
+    if route == "optiscaler":
+        return True
+    if route != "feeder":
+        return False
+    return (getattr(game, "bitness", None) == 64
+            and str(getattr(game, "api", "")).upper() == "DX11")
+
+
+def _work_area(install_dir, route: str, game=None) -> str:
     """"- work area: 75%", when the add-on's own config says so."""
     try:
         from .. import autotune
-        got = autotune.ran_at_exact(install_dir, route) if install_dir else None
+        got = (autotune.ran_at_exact(install_dir, route)
+               if install_dir and _has_dial(game, route) else None)
         return f"- work area: {got}%\n" if got is not None else ""
     except Exception:
         return ""
@@ -348,7 +366,7 @@ def issue_body(version: str, gpu_name: str, sm, driver: str, game, route: str,
         # tool prints about what the session cost is worked out from this,
         # and a report about one of those numbers used to arrive without
         # it - so neither the reply nor the replay could reproduce a line.
-        + _work_area(install_dir, route)
+        + _work_area(install_dir, route, game)
         # What Windows recorded, when there is one: the faulting module is
         # the most useful line a "the game closed itself" report can carry,
         # and nobody was attaching it because nobody knew to look.

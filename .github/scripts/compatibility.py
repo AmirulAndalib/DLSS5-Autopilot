@@ -121,7 +121,11 @@ def main() -> int:
         # Every string is capped and type-checked here, not where it was
         # written: the writing side is this tool, the reading side is
         # whatever somebody typed into an issue.
-        exe, route = text(rec.get("exe"), 120).lower(), text(rec.get("route"), 40)
+        # Both lower case: "Feeder" in a hand-written block would open a
+        # second bucket beside "feeder", split the counts, and put a route
+        # name the dropdown does not have into somebody's advice.
+        exe = text(rec.get("exe"), 120).lower()
+        route = text(rec.get("route"), 40).lower()
         if not exe or not route or len(games) >= MAX_GAMES and exe not in games:
             continue
         seen += 1

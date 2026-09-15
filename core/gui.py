@@ -3132,6 +3132,12 @@ class App:
             # solve for good, because the history keeps one sample per
             # resolution.
             exact = autotune.ran_at_exact(d, route)
+            # ...unless it was written after the session it would describe.
+            log_path = (opti_p if route == "optiscaler"
+                        else d / diagnose.FEED_LOG)
+            if exact is not None and log_path is not None \
+                    and autotune.written_after(d, route, log_path):
+                exact = None
             m = autotune.measure(feed_txt, opti_txt, route,
                                  fallback if exact is None else exact)
             if m is not None and exact is None:
@@ -3220,6 +3226,7 @@ class App:
         self._last_crash = None
         self._tune = None
         self._measured = None
+        self._measured_rows = None
         self._noted_routes = set()
         for name, text in (("btn_share", "share the result"),
                            ("btn_tune", "apply the change")):
@@ -3535,7 +3542,10 @@ class App:
         # Recorded BEFORE the suggestion is worked out, or the newest
         # session is never one of the two points: session two then reported
         # "first measurement for this game" and only session three solved.
-        autotune.remember(d, m)
+        # A work area that is the slider's guess is not a point: it would
+        # sit in the history for good, under a resolution nobody played at.
+        if getattr(m, "from_config", True):
+            autotune.remember(d, m)
         # Kept for the shared result: what this session cost travels with
         # "it worked", or the next person with this game gets the outcome
         # and none of the settings behind it.
@@ -3797,6 +3807,7 @@ class App:
         if g is None:
             return
         route, drv_g = getattr(self, "route", "") or "", g
+        applies = self._work_applies()
 
         def work() -> None:
             try:
@@ -3815,7 +3826,12 @@ class App:
                 # it, not a verdict about the game. In its own try: the
                 # file is written by a workflow reading public issues, and
                 # a bad row in it must not cost the advice above as well.
-                said = community.measured_note(entry, route)
+                # Only where the dial exists: on a route that ignores the
+                # work area, "other people ran this at 70%" is advice about
+                # a setting the add-on never reads, on a page whose own
+                # slider says n/a.
+                said = (community.measured_note(entry, route)
+                        if applies else "")
                 if said:
                     lines.append(said)
             except Exception:
@@ -4922,9 +4938,14 @@ class App:
         threading.Thread(target=work, daemon=True).start()
 
     def _autopilot_stop(self) -> None:
-        """Stop after the route it is on - never mid-install."""
+        """End the pass once the install it is running finishes.
+
+        Never mid-install - a half-written folder is worse than one more
+        route - but it does not go on to start the game and read the
+        module list either.
+        """
         self._auto_stop = True
-        self._log("> stopping after this route", "warn")
+        self._log("> stopping when this install finishes", "warn")
         self.btn_auto.config(state="disabled")
 
     def _autopilot_done(self, out) -> None:
