@@ -47,6 +47,18 @@ def median(xs: list[float]) -> float:
     return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
 
 
+def text(value, limit: int) -> str:
+    """A string out of an issue body, or "".
+
+    Nothing here was written by the tool: `exe` is used as a dict key and
+    then sorted, so a list or a number there ends the run and the published
+    file stops being rebuilt for everybody. A 200 000-character game name
+    would be published and then printed into the log of everyone who picks
+    that game.
+    """
+    return value.strip()[:limit] if isinstance(value, str) else ""
+
+
 def number(value, low: float, high: float) -> float | None:
     """A number out of an issue body, or None.
 
@@ -66,6 +78,9 @@ def number(value, low: float, high: float) -> float | None:
 
 OUT = ROOT / "docs" / "compatibility.json"
 API = "https://api.github.com/repos/{repo}/issues"
+# The published file is downloaded by every copy of the tool. Anybody can
+# open an issue, so the number of games in it is bounded here too.
+MAX_GAMES = 5000
 
 
 def issues(repo: str, token: str) -> list[dict]:
@@ -101,19 +116,21 @@ def main() -> int:
     seen = 0
     for issue in issues(repo, token):
         rec = parse(issue.get("body") or "")
-        if not rec or not rec.get("exe") or not rec.get("route"):
+        if not rec:
+            continue
+        # Every string is capped and type-checked here, not where it was
+        # written: the writing side is this tool, the reading side is
+        # whatever somebody typed into an issue.
+        exe, route = text(rec.get("exe"), 120).lower(), text(rec.get("route"), 40)
+        if not exe or not route or len(games) >= MAX_GAMES and exe not in games:
             continue
         seen += 1
-        g = games.setdefault(rec["exe"], {"name": rec.get("game") or "",
-                                          "routes": {}, "drivers": {},
-                                          "measured": {}})
-        if rec.get("game") and not g["name"]:
-            g["name"] = rec["game"]
-        route = rec.get("route")
-        route = route.strip() if isinstance(route, str) else ""
+        g = games.setdefault(exe, {"name": "", "routes": {}, "drivers": {},
+                                   "measured": {}})
+        if not g["name"]:
+            g["name"] = text(rec.get("game"), 80)
         for key, bucket in (("route", "routes"), ("driver", "drivers")):
-            value = rec.get(key)
-            value = value.strip() if isinstance(value, str) else ""
+            value = route if key == "route" else text(rec.get("driver"), 40)
             if not value:
                 continue
             row = g[bucket].setdefault(value, {"worked": 0, "failed": 0})
@@ -123,8 +140,8 @@ def main() -> int:
         # The route is the stripped one, or a record with a trailing space
         # files its cost under a route name the tool never asks about.
         res = number(rec.get("res"), 1, 100)
-        if rec["result"] == "worked" and res is not None and route:
-            seen_ms.setdefault(rec["exe"], {}).setdefault(route, []).append(
+        if rec["result"] == "worked" and res is not None:
+            seen_ms.setdefault(exe, {}).setdefault(route, []).append(
                 (res, number(rec.get("ms"), 0, 10_000),
                  number(rec.get("fps"), 0, 10_000)))
 

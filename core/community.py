@@ -211,26 +211,33 @@ def measured_note(entry: dict | None, route: str = "") -> str:
     answer on one machine and left it there.
     """
     rows = (entry or {}).get("measured") or {}
+    if not isinstance(rows, dict):
+        return ""
+
+    def count(row) -> int:
+        n = row.get("n") if isinstance(row, dict) else None
+        return int(n) if isinstance(n, (int, float)) and not isinstance(n, bool) else 0
+
     pick = None
     if route and isinstance(rows.get(route), dict):
         pick = (route, rows[route])
     else:
         ranked = sorted(((n, r) for n, r in rows.items()
                          if isinstance(r, dict)),
-                        key=lambda x: int(x[1].get("n", 0) or 0), reverse=True)
+                        key=lambda x: count(x[1]), reverse=True)
         pick = ranked[0] if ranked else None
     if not pick:
         return ""
     name, row = pick
-    n, res = int(row.get("n", 0) or 0), row.get("res")
-    if n < MIN_MEASURED or not res:
+    n, res = count(row), row.get("res")
+    if n < MIN_MEASURED or not isinstance(res, (int, float)) or not res:
         return ""
     # `n` counts the results that said which work area they ran at; the
     # cost and the frame rate are medians over whichever of those carried
     # them, which can be fewer. So the count is attached to the work area,
     # and the other two are clauses that do not inherit it.
-    line = (f"{n} shared results for this game on the {name} route say what "
-            f"they ran at: a {int(res)}% work area")
+    line = (f"{n} shared results where this game worked on the {name} "
+            f"route say what they ran at: a {int(res)}% work area")
     ms, fps = row.get("ms"), row.get("fps")
     if ms:
         line += f". The model cost about {float(ms):.1f} ms a frame there"
@@ -359,8 +366,9 @@ def issue_url(rec: dict, note: str = "") -> str:
                + "\n" if rec.get("res") else "")
             + "\nThe block below is what the compatibility list reads. Once "
             "a game has five results, the next person with it is told which "
-            "route worked most often on it; three measured ones tell them "
-            "what those sessions ran at. "
+            "route worked most often on it; three results on the same route "
+            "that worked and carried a measurement tell them what those "
+            "sessions ran at. "
             "Delete it if you would rather not share it - the rest of the "
             "report still stands."
             + block(rec))

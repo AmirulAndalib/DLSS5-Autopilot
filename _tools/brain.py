@@ -68,10 +68,12 @@ def main() -> int:
         for v, c in (e.get("drivers") or {}).items():
             drivers[v][0] += int(c.get("worked", 0) or 0)
             drivers[v][1] += int(c.get("failed", 0) or 0)
-        for r, c in (e.get("measured") or {}).items():
-            if isinstance(c, dict):
+        for r, c in ((e.get("measured") or {}) if isinstance(
+                e.get("measured"), dict) else {}).items():
+            n = c.get("n") if isinstance(c, dict) else None
+            if isinstance(n, (int, float)) and not isinstance(n, bool):
                 measured[r][0] += 1
-                measured[r][1] += int(c.get("n", 0) or 0)
+                measured[r][1] += int(n)
         good = [r for r, c in rs.items() if c.get("worked")]
         bad = [r for r, c in rs.items() if c.get("failed") and not c.get("worked")]
         if good and bad:

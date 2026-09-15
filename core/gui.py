@@ -725,6 +725,7 @@ class App:
         self.target_fps = tk.StringVar(value=str(prefs.get("target_fps") or ""))
         self._tune = None                # the last suggestion, if any
         self._measured = None            # what the last session cost
+        self._measured_rows = None       # the history it was solved from
         self._last_crash = None          # what Windows recorded, if anything
         self.feeder_pre = tk.BooleanVar(value=False)
         self.dxvk = tk.BooleanVar(value=False)
@@ -2897,8 +2898,8 @@ class App:
                                    command=self._autopilot)
         self.btn_auto.pack(side="left")
         tk.Label(self.autorow,
-                 text="installs, starts the game, and tries the next route "
-                      "if nothing of ours got in",
+                 text="experimental: installs, starts the game, and tries "
+                      "the next route if nothing of ours got in",
                  bg=BG, fg=DIM, font=font(8), anchor="w")\
             .pack(side="left", padx=(10, 0))
         self.autohint = Hint(
@@ -3130,8 +3131,15 @@ class App:
             # at 100% could be stored against 75% and poison the two-point
             # solve for good, because the history keeps one sample per
             # resolution.
-            return autotune.measure(feed_txt, opti_txt, route,
-                                    autotune.ran_at(d, route, fallback))
+            exact = autotune.ran_at_exact(d, route)
+            m = autotune.measure(feed_txt, opti_txt, route,
+                                 fallback if exact is None else exact)
+            if m is not None and exact is None:
+                # The add-on's config did not answer, so the work area is
+                # the slider's. The table still prints; the record does not
+                # carry a number nobody measured.
+                m.from_config = False
+            return m
         except Exception:
             return None
 
@@ -3494,6 +3502,7 @@ class App:
         """
         self._tune = None
         self._measured = None
+        self._measured_rows = None
         try:
             self.btn_tune.configure(state="disabled", text="apply the change")
         except Exception:
@@ -3515,7 +3524,10 @@ class App:
             # The diagnosis is not over: _windows_crash runs after this and
             # corrects the verdict when Windows recorded a crash. Losing
             # that to a bad row in prefs.json would leave the screen saying
-            # the opposite of what happened.
+            # the opposite of what happened. It goes to the log file, which
+            # travels with the bug report, and not to the window, where it
+            # would sit under a verdict it has nothing to do with.
+            log.exception("working out what the session cost")
             return
 
     def _autotuned(self, m, d, route: str, target: int) -> None:
@@ -3529,6 +3541,7 @@ class App:
         # and none of the settings behind it.
         self._measured = m
         rows = autotune.history(d)
+        self._measured_rows = rows
         cost = autotune.cost_lines(rows, m)
         if cost:
             self._log("")
@@ -3572,7 +3585,12 @@ class App:
         if m is None or g is None or getattr(m, "route", "") != route:
             return {}
         try:
-            return autotune.shared(autotune.history(g.install_dir), m)
+            # Read when the session was measured, a moment ago - settings.json
+            # is read and written whole, and this is the fourth read of it
+            # on the thread drawing the window.
+            rows = getattr(self, "_measured_rows", None)
+            return autotune.shared(rows if rows is not None
+                                   else autotune.history(g.install_dir), m)
         except Exception:
             return {}
 
@@ -4854,6 +4872,10 @@ class App:
         if not messagebox.askyesno(
                 APP,
                 f"{g.name}\n\n"
+                # Said where it is pressed, not only in the release notes:
+                # every other feature that has not been through many
+                # machines says so on the control itself.
+                f"AUTOPILOT is experimental.\n\n"
                 f"This will:\n"
                 f"  1. install the {routes[0]} route\n"
                 + (f"  2. start {g.exe.name if g.exe else 'the game'}\n"

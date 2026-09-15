@@ -83,6 +83,11 @@ class Measured:
     model_ms: float | None = None
     frames: int = 0
     source: str = ""
+    # Did the work area come from the file the add-on read, or is it the
+    # slider's value because nothing could be read? A guess is fine for a
+    # table on screen and is not fine in a published record that the next
+    # person sets their game by.
+    from_config: bool = True
 
     @property
     def frame_ms(self) -> float | None:
@@ -159,13 +164,11 @@ def measure(text_feed: str, text_opti: str, route: str,
                     source="the feed's frame-rate line")
 
 
-def ran_at(install_dir, route: str, fallback: int) -> int:
-    """The work area the session really ran at, read from the config file.
+def ran_at_exact(install_dir, route: str) -> int | None:
+    """The work area in the add-on's own config, or None if it is not there.
 
-    The slider in the window is live state and a route change rewrites it,
-    so it says what the NEXT install would use, not what this session used.
-    The add-ons read these two files at startup, which makes them the only
-    honest record of it.
+    None means "nobody knows", which is a different answer from any number
+    - see ran_at() for why the difference matters now.
     """
     from pathlib import Path as _P
     d = _P(install_dir)
@@ -188,7 +191,20 @@ def ran_at(install_dir, route: str, fallback: int) -> int:
                 return _clamp(v)
     except (OSError, ValueError):
         pass
-    return int(fallback)
+    return None
+
+
+def ran_at(install_dir, route: str, fallback: int) -> int:
+    """The work area the session really ran at, read from the config file.
+
+    The slider in the window is live state and a route change rewrites it,
+    so it says what the NEXT install would use, not what this session used.
+    The add-ons read these two files at startup, which makes them the only
+    record of it - the fallback is the slider, and a session measured
+    against the fallback is not published (Measured.from_config).
+    """
+    got = ran_at_exact(install_dir, route)
+    return int(fallback) if got is None else got
 
 
 # ------------------------------------------------------------- the history
@@ -203,18 +219,31 @@ def history(install_dir) -> list[dict]:
 
 
 def remember(install_dir, m: Measured) -> None:
-    """Keep one sample per resolution - the newest wins."""
+    """Keep one sample per resolution, per route - the newest wins.
+
+    Per route, because the two routes do not measure the same thing: the
+    feeder writes a frame rate and the OptiScaler fork writes the model's
+    own cost. A session on one used to overwrite the other's point at the
+    same work area, and the two-point solve quietly lost a leg.
+    """
     all_ = dict(prefs.get(HISTORY_KEY) or {})
     rows = [r for r in (all_.get(_key(install_dir)) or [])
-            if isinstance(r, dict) and r.get("resolution") != m.resolution]
+            if isinstance(r, dict)
+            and not (r.get("resolution") == m.resolution
+                     and (r.get("route") or m.route) == m.route)]
     rows.append({"resolution": m.resolution, "fps": m.fps,
                  "model_ms": m.model_ms, "route": m.route,
                  "at": int(time.time())})
     all_[_key(install_dir)] = rows[-MAX_SAMPLES:]
     if len(all_) > MAX_GAMES:
         def newest(item):
-            return max((int(r.get("at") or 0) for r in item[1]
-                        if isinstance(r, dict)), default=0)
+            # Same file, same junk: settings.json is read back off a disk,
+            # and a raise here happens inside the diagnosis.
+            seen = [int(r["at"]) for r in (item[1] or [])
+                    if isinstance(r, dict)
+                    and isinstance(r.get("at"), (int, float))
+                    and not isinstance(r.get("at"), bool)]
+            return max(seen, default=0)
         all_ = dict(sorted(all_.items(), key=newest)[-MAX_GAMES:])
     prefs.set_(HISTORY_KEY, all_)
 
@@ -263,7 +292,7 @@ def split(rows: list[dict],
     if latest is None:
         return None
     if latest.fps:
-        return _solve(_points(rows))
+        return _solve(_points(rows, latest.route))
     if latest.model_ms and latest.resolution:
         area = (int(latest.resolution) / 100.0) ** 2
         if area > 0:
@@ -271,7 +300,7 @@ def split(rows: list[dict],
     return None
 
 
-def _points(rows: list[dict]) -> list[tuple[int, float]]:
+def _points(rows: list[dict], route: str = "") -> list[tuple[int, float]]:
     """(work area, frame ms) per session, from what was written down.
 
     The rows come back out of prefs.json, which is a file on a disk: a
@@ -281,6 +310,12 @@ def _points(rows: list[dict]) -> list[tuple[int, float]]:
     """
     out: dict[int, float] = {}
     for r in rows:
+        if not isinstance(r, dict):
+            continue
+        # Only this route's sessions: a frame rate measured on the feeder
+        # and one measured under OptiScaler are two different games.
+        if route and (r.get("route") or route) != route:
+            continue
         try:
             res, fps = int(r["resolution"]), float(r["fps"])
         except (KeyError, TypeError, ValueError):
@@ -301,7 +336,8 @@ def costs(rows: list[dict], latest: Measured | None,
     for r in sorted({_clamp(x) for x in (*areas, latest.resolution)}):
         ms = k * (r / 100.0) ** 2
         out.append(Cost(r, ms, (1000.0 / (base + ms)) if base else None,
-                        played=(r == _clamp(latest.resolution))))
+                        played=(bool(latest.resolution)
+                                and r == _clamp(latest.resolution))))
     return out
 
 
@@ -316,7 +352,9 @@ def cost_lines(rows: list[dict], latest: Measured | None) -> list[str]:
     table = costs(rows, latest)
     if not table or latest is None:
         return []
-    out = ["what the work area costs, in this game, on this card:"]
+    # The log prints "=== what the work area costs here ===" above this,
+    # so saying it again here is the same sentence twice, one line apart.
+    out = ["in this game, on this card:"]
     for c in table:
         line = f"  {c.resolution:>3}%   {c.model_ms:>5.1f} ms of model"
         if c.fps:
@@ -341,13 +379,18 @@ def shared(rows: list[dict], latest: Measured | None) -> dict:
     """
     if latest is None or not latest.resolution:
         return {}
+    if not getattr(latest, "from_config", True):
+        # The work area is the slider's, because the add-on's config could
+        # not be read. Good enough for a table on screen, not good enough
+        # to publish as what somebody ran.
+        return {}
     res = _clamp(latest.resolution)
     out: dict = {"res": res}
     if latest.fps:
         out["fps"] = round(float(latest.fps), 1)
     ms = latest.model_ms
     if ms is None:
-        points = _points(rows)
+        points = _points(rows, latest.route)
         wide = points and abs(points[-1][0] - points[0][0]) >= SHARE_SPREAD
         got = split(rows, latest) if wide else None
         if got:
@@ -365,9 +408,7 @@ def suggest(rows: list[dict], target_fps: float, current: int,
     target_ms = 1000.0 / float(target_fps)
 
     if latest.fps:
-        points = sorted({int(r["resolution"]): 1000.0 / float(r["fps"])
-                         for r in rows
-                         if r.get("fps") and r.get("resolution")}.items())
+        points = _points(rows, latest.route)
         solved = _solve(points)
         now_fps = latest.fps
         if solved:
@@ -414,8 +455,7 @@ def suggest(rows: list[dict], target_fps: float, current: int,
             return Suggestion(current, [
                 f"{now_fps:.0f} fps at {current}% - that is your target. "
                 f"Nothing to change."])
-        seen = len({int(r["resolution"]) for r in rows
-                    if r.get("fps") and r.get("resolution")})
+        seen = len(_points(rows, latest.route))
         return Suggestion(want, [
             f"{now_fps:.0f} fps at {latest.resolution}% "
             f"({latest.frames} frames), {why}.",

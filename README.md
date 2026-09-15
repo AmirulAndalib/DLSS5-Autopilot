@@ -53,9 +53,9 @@ NVIDIA RTX 20 or newer
   share are pooled into one list the tool reads before an install: once a
   game has five, you are told which route worked most often on it, and
   whether the one you picked did worse. A shared result carries the work
-  area it ran at and what the model cost there, so once three measured
-  results exist for a route in that game, you are told what those sessions
-  ran at before you install.
+  area it ran at, what the model cost a frame there and the frame rate, so
+  once three results that worked on a route carry a measurement, you are
+  told what those sessions ran at before you install.
 - **It takes itself back out.** Uninstall restores every file it replaced
   and removes only what it wrote.
 
@@ -299,7 +299,7 @@ matters.
 
   ```
   === what the work area costs here ===
-  > what the work area costs, in this game, on this card:
+  > in this game, on this card:
   >    50%     1.8 ms of model
   >    75%     4.0 ms of model
   >   100%     7.2 ms of model   (this session)
@@ -523,8 +523,10 @@ by itself - you see it in the browser and decide.
 
 **share the result** does the same for the compatibility list: the game's
 name and executable, the route and build, the graphics API, the card and
-driver, this tool's version, whether it worked, and the one-line verdict
-the diagnosis reached. No paths, no user name, nothing else. Those results
+driver, this tool's version, whether it worked, the one-line verdict the
+diagnosis reached, and - where the session was measured - the work area it
+ran at, what the model cost a frame and the frame rate. No paths, no user
+name, nothing else. Those results
 are added up into one file the tool reads before an install; once a game has
 five results, the next person with it is told which route worked most often,
 and whether the one they picked did worse. The issue is closed as soon as it

@@ -6130,6 +6130,60 @@ check("...and the reader itself touches no Tk",
       not any(w in src_of(_gui.App._measure_session)
               for w in ("self._log", "configure(", ".get()", "self.q.put")),
       src_of(_gui.App._measure_session))
+# Run, not read: the prune and the suggestion both walk rows that come back
+# out of a file on a disk. A source-string check cannot see a raise.
+_JUNK = [17, {"resolution": "abc", "fps": 60}, {"resolution": 50, "fps": "0"},
+         {"resolution": 50, "fps": -30}, {"at": "yesterday", "resolution": 60,
+                                          "fps": 55.0}]
+_prefs_file = _tune.prefs.FILE
+try:
+    _tmp = Path(tempfile.mkdtemp(prefix="hist_"))
+    _tune.prefs.FILE = _tmp / "settings.json"
+    _tune.prefs.set_(_tune.HISTORY_KEY, {
+        **{f"d:/games/g{i}": [{"resolution": 75, "fps": 60.0, "at": 1000 + i}]
+           for i in range(_tune.MAX_GAMES + 5)},
+        "d:/games/junk": _JUNK})
+    _tune.remember(Path("D:/Games/NEW"), _tune.Measured(
+        route="feeder", resolution=80, fps=61.0))
+    _kept = _tune.prefs.get(_tune.HISTORY_KEY) or {}
+    check("the prune survives a history somebody edited by hand",
+          len(_kept) <= _tune.MAX_GAMES, len(_kept))
+    check("...and keeps the game that was just measured",
+          _tune._key(Path("D:/Games/NEW")) in _kept, list(_kept)[:3])
+finally:
+    _tune.prefs.FILE = _prefs_file
+
+check("a junk row does not take the suggestion down with it",
+      _tune.suggest(_JUNK + [{"resolution": 100, "fps": 47.0}], 60, 100,
+                    "feeder", _m) is not None)
+check("...and the table and the suggestion read the same rows",
+      "_points(rows" in src_of(_tune.suggest)
+      and "_points(rows" in src_of(_tune.split))
+
+# One route's session is not the other's: the feeder logs a frame rate, the
+# fork logs the model's own cost, and one used to overwrite the other.
+_mixed = [{"resolution": 75, "fps": 78.0, "route": "feeder"},
+          {"resolution": 75, "model_ms": 7.0, "route": "optiscaler"},
+          {"resolution": 50, "fps": 94.0, "route": "feeder"}]
+check("the history is kept per route, so the solve keeps both its legs",
+      len(_tune._points(_mixed, "feeder")) == 2
+      and _tune.cost_lines(_mixed, _tune.Measured(
+          route="feeder", resolution=75, fps=78.0)) != [])
+
+# The work area is the input to every number the tool prints about cost. A
+# report about one of those numbers used to arrive without it.
+_wd = Path(tempfile.mkdtemp(prefix="workarea_"))
+(_wd / "dlss5-feed.cfg").write_text("work_resolution=65\n", encoding="utf8")
+_body = diagnose.issue_body("1.9.0", "RTX 4060 Ti", 89, "616.92",
+                            _FakeGame(), "feeder", None, "", None, _wd)
+check("the bug report carries the work area the add-on was told to use",
+      "- work area: 65%" in _body, _body[:400])
+_body2 = diagnose.issue_body("1.9.0", "RTX 4060 Ti", 89, "616.92",
+                             _FakeGame(), "feeder", None, "", None,
+                             Path(tempfile.mkdtemp(prefix="nowork_")))
+check("...and says nothing where no config answers",
+      "work area" not in _body2)
+
 check("a history kept for every game does not grow without end",
       _tune.MAX_GAMES and "MAX_GAMES" in src_of(_tune.remember))
 

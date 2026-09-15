@@ -292,6 +292,16 @@ def _tool_log_lines(tail: str, game, install_dir, n: int = 15) -> list[str]:
     return _last_lines(text, n, keep)
 
 
+def _work_area(install_dir, route: str) -> str:
+    """"- work area: 75%", when the add-on's own config says so."""
+    try:
+        from .. import autotune
+        got = autotune.ran_at_exact(install_dir, route) if install_dir else None
+        return f"- work area: {got}%\n" if got is not None else ""
+    except Exception:
+        return ""
+
+
 def issue_body(version: str, gpu_name: str, sm, driver: str, game, route: str,
                last_diag, autopilot_tail: str, autopilot_log_path,
                install_dir, last_error: str = "", session_error: str = "",
@@ -334,6 +344,11 @@ def issue_body(version: str, gpu_name: str, sm, driver: str, game, route: str,
         f"{getattr(game, 'api', None) or '-'}"
         + (f" ({game.api_why})" if getattr(game, 'api_why', None) else "") + "\n"
         f"- route: {route or '-'}\n"
+        # The work area the add-on itself was told to use. Every number the
+        # tool prints about what the session cost is worked out from this,
+        # and a report about one of those numbers used to arrive without
+        # it - so neither the reply nor the replay could reproduce a line.
+        + _work_area(install_dir, route)
         # What Windows recorded, when there is one: the faulting module is
         # the most useful line a "the game closed itself" report can carry,
         # and nobody was attaching it because nobody knew to look.
