@@ -821,14 +821,14 @@
   "rrre64.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "RaceRoom Racing Experience",
    "routes": {
     "feeder": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    }
@@ -1038,6 +1038,6 @@
    }
   }
  },
- "generated": "2026-09-15T14:20:51Z",
- "reports": 84
+ "generated": "2026-09-15T14:23:42Z",
+ "reports": 85
 }
