@@ -500,7 +500,7 @@ _AMBIGUOUS = {"opengl32.dll", "vulkan-1.dll"}
 # have not used since 4.27, and that made the tool call an Unreal game an
 # OpenGL one: ReShade would have gone in as opengl32.dll, which such a game
 # never loads, and the report would have come back with no log at all.
-# Found on the owner's own machine (WARDOGS, UE5) by detect_check.
+# Found by detect_check on an installed UE5 game (WARDOGS).
 _UNREAL_BIN = ("win64", "wingdk", "winarm64")
 
 

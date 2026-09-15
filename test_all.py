@@ -12,6 +12,7 @@ import ssl
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 import time
 import warnings
 from pathlib import Path
@@ -5400,6 +5401,105 @@ check("the workflow reads the tool's own parser, not a copy of the format",
 check("the note is fetched off the Tk thread",
       "threading.Thread" in src_of(_gui.App._community_note))
 
+# A result says whether it worked. Now it also says what it cost, which is
+# the question directly after it - and the one everybody, this tool
+# included, has been answering by feel.
+_recm = _comm.record(_FakeGame(), "optiscaler", "worked", version="1.9.0",
+                     measured={"res": 70.0, "ms": 6.43, "fps": 78.2,
+                               "path": "D:/Games/RDR2"})
+check("a shared result carries what the session cost",
+      _recm["res"] == 70 and _recm["ms"] == 6.43 and _recm["fps"] == 78.2,
+      _recm)
+check("...as a whole percent, not a false precision",
+      isinstance(_recm["res"], int), _recm["res"])
+check("...and nothing else the caller happened to hand in",
+      "path" not in _recm and not any("D:" in str(v) for v in _recm.values()),
+      _recm)
+check("a session with no measurement carries no measurement",
+      "res" not in _comm.record(_FakeGame(), "feeder", "failed"))
+check("what leaves the machine is named on screen before the browser opens",
+      "what it cost" in src_of(_gui.App._share_result)
+      and "ms of model a frame" in src_of(_gui.App._share_result))
+check("...and is in the issue body a person can read",
+      "- measured: 70% work area" in urllib.parse.unquote(
+          _comm.issue_url(_recm)), urllib.parse.unquote(
+          _comm.issue_url(_recm))[-400:])
+
+_meas = {"measured": {"optiscaler": {"n": 4, "res": 70, "ms": 6.4,
+                                     "fps": 78}}}
+_mn = _comm.measured_note(_meas, "optiscaler")
+check("four measurements say what this game costs, with the count on them",
+      "4 shared results" in _mn and "70% work area" in _mn
+      and "6.4 ms" in _mn and "78 fps" in _mn, _mn)
+check("...and two do not",
+      _comm.measured_note({"measured": {"feeder": {"n": 2, "res": 70}}}) == "")
+check("a game nobody measured says nothing at all",
+      _comm.measured_note({"routes": {"feeder": {"worked": 9}}}, "feeder") == ""
+      and _comm.measured_note(None) == "")
+check("the note reaches the window with the rest of what others found",
+      "measured_note" in src_of(_gui.App._community_note))
+
+# The workflow's own arithmetic, run rather than read: a failure's settings
+# are the settings of a failure and must not count.
+import importlib.util  # noqa: E402
+
+_agg_spec = importlib.util.spec_from_file_location(
+    "_agg_check", Path(__file__).resolve().parent / ".github" / "scripts"
+    / "compatibility.py")
+_agg = importlib.util.module_from_spec(_agg_spec)
+_agg_spec.loader.exec_module(_agg)
+_bodies = [_comm.block(_comm.record(_FakeGame(), "optiscaler", "worked",
+                                    measured={"res": r, "ms": ms, "fps": f}))
+           for r, ms, f in ((65, 5.2, 81), (70, 6.1, 77), (75, 6.9, 74))]
+_bodies.append(_comm.block(_comm.record(_FakeGame(), "optiscaler", "failed",
+                                        measured={"res": 25, "ms": 99.0,
+                                                  "fps": 9})))
+with tempfile.TemporaryDirectory() as _td:
+    _agg.issues = lambda repo, token: [{"body": b} for b in _bodies]
+    _agg.OUT = Path(_td) / "compatibility.json"
+    _agg.main()
+    _built = json.loads(_agg.OUT.read_text(encoding="utf8"))
+_row = ((_built["games"]["rdr2.exe"]).get("measured") or {}).get("optiscaler")
+check("the published file carries the middle of what people really ran",
+      _row and _row["n"] == 3 and _row["res"] == 70 and _row["ms"] == 6.1,
+      _row)
+check("...and a session that failed is not one of them",
+      _row and _row["res"] != 25 and _row["fps"] == 77.0, _row)
+
+# Anybody can write a record block by hand into an issue, and the workflow
+# reads every issue. JSON has Infinity and NaN in it, int(round(inf))
+# raises, and a game nobody else has reported has no second sample to
+# out-vote the first - so one issue would end the run and the published
+# file would stop being rebuilt for everyone.
+check("Infinity, NaN and a bool are not measurements",
+      all(_agg.number(v, 1, 100) is None
+          for v in (float("inf"), float("-inf"), float("nan"), True,
+                    "70", None, 1e400)),
+      [_agg.number(v, 1, 100) for v in (float("inf"), float("nan"), True)])
+check("...and neither is a work area outside the dial",
+      _agg.number(-4000, 1, 100) is None and _agg.number(400, 1, 100) is None
+      and _agg.number(70, 1, 100) == 70.0)
+_hostile = [_comm.block({"v": 1, "exe": "hostile.exe", "game": "H",
+                         "route": "optiscaler", "result": "worked",
+                         "res": float("inf"), "ms": float("nan"),
+                         "fps": 1e309}),
+            _comm.block({"v": 1, "exe": "hostile.exe", "game": "H",
+                         "route": " optiscaler ", "driver": "616.92",
+                         "result": "worked", "res": 70, "ms": 6.0})]
+with tempfile.TemporaryDirectory() as _td:
+    _agg.issues = lambda repo, token: [{"body": b} for b in _hostile]
+    _agg.OUT = Path(_td) / "compatibility.json"
+    _agg.main()                      # must not raise
+    _bad = json.loads(_agg.OUT.read_text(encoding="utf8"))
+_hrow = ((_bad["games"]["hostile.exe"]).get("measured") or {})
+check("a hand-written block cannot stop the workflow",
+      _hrow.get("optiscaler", {}).get("n") == 1
+      and _hrow["optiscaler"]["res"] == 70, _hrow)
+check("...and the route it is filed under is the one the tool asks about",
+      list(_hrow) == ["optiscaler"], list(_hrow))
+check("...and nothing that is not a number reaches the published file",
+      "Infinity" not in json.dumps(_bad) and "NaN" not in json.dumps(_bad))
+
 # Aiming for a frame rate instead of setting a percentage by feel. The two
 # log lines below are the shapes the add-ons really write - the feeder's
 # frame-rate line, and the cost line out of issue #81.
@@ -5480,9 +5580,101 @@ check("applying it writes the config in place, and says when it takes effect",
       "enable_nr" in src_of(_gui.App._apply_tune)
       and "feedcfg.write" in src_of(_gui.App._apply_tune)
       and "next run" in src_of(_gui.App._apply_tune))
-_tune_src = src_of(_gui.App._autotune)
+_tune_src = src_of(_gui.App._autotune) + src_of(_gui.App._autotuned)
 check("...and the measuring half writes nothing at all",
       "enable_nr" not in _tune_src and "feedcfg.write" not in _tune_src)
+
+# What the dial costs, in milliseconds, out of the same solve. Every other
+# tool in this ecosystem sets this setting by feel; the numbers were being
+# worked out here and used for one sentence of advice.
+_rows2 = [{"resolution": 100, "fps": 47.0}, {"resolution": 50, "fps": 70.0}]
+_split = _tune.split(_rows2, _m)
+check("two sessions split the frame into the part the dial moves and the rest",
+      _split and 0 < _split[0] < 1000 and _split[1] > 0, _split)
+_costs = _tune.costs(_rows2, _m)
+check("...and the cost is printed for 50, 75 and 100 per cent",
+      [c.resolution for c in _costs] == [50, 75, 100],
+      [c.resolution for c in _costs])
+check("...with the model at full size costing what the solve said",
+      abs(_costs[-1].model_ms - _split[1]) < 0.01,
+      (_costs[-1].model_ms, _split[1]))
+check("...the session that was played is marked as the played one",
+      [c.played for c in _costs] == [False, False, True])
+check("...and each row carries the frame rate it implies",
+      all(c.fps for c in _costs)
+      and abs(_costs[-1].fps - 47.0) < 0.5, [c.fps for c in _costs])
+_one = _tune.cost_lines([{"resolution": 100, "fps": 47.0}], _m)
+check("one session is not enough to cost the other settings, so it says none",
+      _one == [], _one)
+_ocosts = _tune.costs([], _m_opti)
+check("the route that logs no frame rate still costs the dial",
+      [c.resolution for c in _ocosts] == [50, 75, 100]
+      and abs(_ocosts[-1].model_ms - 7.23) < 0.01, _ocosts)
+check("...and offers no fps, because none was ever measured",
+      not any(c.fps for c in _ocosts)
+      and any("no fps here" in ln for ln in _tune.cost_lines([], _m_opti)))
+check("nothing measured, nothing printed", _tune.cost_lines([], None) == [])
+
+# The measured part of a shared result.
+_sh = _tune.shared(_rows2, _m)
+check("what is shared is the work area, the model's cost and the frame rate",
+      _sh.get("res") == 100 and _sh.get("fps") == 47.0 and _sh.get("ms"), _sh)
+check("...the work area as a whole percent", isinstance(_sh["res"], int), _sh)
+_sh_opti = _tune.shared([], _m_opti)
+check("...the model's own cost where that is what was measured",
+      _sh_opti == {"res": 100, "ms": 7.23}, _sh_opti)
+check("a session that cannot be split shares no cost",
+      "ms" not in _tune.shared([{"resolution": 100, "fps": 47.0}], _m),
+      _tune.shared([{"resolution": 100, "fps": 47.0}], _m))
+check("and nothing measured shares nothing", _tune.shared([], None) == {})
+check("the hint about 'aim for' is only printed under a table",
+      "if not target:\n            if cost:" in _tune_src,
+      _tune_src[_tune_src.index("if not target:"):][:70])
+check("nothing new runs outside a try that the crash correction follows",
+      "self._autotuned(" in src_of(_gui.App._autotune)
+      and "except Exception" in src_of(_gui.App._autotune).split(
+          "self._autotuned(")[1][:200])
+# Two sessions five points apart solve a table the person can disbelieve.
+# They do not measure a number to put in front of strangers.
+_close = [{"resolution": 100, "fps": 47.0}, {"resolution": 95, "fps": 47.05}]
+check("a solve from two near-identical sessions is not shared as a cost",
+      "ms" not in _tune.shared(_close, _m), _tune.shared(_close, _m))
+check("...but it is still printed, where it can be argued with",
+      _tune.cost_lines(_close, _m) != [])
+_wide = [{"resolution": 100, "fps": 47.0}, {"resolution": 50, "fps": 70.0}]
+check("...and a real spread is shared", "ms" in _tune.shared(_wide, _m))
+check("a half-written history does not raise, it is skipped",
+      _tune._points([{"resolution": 100, "fps": "47,0"},
+                     {"resolution": None, "fps": 47.0},
+                     {"fps": 47.0}, {"resolution": 50, "fps": 70.0}])
+      == [(50, 1000.0 / 70.0)])
+
+# The dropdown can be changed between "did it work?" and "share the
+# result" - the tool itself asks people to change it when a route fails.
+class _ShareApp:
+    game = _FakeGame()
+    _measured = _tune.Measured(route="optiscaler", resolution=70,
+                               model_ms=6.4, frames=99)
+    _measured_for = _gui.App._measured_for
+
+
+with patch.object(_tune, "history", lambda *_a: []):
+    check("a cost measured on one route is not published against another",
+          _ShareApp()._measured_for("feeder") == {}, "filed under feeder")
+    check("...and is published against its own",
+          _ShareApp()._measured_for("optiscaler").get("res") == 70)
+check("the record is built from the same route the measurement is checked "
+      "against",
+      src_of(_gui.App._share_result).index("route = getattr(self")
+      < src_of(_gui.App._share_result).index("_measured_for"))
+
+check("the cost table is printed whether or not a target was typed",
+      _tune_src.index("cost_lines") < _tune_src.index("if not target"),
+      "the table is behind the target check")
+check("what the session cost is kept for the shared result",
+      "self._measured = m" in _tune_src
+      and "_measured_for(" in src_of(_gui.App._share_result)
+      and "autotune.shared" in src_of(_gui.App._measured_for))
 
 # The driver, said before the install instead of in the diagnosis after it:
 # 616.64 is named in 31 of the first 87 reports, more than any other single
@@ -5921,11 +6113,42 @@ section("61. what the 1.8.0 release gate found")
 # LOGIC: the tuner was always one session behind - the history was read
 # before the new measurement was stored, so the second session still said
 # "one session is not enough" and only the third could solve.
-_gsrc = src_of(_gui.App._autotune)
+_gsrc = src_of(_gui.App._autotune) + src_of(_gui.App._autotuned)
 check("the measurement is recorded before the suggestion is worked out",
       0 <= _gsrc.find("autotune.remember") < _gsrc.find("autotune.suggest"))
 check("...and the session's own resolution comes from the config, not the slider",
-      "autotune.ran_at" in _gsrc)
+      "autotune.ran_at" in src_of(_gui.App._measure_session))
+# FEATURES: printing the table without a target put two 100 KB log tails, a
+# folder glob and a config read on the Tk thread for everybody, on every
+# press - work that used to happen only for the few who typed a frame rate.
+check("the logs are read on the worker that was reading logs anyway",
+      "_measure_session" in src_of(_gui.App._diagnose)
+      and "threading.Thread" in src_of(_gui.App._diagnose))
+check("...and not on the thread drawing the window",
+      "_tail" not in _gsrc and "_opti_log" not in _gsrc)
+check("...and the reader itself touches no Tk",
+      not any(w in src_of(_gui.App._measure_session)
+              for w in ("self._log", "configure(", ".get()", "self.q.put")),
+      src_of(_gui.App._measure_session))
+check("a history kept for every game does not grow without end",
+      _tune.MAX_GAMES and "MAX_GAMES" in src_of(_tune.remember))
+
+# TEXTS: the cost table is printed in the README and in the release notes.
+# A document that shows a transcript has to show one the tool can produce.
+_shown = "\n".join(
+    "> " + ln for ln in
+    _tune.cost_lines([], _tune.Measured(route="optiscaler", resolution=100,
+                                        model_ms=7.2)))
+for _doc in (Path(__file__).resolve().parent / "README.md",
+             Path(__file__).resolve().parent / "docs" / "releases"
+             / "v1.9.0.md"):
+    _text = _doc.read_text(encoding="utf8")
+    _flat = "\n".join(ln.strip() for ln in _text.splitlines())
+    check(f"{_doc.name}'s cost table is what cost_lines() prints",
+          "\n".join(ln.strip() for ln in _shown.splitlines()) in _flat,
+          _doc.name)
+    check(f"...and {_doc.name} shows the heading the log puts above it",
+          "=== what the work area costs here ===" in _flat)
 _d = Path(tempfile.mkdtemp(prefix="ranat_"))
 (_d / "dlss5-feed.cfg").write_text("enabled=1\nwork_resolution=85\n", encoding="utf8")
 check("the feeder's config says what the session ran at",

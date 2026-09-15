@@ -57,6 +57,7 @@ def main() -> int:
 
     routes: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     drivers: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    measured: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     rescued, stuck, working = [], [], []
     for exe, e in games.items():
         name = e.get("name") or exe
@@ -67,6 +68,10 @@ def main() -> int:
         for v, c in (e.get("drivers") or {}).items():
             drivers[v][0] += int(c.get("worked", 0) or 0)
             drivers[v][1] += int(c.get("failed", 0) or 0)
+        for r, c in (e.get("measured") or {}).items():
+            if isinstance(c, dict):
+                measured[r][0] += 1
+                measured[r][1] += int(c.get("n", 0) or 0)
         good = [r for r, c in rs.items() if c.get("worked")]
         bad = [r for r, c in rs.items() if c.get("failed") and not c.get("worked")]
         if good and bad:
@@ -84,6 +89,12 @@ def main() -> int:
     print("by route")
     for r, (w, f) in sorted(routes.items(), key=lambda x: -(x[1][0] + x[1][1])):
         print(f"  {r:<12} {w:>3} worked  {f:>3} failed  {_pct(w, w + f)} work")
+
+    if measured:
+        print("\nwhat it cost, where people said so")
+        for r, (games_, n) in sorted(measured.items(), key=lambda x: -x[1][1]):
+            print(f"  {r:<12} {n:>3} measured result(s) across "
+                  f"{games_} game(s)")
 
     print("\nby driver")
     for v, (w, f) in sorted(drivers.items(), key=lambda x: -(x[1][0] + x[1][1])):

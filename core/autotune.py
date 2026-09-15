@@ -52,8 +52,21 @@ MIN_SPREAD = 5
 # itself was never logged (the OptiScaler route logs the model's cost, not
 # the game's fps). A rule of thumb, and named as one wherever it is shown.
 BUDGET_SHARE = 0.25
+# The work areas a cost table is printed for, plus whatever this session
+# ran at. Three rows bracket the dial; twenty rows are a table nobody reads.
+SHOWN_AREAS = (50, 75, 100)
+# Two sessions this far apart may be published as a measured cost. The
+# solve itself accepts MIN_SPREAD, which is enough to print a table the
+# person can disbelieve - it is not enough to put a number in front of
+# strangers: at 5% apart, ordinary run-to-run noise solves to a model that
+# costs a fifth of a millisecond.
+SHARE_SPREAD = 15
 HISTORY_KEY = "autotune"
 MAX_SAMPLES = 8
+# How many games' histories are kept. Every diagnosis of a game on a route
+# with a work area records one now, not only the ones where a frame rate
+# was typed, and settings.json is read and written whole.
+MAX_GAMES = 60
 
 FEED_PERF = re.compile(r"(\d+) frames: feed CPU ([\d.,]+) ms/frame"
                        r"[^\n]*?([\d.,]+) fps")
@@ -74,6 +87,15 @@ class Measured:
     @property
     def frame_ms(self) -> float | None:
         return 1000.0 / self.fps if self.fps else None
+
+
+@dataclass
+class Cost:
+    """What the model costs at one work area, in this game, on this card."""
+    resolution: int
+    model_ms: float
+    fps: float | None = None
+    played: bool = False         # this row is a session, not arithmetic
 
 
 @dataclass
@@ -189,6 +211,11 @@ def remember(install_dir, m: Measured) -> None:
                  "model_ms": m.model_ms, "route": m.route,
                  "at": int(time.time())})
     all_[_key(install_dir)] = rows[-MAX_SAMPLES:]
+    if len(all_) > MAX_GAMES:
+        def newest(item):
+            return max((int(r.get("at") or 0) for r in item[1]
+                        if isinstance(r, dict)), default=0)
+        all_ = dict(sorted(all_.items(), key=newest)[-MAX_GAMES:])
     prefs.set_(HISTORY_KEY, all_)
 
 
@@ -221,6 +248,113 @@ def _solve(points: list[tuple[int, float]]) -> tuple[float, float] | None:
     if k <= 0.05 or base <= 0:
         return None
     return base, k
+
+
+def split(rows: list[dict],
+          latest: Measured | None) -> tuple[float | None, float] | None:
+    """(base ms, model ms at 100%) for this game, or None.
+
+    `base` is the part of the frame the work area does not touch. It is
+    None on the routes that log the model's own cost without a frame rate:
+    the model's cost still goes with the area there, but what is left of
+    the frame was never measured, and inventing it is how a tool ends up
+    printing a frame rate nobody had.
+    """
+    if latest is None:
+        return None
+    if latest.fps:
+        return _solve(_points(rows))
+    if latest.model_ms and latest.resolution:
+        area = (int(latest.resolution) / 100.0) ** 2
+        if area > 0:
+            return None, latest.model_ms / area
+    return None
+
+
+def _points(rows: list[dict]) -> list[tuple[int, float]]:
+    """(work area, frame ms) per session, from what was written down.
+
+    The rows come back out of prefs.json, which is a file on a disk: a
+    hand-edited or half-written one has strings and nulls in it, and this
+    is called from the diagnosis, where a raise costs the crash correction
+    that runs after it.
+    """
+    out: dict[int, float] = {}
+    for r in rows:
+        try:
+            res, fps = int(r["resolution"]), float(r["fps"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if res and fps > 0:
+            out[res] = 1000.0 / fps
+    return sorted(out.items())
+
+
+def costs(rows: list[dict], latest: Measured | None,
+          areas=SHOWN_AREAS) -> list[Cost]:
+    """What each work area costs, from the split. Empty when there is none."""
+    got = split(rows, latest)
+    if not got or latest is None:
+        return []
+    base, k = got
+    out = []
+    for r in sorted({_clamp(x) for x in (*areas, latest.resolution)}):
+        ms = k * (r / 100.0) ** 2
+        out.append(Cost(r, ms, (1000.0 / (base + ms)) if base else None,
+                        played=(r == _clamp(latest.resolution))))
+    return out
+
+
+def cost_lines(rows: list[dict], latest: Measured | None) -> list[str]:
+    """The cost table as lines. This is the number, not the advice.
+
+    Every other tool in this ecosystem sets this dial by feel. The
+    add-ons write down what it really cost, so it can be read out instead
+    of guessed at - and what the other settings would cost follows from
+    the same two sessions the suggestion is solved from.
+    """
+    table = costs(rows, latest)
+    if not table or latest is None:
+        return []
+    out = ["what the work area costs, in this game, on this card:"]
+    for c in table:
+        line = f"  {c.resolution:>3}%   {c.model_ms:>5.1f} ms of model"
+        if c.fps:
+            line += f"   ->  {c.fps:>3.0f} fps"
+        if c.played:
+            line += "   (this session)"
+        out.append(line)
+    if table[0].fps is None:
+        out.append("this route writes down what the model cost but not "
+                   "your frame rate, so there is no fps here - only the "
+                   "cost of the dial itself.")
+    return out
+
+
+def shared(rows: list[dict], latest: Measured | None) -> dict:
+    """The measured part of a shared result: {"res": 75, "ms": 7.2, ...}.
+
+    Only what was measured, or solved from measurements. An empty dict
+    when the session did not say enough: a published number that was
+    guessed at is worse than no number, because the next person reads it
+    as somebody's real setting.
+    """
+    if latest is None or not latest.resolution:
+        return {}
+    res = _clamp(latest.resolution)
+    out: dict = {"res": res}
+    if latest.fps:
+        out["fps"] = round(float(latest.fps), 1)
+    ms = latest.model_ms
+    if ms is None:
+        points = _points(rows)
+        wide = points and abs(points[-1][0] - points[0][0]) >= SHARE_SPREAD
+        got = split(rows, latest) if wide else None
+        if got:
+            ms = got[1] * (res / 100.0) ** 2
+    if ms is not None:
+        out["ms"] = round(float(ms), 2)
+    return out if len(out) > 1 else {}
 
 
 def suggest(rows: list[dict], target_fps: float, current: int,

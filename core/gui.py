@@ -724,6 +724,7 @@ class App:
         # a per-game decision, and retyping it every time would kill it.
         self.target_fps = tk.StringVar(value=str(prefs.get("target_fps") or ""))
         self._tune = None                # the last suggestion, if any
+        self._measured = None            # what the last session cost
         self._last_crash = None          # what Windows recorded, if anything
         self.feeder_pre = tk.BooleanVar(value=False)
         self.dxvk = tk.BooleanVar(value=False)
@@ -3083,6 +3084,13 @@ class App:
         self.busy = True
         self.btn_diag.configure(state="disabled", text="reading...")
         g = self.game
+        # Read here, on the Tk thread, and used on the worker: a Tk variable
+        # and the route are live UI state, and a thread may not ask for
+        # them. The work area is the fallback only - what the session really
+        # ran at comes out of the config the add-on read.
+        route = getattr(self, "route", "") or ""
+        fallback = self.workres.get()
+        applies = self._work_applies()
 
         def work() -> None:
             try:
@@ -3092,13 +3100,42 @@ class App:
                 # install at all that their install had crashed.
                 rep = diagnose.analyse(g.install_dir,
                                        installer.last_failure(g.install_dir))
-                self.q.put(("diagnosed", (g.install_dir, rep)))
+                # What the session cost, read here because the logs are
+                # open here: two 100 KB tails, a folder glob and a config
+                # read do not belong on the thread drawing the window.
+                m = (self._measure_session(g.install_dir, route, fallback)
+                     if applies and rep.ran else None)
+                self.q.put(("diagnosed", (g.install_dir, rep, m)))
             except Exception:
                 log.exception("reading the logs back")
                 self.q.put(("diagfail", traceback.format_exc()))
         threading.Thread(target=work, daemon=True).start()
 
-    def _diagnosed(self, where, rep) -> None:
+    def _measure_session(self, where, route: str, fallback: int):
+        """What this session cost, or None. Called on the worker thread.
+
+        No Tk in here, and it never raises: it is one of two things the
+        diagnosis worker does, and the other one is the diagnosis.
+        """
+        try:
+            d = Path(where)
+            feed_txt = diagnose._last_run(diagnose._tail(d / diagnose.FEED_LOG,
+                                                         100_000))
+            opti_p = diagnose._opti_log(d)
+            opti_txt = (diagnose._last_run(diagnose._tail(opti_p, 100_000))
+                        if opti_p else "")
+            # The resolution the SESSION ran at, read from the file the
+            # add-on read - not from the slider. The slider is live UI: a
+            # route change rewrites it (_sync_workres), so a session played
+            # at 100% could be stored against 75% and poison the two-point
+            # solve for good, because the history keeps one sample per
+            # resolution.
+            return autotune.measure(feed_txt, opti_txt, route,
+                                    autotune.ran_at(d, route, fallback))
+        except Exception:
+            return None
+
+    def _diagnosed(self, where, rep, measured=None) -> None:
         """What _diagnose found, on the Tk thread."""
         self.busy = False
         self.btn_diag.configure(state="normal", text="did it work?")
@@ -3134,7 +3171,7 @@ class App:
                       "head")
         # After the verdict, not before it: what it cost is the second
         # question, and only worth reading once the first one is answered.
-        self._autotune(rep)
+        self._autotune(rep, measured)
         self._windows_crash(rep)
 
     def _watch_this_game(self, g) -> None:
@@ -3174,6 +3211,7 @@ class App:
         self._last_diag = None
         self._last_crash = None
         self._tune = None
+        self._measured = None
         self._noted_routes = set()
         for name, text in (("btn_share", "share the result"),
                            ("btn_tune", "apply the change")):
@@ -3447,7 +3485,7 @@ class App:
         except ValueError:
             return 0
 
-    def _autotune(self, rep) -> None:
+    def _autotune(self, rep, measured=None) -> None:
         """After a session: what it cost, and the resolution to run next.
 
         Nothing is written here. The suggestion is printed with the numbers
@@ -3455,46 +3493,57 @@ class App:
         changes settings behind your back is not one people keep.
         """
         self._tune = None
+        self._measured = None
         try:
             self.btn_tune.configure(state="disabled", text="apply the change")
         except Exception:
             pass
         g, target = self.game, self._target()
-        if g is None or not target or not rep.ran:
+        # A target is needed to suggest a setting. It is not needed to say
+        # what this one cost, and that half used to be thrown away with the
+        # other: somebody who never typed an fps number was told nothing at
+        # all about a session this tool had measured to the millisecond.
+        # The measurement itself was read by the diagnosis worker - the
+        # logs it needs were open there anyway.
+        m = measured
+        if g is None or not rep.ran or m is None:
             return
-        # The slider is disabled where the work area is ignored (DX12, OpenGL,
-        # the 32-bit helper, every route but feeder and optiscaler). Suggesting
-        # a number there would be advice the add-on never reads.
-        if not self._work_applies():
-            return
-        d = g.install_dir
-        route = getattr(self, "route", "") or ""
+        d, route = g.install_dir, getattr(self, "route", "") or ""
         try:
-            feed_txt = diagnose._last_run(diagnose._tail(d / diagnose.FEED_LOG,
-                                                         100_000))
-            opti_p = diagnose._opti_log(d)
-            opti_txt = (diagnose._last_run(diagnose._tail(opti_p, 100_000))
-                        if opti_p else "")
-            # The resolution the SESSION ran at, read from the file the
-            # add-on read - not from the slider. The slider is live UI: a
-            # route change rewrites it (_sync_workres), so a session played
-            # at 100% could be stored against 75% and poison the two-point
-            # solve for good, because the history keeps one sample per
-            # resolution.
-            ran_at = autotune.ran_at(d, route, self.workres.get())
-            m = autotune.measure(feed_txt, opti_txt, route, ran_at)
+            self._autotuned(m, d, route, target)
         except Exception:
+            # The diagnosis is not over: _windows_crash runs after this and
+            # corrects the verdict when Windows recorded a crash. Losing
+            # that to a bad row in prefs.json would leave the screen saying
+            # the opposite of what happened.
             return
-        if m is None:
-            return
+
+    def _autotuned(self, m, d, route: str, target: int) -> None:
+        """What the session cost, and the setting to use next."""
         # Recorded BEFORE the suggestion is worked out, or the newest
         # session is never one of the two points: session two then reported
         # "first measurement for this game" and only session three solved.
         autotune.remember(d, m)
+        # Kept for the shared result: what this session cost travels with
+        # "it worked", or the next person with this game gets the outcome
+        # and none of the settings behind it.
+        self._measured = m
+        rows = autotune.history(d)
+        cost = autotune.cost_lines(rows, m)
+        if cost:
+            self._log("")
+            self._log("=== what the work area costs here ===", "head")
+            for ln in cost:
+                self._log(f"> {ln}")
+        if not target:
+            if cost:
+                self._log('> put a frame rate next to "aim for" and the '
+                          'next session turns this into a setting, not '
+                          'just a number to read.', "head")
+            return
         # `current` is what the SESSION ran at - the slider may have been
         # rewritten by a route change since.
-        sug = autotune.suggest(autotune.history(d), target,
-                               m.resolution, route, m)
+        sug = autotune.suggest(rows, target, m.resolution, route, m)
         if sug is None:
             return
         self._log("")
@@ -3508,6 +3557,24 @@ class App:
                     state="normal", text=f"set the work area to {sug.resolution}%")
             except Exception:
                 pass
+
+    def _measured_for(self, route: str) -> dict:
+        """What the last session cost, if it was this route's session.
+
+        The dropdown can be changed between "did it work?" and "share the
+        result" - the tool itself asks people to change it when a route
+        fails - and the diagnosis it was measured from stays where it is.
+        A cost measured on one route, published against another, is a
+        number the next person sets their game by.
+        """
+        m = getattr(self, "_measured", None)
+        g = self.game
+        if m is None or g is None or getattr(m, "route", "") != route:
+            return {}
+        try:
+            return autotune.shared(autotune.history(g.install_dir), m)
+        except Exception:
+            return {}
 
     def _apply_tune(self) -> None:
         """Write the suggested work area into the config that is already there.
@@ -3556,6 +3623,11 @@ class App:
         rep, g = self._last_diag, self.game
         if rep is None or g is None:
             return
+        # The route the record is filed under, decided before the record is
+        # built: the dropdown may have been changed since the diagnosis -
+        # next_route() asks people to change it - and a cost measured on
+        # one route must not be published against another.
+        route = getattr(self, "route", "") or ""
         # The Windows event read runs on a worker thread and can land
         # after the button is pressed. A record posted in that gap would
         # say "worked" about a session that crashed - and it goes into a
@@ -3572,18 +3644,27 @@ class App:
         except Exception:
             pass
         rec = community.record(
-            g, getattr(self, "route", "") or str(man.get("path") or ""),
+            g, route or str(man.get("path") or ""),
             "worked" if worked else "failed",
             api=str(man.get("api") or getattr(g, "api", "") or ""),
             build=str(man.get("opti_build") or ""),
             gpu_sm=sm, gpu_name=name or "", driver=gpu.driver_version() or "",
-            version=update.VERSION)
+            version=update.VERSION, measured=self._measured_for(route))
         self._log("")
+        carried = ("your card and driver, this tool's version, whether it "
+                   "worked, and the one-line verdict")
+        if rec.get("res"):
+            carried = ("your card and driver, this tool's version, whether it "
+                       f"worked, the one-line verdict, and what it cost "
+                       f"({rec['res']}% work area"
+                       + (f", {rec['ms']} ms of model a frame"
+                          if rec.get("ms") else "")
+                       + (f", {rec['fps']} fps" if rec.get("fps") else "")
+                       + ")")
         self._log("> a browser window opens with the result in it - nothing "
                   "is sent unless you post it. it carries the game's name "
                   "and executable, the route and build, the graphics api, "
-                  "your card and driver, this tool's version, whether it "
-                  "worked, and the one-line verdict. no paths, no user name, "
+                  + carried + ". no paths, no user name, "
                   "nothing else.", "head")
         try:
             webbrowser.open(community.issue_url(rec, str(getattr(rep, "verdict", ""))))
@@ -3710,6 +3791,17 @@ class App:
                                          gpu.driver_version() or "")
             except Exception:
                 return
+            try:
+                # What it cost other people, which needs no five reports to
+                # be worth saying: it is a number with its own count beside
+                # it, not a verdict about the game. In its own try: the
+                # file is written by a workflow reading public issues, and
+                # a bad row in it must not cost the advice above as well.
+                said = community.measured_note(entry, route)
+                if said:
+                    lines.append(said)
+            except Exception:
+                pass
             if lines:
                 self.q.put(("community", (drv_g.install_dir, lines)))
         threading.Thread(target=work, daemon=True).start()

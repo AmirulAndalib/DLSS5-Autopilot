@@ -25,7 +25,7 @@ NVIDIA RTX 20 or newer
   the game loaded another copy of the same name instead - waits for you to
   close the game, installs the next route and goes round again, up to
   three. A game with anti-cheat it never starts itself: it asks you to.
-  Tried on one machine so far.
+  Experimental.
 - **It tells you what happened.** Play, then press **did it work?**: it
   reads ReShade's log, the add-on's, OptiScaler's and Windows' own crash
   record, and says whether the model ran - and when it did not, which
@@ -34,6 +34,8 @@ NVIDIA RTX 20 or newer
   your architecture, ReShade with add-on support, motion-vector shaders,
   DXVK for DirectX 9, a 64-bit helper for 32-bit games, frame generation
   where the card has it.
+- **Nothing is bundled.** Each component is fetched from its own
+  publisher, at run time, at a version the tool resolves that day.
 - **Films, YouTube and whatever else is on the screen.** The same neural
   pass runs in a portable MPC-HC - a file, a live YouTube link, a webcam -
   or over a captured part of the desktop, half a second behind, for a
@@ -43,12 +45,17 @@ NVIDIA RTX 20 or newer
   every file INSTALL would write, back up and remove, and writes none of
   them; **aim for _ fps** works the settings out from what your own last
   runs measured, says how sure it is, and applies nothing on its own.
+- **It tells you what it costs.** On the routes with a work-area dial, it
+  reads what the model cost from the add-on's own log and prints the price
+  of that setting - and of the settings you did not use, in milliseconds a
+  frame.
 - **It reads what happened to everyone else.** Results people choose to
   share are pooled into one list the tool reads before an install: once a
   game has five, you are told which route worked most often on it, and
-  whether the one you picked did worse.
-- **Nothing is bundled.** Each component is fetched from its own
-  publisher, at run time, at a version the tool resolves that day.
+  whether the one you picked did worse. A shared result carries the work
+  area it ran at and what the model cost there, so once three measured
+  results exist for a route in that game, you are told what those sessions
+  ran at before you install.
 - **It takes itself back out.** Uninstall restores every file it replaced
   and removes only what it wrote.
 
@@ -81,7 +88,7 @@ current version of every part each time it runs.
    afterwards and reports what happened.
    Or press **AUTOPILOT** instead: it installs, starts the game itself,
    reads which DLLs the running game loaded, and tries the next route when
-   ours are not in it. Tried on one machine so far.
+   ours are not in it. Experimental.
 
 Uninstall removes exactly what was written, restores anything it replaced,
 and nothing else.
@@ -114,7 +121,7 @@ OpenGL); the choice is remembered for that folder.
 |---|---|---|---|
 | **native** | Krish's `renodx-dlss5` add-on hooks the DLSS calls the game already makes | 64-bit D3D12 games with DLSS; on an RTX card optiscaler is recommended first, native is one click away | the game's DLSS mode |
 | **neural-upstream** | matiasLombo's add-on runs the network at render resolution, *before* the game's DLSS upscales | 64-bit D3D12 games with DLSS | cadence (every 1st/2nd/3rd frame) |
-| **optiscaler** | Dagherbou's OptiScaler fork (or y4my4my4m's, or wilsjo2's - which is installed with its neural pass before the upscaler, the placement it exists for; neither of those two has been run here) replaces the upscaler and runs the model over its output; no ReShade | 64-bit D3D11/12 with DLSS, or with FSR 2/3 / XeSS redirected into DLSS | **model resolution 25-100 %** - cost falls with the square; optional **frame generation** (FSR 3.1, any card, D3D12) |
+| **optiscaler** | Dagherbou's OptiScaler fork (or y4my4my4m's, or wilsjo2's - which is installed with its neural pass before the upscaler, the placement it exists for; neither of those two is tested) replaces the upscaler and runs the model over its output; no ReShade | 64-bit D3D11/12 with DLSS, or with FSR 2/3 / XeSS redirected into DLSS | **model resolution 25-100 %** - cost falls with the square; optional **frame generation** (FSR 3.1, any card, D3D12) |
 | **bridge** | NIGos' `dlss5-bridge` mirrors the game's DLSS contract onto a private D3D12 session | D3D11 and Vulkan games with DLSS; offered without one too, from the driver's optical flow | the game's DLSS mode |
 | **feeder** | jlrouzies-fr's `DLSS5-Feeder` builds a DLAA contract from ReShade's depth buffer and shader motion vectors | games with **no** DLSS: D3D10/11/12, Vulkan, OpenGL, 32-bit (host64 helper, DirectX 9 through DXVK) | work area 50-100 % (64-bit D3D11) |
 | **standalone-dlssnr** | kibblerz's add-on: own feed, DLAA or DLSS Super Resolution, frame generation, shown through its own window | 64-bit D3D11/12, with or without DLSS; experimental | run the game below native |
@@ -287,6 +294,23 @@ matters.
   and the tool works out the work area to reach it, from what the last runs
   of that game actually measured. It says how confident it is and never
   applies anything on its own.
+- **What the work area costs.** After each session on those same two
+  routes, whether or not a target is set:
+
+  ```
+  === what the work area costs here ===
+  > what the work area costs, in this game, on this card:
+  >    50%     1.8 ms of model
+  >    75%     4.0 ms of model
+  >   100%     7.2 ms of model   (this session)
+  > this route writes down what the model cost but not your frame rate, so there is no fps here - only the cost of the dial itself.
+  ```
+
+  Frame time splits into a part the dial does not touch and a part that
+  grows with the area. On the OptiScaler route the model's own cost is in
+  its log, so one session is enough - with no fps column. On the feeder
+  route it takes two sessions at work areas at least five points apart,
+  and each row then gains the frame rate it implies.
 - **Overlay key**: ReShade opens its panel on Home and OptiScaler on
   Insert. A keyboard with neither can bind another key here, once, for
   every game.
@@ -350,7 +374,7 @@ other project is a link.
 | Game | Mod |
 |---|---|
 | Portal with RTX · Portal: Prelude RTX · Half-Life 2 RTX | official, already Remix |
-| Grand Theft Auto IV | [xoxor4d/gta4-rtx](https://github.com/xoxor4d/gta4-rtx) - the one this tool was tested against |
+| Grand Theft Auto IV | [xoxor4d/gta4-rtx](https://github.com/xoxor4d/gta4-rtx) - the mod this route is tested against |
 | Need for Speed: Underground 2 | [Ekozmaster/NFSU2-RTX-Remix](https://github.com/Ekozmaster/NFSU2-RTX-Remix) |
 | Garry's Mod | [Xenthio/garrys-mod-rtx-remixed](https://github.com/Xenthio/garrys-mod-rtx-remixed) |
 | Deus Ex | [onnoj/DeusExEchelonRenderer](https://github.com/onnoj/DeusExEchelonRenderer) |
@@ -394,9 +418,8 @@ Vulkan layer puts ReShade. The **VR headset (OpenXR)** checkbox on the
 install page (or `--vr`) registers ReShade's OpenXR layer as well, which
 hooks the image the headset shows. Games on OpenVR/SteamVR are not
 reached by it. It is global for the user, like the Vulkan layer, and the
-last VR uninstall removes it. This has not been tried with a headset
-by the author. It is offered as an experiment; a report of what happens,
-either way, is what it needs.
+last VR uninstall removes it. It is unverified with a headset and offered
+as an experiment; a report of what happens, either way, is what it needs.
 </details>
 
 <details>
@@ -426,7 +449,7 @@ answer there.
 A bordered window makes the swap chain the client area - 1920x1071 instead
 of 1920x1080 - and the neural result never lands on screen while every log
 reports success. Use borderless or true fullscreen at the display's own
-resolution, then press F6. Found on Bayonetta.
+resolution, then press F6. Seen on 32-bit DirectX 9 games.
 </details>
 
 <details>
@@ -516,9 +539,9 @@ dlss5-autopilot.exe "D:\Games\Game" --remove        uninstall
 dlss5-autopilot.exe "D:\Games\Game" --route feeder  native, upstream, optiscaler, renodx, bridge, feeder, standalone, remix
 dlss5-autopilot.exe "D:\Games\Game" --route remix --remix-swap   replace a Remix runtime that has no neural pass
 dlss5-autopilot.exe "D:\Games\Game" --dxvk          run the game on Vulkan through DXVK (--no-dxvk turns the automatic choice off)
-dlss5-autopilot.exe "D:\Games\Game" --vr            register ReShade's OpenXR layer as well (VR, OpenXR games; untried with a headset)
-dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build y4my4my4m   another OptiScaler build than Dagherbou's (not run here)
-dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2     ...the neural pass before the upscaler, 1-3 passes (not run here)
+dlss5-autopilot.exe "D:\Games\Game" --vr            register ReShade's OpenXR layer as well (VR, OpenXR games; unverified with a headset)
+dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build y4my4my4m   another OptiScaler build than Dagherbou's (untested)
+dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2     ...the neural pass before the upscaler, 1-3 passes (untested)
 dlss5-autopilot.exe --video ["D:\DLSS5 Player"]     set up the video player
 ```
 
@@ -653,7 +676,7 @@ core/gui.py           interface
 _tools/upstream_watch.py     what moved upstream, and what they say they fixed
 _tools/replay_report.py      a bug report's own logs, through the diagnosis
 _tools/gui_scale_check.py    the window measured at other display scalings
-_tools/walkthrough.py        the real window, driven through every route
+_tools/walkthrough.py        the window itself, driven through every route
 _tools/detect_check.py       what every game in a library detects as
 docs/releases/               the notes for every release, named after its tag
 ```

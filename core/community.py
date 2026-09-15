@@ -12,7 +12,9 @@ How it works, with no server anywhere:
   GitHub issue - the same way the bug report does - carrying one machine
   readable block and nothing that identifies them: the game's name and
   executable, the route, the build, the graphics API, the card's model and
-  architecture, the driver, this tool's version, and the outcome. No paths, no user name,
+  architecture, the driver, this tool's version, the outcome, and - where
+  the session was measured - the work area it ran at, what the model cost
+  a frame and the frame rate. No paths, no user name,
   no machine id, and nothing at all leaves without the button being pressed.
 * A workflow in the repository adds those up into `docs/compatibility.json`.
 * Every tool downloads that file and reads it before an install.
@@ -38,15 +40,28 @@ FRESH_SECONDS = 6 * 3600
 # Below this many reports a line about "what worked for others" is noise
 # dressed as knowledge - two people are not a finding.
 MIN_REPORTS = 5
+# A measurement is not a verdict: it is one number with its own count
+# printed beside it, so three of them can be shown where three outcomes
+# could not. Below this it is one person's machine, said as if it were a
+# setting for the game.
+MIN_MEASURED = 3
 MARKER = "autopilot-report"
 
 
 def record(game, route: str, result: str, *, api: str = "", build: str = "",
            gpu_sm=None, gpu_name: str = "", driver: str = "",
-           version: str = "") -> dict:
-    """The one block a shared result carries. Nothing identifying in it."""
+           version: str = "", measured: dict | None = None) -> dict:
+    """The one block a shared result carries. Nothing identifying in it.
+
+    `measured` is what the session cost - the work area it ran at, the
+    model's cost a frame, the frame rate - as autotune.shared() returns
+    it. Three numbers about a game, and nothing about a machine beyond
+    the card that is named here anyway. The keys are taken one at a time
+    rather than merged wholesale, so a future caller cannot widen what
+    leaves this machine by handing in a bigger dict.
+    """
     exe = getattr(getattr(game, "exe", None), "name", "") or ""
-    return {
+    rec = {
         "v": 1,
         "exe": exe.lower(),
         "game": (getattr(game, "name", "") or "")[:80],
@@ -59,6 +74,13 @@ def record(game, route: str, result: str, *, api: str = "", build: str = "",
         "tool": version or "",
         "result": result,          # "worked" | "failed"
     }
+    for key in ("res", "ms", "fps"):
+        value = (measured or {}).get(key)
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            # The work area is a whole percent - "a 75.0% work area" in a
+            # published list reads as a precision nobody has.
+            rec[key] = int(value) if key == "res" else round(float(value), 2)
+    return rec
 
 
 def block(rec: dict) -> str:
@@ -180,6 +202,43 @@ def advice(entry: dict | None, route: str = "", driver: str = "") -> list[str]:
     return out
 
 
+def measured_note(entry: dict | None, route: str = "") -> str:
+    """What this game really cost other people, or "".
+
+    A rate answers "does this route work here". The question directly
+    after it is "and what do I set the work area to", which everybody
+    has been answering by feel - including this tool, which measured the
+    answer on one machine and left it there.
+    """
+    rows = (entry or {}).get("measured") or {}
+    pick = None
+    if route and isinstance(rows.get(route), dict):
+        pick = (route, rows[route])
+    else:
+        ranked = sorted(((n, r) for n, r in rows.items()
+                         if isinstance(r, dict)),
+                        key=lambda x: int(x[1].get("n", 0) or 0), reverse=True)
+        pick = ranked[0] if ranked else None
+    if not pick:
+        return ""
+    name, row = pick
+    n, res = int(row.get("n", 0) or 0), row.get("res")
+    if n < MIN_MEASURED or not res:
+        return ""
+    # `n` counts the results that said which work area they ran at; the
+    # cost and the frame rate are medians over whichever of those carried
+    # them, which can be fewer. So the count is attached to the work area,
+    # and the other two are clauses that do not inherit it.
+    line = (f"{n} shared results for this game on the {name} route say what "
+            f"they ran at: a {int(res)}% work area")
+    ms, fps = row.get("ms"), row.get("fps")
+    if ms:
+        line += f". The model cost about {float(ms):.1f} ms a frame there"
+    if fps:
+        line += f", at around {float(fps):.0f} fps"
+    return line + "."
+
+
 def totals(data: dict) -> dict:
     """Every game's numbers added up: {"routes": {...}, "drivers": {...}}.
 
@@ -293,9 +352,15 @@ def issue_url(rec: dict, note: str = "") -> str:
             f"- gpu: {rec.get('gpu') or '-'} ({rec.get('sm') or '-'}), "
             f"driver {rec.get('driver') or '-'}\n"
             f"- tool: {rec.get('tool') or '-'}\n"
-            "\nThe block below is what the compatibility list reads; once "
-            "a game has five results, the next person with it is told what "
-            "happened on other machines. "
+            + (f"- measured: {rec.get('res')}% work area"
+               + (f", {rec.get('ms')} ms of model a frame"
+                  if rec.get("ms") else "")
+               + (f", {rec.get('fps')} fps" if rec.get("fps") else "")
+               + "\n" if rec.get("res") else "")
+            + "\nThe block below is what the compatibility list reads. Once "
+            "a game has five results, the next person with it is told which "
+            "route worked most often on it; three measured ones tell them "
+            "what those sessions ran at. "
             "Delete it if you would rather not share it - the rest of the "
             "report still stands."
             + block(rec))
@@ -304,4 +369,5 @@ def issue_url(rec: dict, note: str = "") -> str:
 
 
 __all__ = ["record", "block", "parse", "fetch", "for_game", "advice",
-           "issue_url", "FEED_URL", "MIN_REPORTS", "MARKER"]
+           "measured_note", "issue_url", "FEED_URL", "MIN_REPORTS",
+           "MIN_MEASURED", "MARKER"]
