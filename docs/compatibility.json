@@ -60,6 +60,21 @@
     }
    }
   },
+  "bayonetta.exe": {
+   "drivers": {
+    "581.42": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Bayonetta",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "bh6.exe": {
    "drivers": {
     "616.92": {
@@ -978,6 +993,6 @@
    }
   }
  },
- "generated": "2026-09-15T05:54:02Z",
- "reports": 80
+ "generated": "2026-09-15T06:59:07Z",
+ "reports": 81
 }
