@@ -1002,6 +1002,21 @@
     }
    }
   },
+  "sfse_loader.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Starfield",
+   "routes": {
+    "upstream": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "skyrimse.exe": {
    "drivers": {
     "616.64": {
@@ -1192,6 +1207,6 @@
    }
   }
  },
- "generated": "2026-09-16T12:28:05Z",
- "reports": 97
+ "generated": "2026-09-16T13:06:10Z",
+ "reports": 98
 }
