@@ -868,6 +868,21 @@
     }
    }
   },
+  "pkhex.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "GBA",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "playrdr2.exe": {
    "drivers": {},
    "name": "Red Dead Redemption 2",
@@ -1147,6 +1162,6 @@
    }
   }
  },
- "generated": "2026-09-16T05:12:34Z",
- "reports": 94
+ "generated": "2026-09-16T06:13:32Z",
+ "reports": 95
 }
