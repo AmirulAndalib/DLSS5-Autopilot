@@ -807,12 +807,16 @@
   "onimushawots.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "Onimusha: Way of the Sword",
    "routes": {
+    "native": {
+     "failed": 1,
+     "worked": 0
+    },
     "optiscaler": {
      "failed": 1,
      "worked": 0
@@ -1128,6 +1132,6 @@
    }
   }
  },
- "generated": "2026-09-16T03:40:43Z",
- "reports": 92
+ "generated": "2026-09-16T04:51:21Z",
+ "reports": 93
 }
