@@ -293,6 +293,21 @@
     }
    }
   },
+  "duckstation-qt-x64-releaseltcg.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "psx",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "dyinglightgame.exe": {
    "drivers": {
     "616.64": {
@@ -1162,6 +1177,6 @@
    }
   }
  },
- "generated": "2026-09-16T06:13:32Z",
- "reports": 95
+ "generated": "2026-09-16T06:20:10Z",
+ "reports": 96
 }
