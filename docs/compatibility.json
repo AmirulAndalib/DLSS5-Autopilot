@@ -473,6 +473,28 @@
     }
    }
   },
+  "gameclient.exe": {
+   "drivers": {
+    "610.88": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "feeder": {
+     "fps": 70.8,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "Star Trek Online",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "goat2-win64-shipping.exe": {
    "drivers": {
     "616.64": {
@@ -1207,6 +1229,6 @@
    }
   }
  },
- "generated": "2026-09-16T13:06:10Z",
- "reports": 98
+ "generated": "2026-09-16T17:58:58Z",
+ "reports": 99
 }
