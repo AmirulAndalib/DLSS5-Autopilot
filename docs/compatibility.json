@@ -702,6 +702,21 @@
     }
    }
   },
+  "mupen64pp.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "N64",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "naild_x86.exe": {
    "drivers": {
     "616.64": {
@@ -1132,6 +1147,6 @@
    }
   }
  },
- "generated": "2026-09-16T04:51:21Z",
- "reports": 93
+ "generated": "2026-09-16T05:12:34Z",
+ "reports": 94
 }
