@@ -97,6 +97,21 @@
     }
    }
   },
+  "bfbc2game.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Battlefield Bad Company 2",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "bh6.exe": {
    "drivers": {
     "616.92": {
@@ -1229,6 +1244,6 @@
    }
   }
  },
- "generated": "2026-09-16T17:58:58Z",
- "reports": 99
+ "generated": "2026-09-16T21:16:53Z",
+ "reports": 100
 }
