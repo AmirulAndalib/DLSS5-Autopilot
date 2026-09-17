@@ -1125,6 +1125,21 @@
     }
    }
   },
+  "sb-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Stellar.Blade.Complete.Edition-InsaneRamZes",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "sfse_loader.exe": {
    "drivers": {
     "616.92": {
@@ -1345,6 +1360,6 @@
    }
   }
  },
- "generated": "2026-09-17T16:15:21Z",
- "reports": 107
+ "generated": "2026-09-17T16:42:44Z",
+ "reports": 108
 }
