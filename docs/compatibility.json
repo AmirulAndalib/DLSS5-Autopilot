@@ -514,6 +514,21 @@
     }
    }
   },
+  "flightsimulator2024.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Microsoft Flight Simulator 2024",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "forzahorizon6.exe": {
    "drivers": {
     "616.92": {
@@ -1367,6 +1382,6 @@
    }
   }
  },
- "generated": "2026-09-17T16:52:34Z",
- "reports": 109
+ "generated": "2026-09-17T17:08:44Z",
+ "reports": 110
 }
