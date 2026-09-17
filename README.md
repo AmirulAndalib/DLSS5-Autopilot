@@ -1,61 +1,73 @@
 # DLSS 5 Autopilot
 
-Puts DLSS 5 neural rendering into games that never shipped it. Scans your
-library, reads each executable, picks the route that fits the game and your
-card, downloads every part from its publisher, writes the configuration,
-and can take all of it back out. One `.exe`, nothing to install, no admin.
+Puts DLSS 5 neural rendering into games that never shipped it. It finds your
+games, reads each one, picks the route that fits the game and your card,
+downloads every part from its publisher, and can take all of it back out.
+One `.exe`, nothing to install, no admin, and nothing is bundled.
 
 **[Download the latest release](../../releases/latest)** · Windows 10/11 ·
 NVIDIA RTX 20 or newer
 
-- **Eight routes, chosen per game.** DirectX 9 through 12, Vulkan, OpenGL,
-  32-bit, emulators and RTX Remix mods each reach the neural network a
-  different way. The tool reads the executable and the folder, offers every route
-  the game allows, marks the one that fits your card, and leaves the
-  choice yours.
-- **The game's own DLSS, kept up to date.** An install can also swap super
-  resolution (`nvngx_dlss.dll`), frame generation (`nvngx_dlssg.dll`) and,
-  for a game that ships one, ray reconstruction (`nvngx_dlssd.dll`) for
-  builds from NVIDIA's own repository; the game's file is backed up and
-  comes back on uninstall. The library marks a game whose parts
-  need installing again, and **check versions** says which parts, for the
-  game you picked.
-  [How a swap works](#keeping-a-games-dlss-up-to-date).
-- **It can try it for you.** **autopilot** installs the route, starts
-  the game, reads which DLLs the game loaded and - when ours are not in it,
-  or the game loaded another copy of the same name instead - waits for you
-  to close the game, installs the next route and goes round again, up to
-  three. A game with anti-cheat it never starts itself: it asks you to.
-  Experimental.
-- **It tells you what happened.** Play, then press **did it work?**: it
-  reads ReShade's log, the add-on's, OptiScaler's and Windows' own crash
-  record, and says whether the model ran - and when it did not, which
-  part stopped and what to do next.
-- **It notices when you play.** While the tool is open it watches the games
-  it installed into. When one closes, its logs are read and the answer
-  comes up on its own; when that answer is one another route could change
-  (nothing loaded, the game refused the hook, the feed never started, the
-  add-on crashed, the model refused) and routes this game is offered are
-  still untried,
-  it offers **try _route_**. With **keep watching in the tray** on, closing
-  the window leaves an icon in the notification area and the answer
-  arrives as a Windows notification. Both switches are behind the eye at
-  the bottom of the left bar (**watching** / **watch off**).
-- **Everything else the chain needs.** The right `nvngx_dlssnr.dll` for
-  your architecture, ReShade with add-on support, motion-vector shaders,
+<p align="center"><img src="docs/screenshots/library.png" alt="The library: every game with its cover, and a line saying whether DLSS 5 is installed, needs an update or has an anti-cheat" width="900"></p>
+
+## What it does
+
+### 1. Your games, set up in one press
+
+The library shows every game it found - Steam, Epic, GOG, EA, Ubisoft,
+Battle.net, Rockstar, Xbox, folders and 19 emulators - with its cover and
+one line: installed, working, needs a look, update, anti-cheat. Open a
+game and press **install**: the tool has already read the executable and
+the folder, and picked one of eight routes for DirectX 9 through 12,
+Vulkan, OpenGL, 32-bit, emulators and RTX Remix mods. **settings** shows
+only what that route reads, and **uninstall** puts back every file it
+replaced.
+
+<p align="center"><img src="docs/screenshots/game.png" alt="A game's page: its art, what was read from the executable, the route, and the buttons for where it stands" width="900"></p>
+
+### 2. It checks its own work
+
+Play, close the game, and the answer comes up by itself, or press
+**did it work?**: the tool watches the games it installed into, reads ReShade's log, the add-on's,
+OptiScaler's and Windows' own crash record, and says whether the model
+ran - and when it did not, which part stopped and what to do next. When
+another route could change that answer, it offers **try _route_**.
+**autopilot** does the whole loop for you: install, start the game, read
+what loaded, and move on to the next route if ours is not in it
+(experimental). Results other people shared show on the game's page before
+you install.
+
+### 3. Every game's DLSS, kept current
+
+The **dlss** page lists every game that ships NVIDIA's DLSS files - super
+resolution, frame generation, ray reconstruction - with the version each
+one has against NVIDIA's newest, for games DLSS 5 was never installed into
+too. **update** swaps in the new build, and the game's own file stays
+beside it for **restore original**.
+
+<p align="center"><img src="docs/screenshots/dlss.png" alt="The dlss page: each game's DLSS versions against NVIDIA's newest, with an update button per game" width="900"></p>
+
+### 4. Beyond games
+
+The same neural pass runs on a video file, a live YouTube link, a webcam
+or a captured part of the screen, in a portable MPC-HC the tool sets up.
+The **remix** page finds the games in your library that have an RTX Remix
+mod and switches DLSS 5 on inside the mod's own renderer.
+[Video, YouTube, webcam](#video-youtube-webcam) · [RTX Remix](#rtx-remix)
+
+<details>
+<summary>And the rest</summary>
+
+- **Everything the chain needs.** The right `nvngx_dlssnr.dll` for your
+  card's architecture, ReShade with add-on support, motion-vector shaders,
   DXVK for DirectX 9, a 64-bit helper for 32-bit games, frame generation
   where the card has it.
 - **Nothing is bundled.** Each component is fetched from its own
   publisher, at run time, at a version the tool resolves that day.
-- **Films, YouTube and whatever else is on the screen.** The same neural
-  pass runs in a portable MPC-HC - a file, a live YouTube link, a webcam -
-  or over a captured part of the desktop, half a second behind, for a
-  browser, an emulator or a game nothing may be injected into.
-  [Video, YouTube, webcam](#video-youtube-webcam).
-- **You can read it before it is written.** **What will happen?** lists
+- **You can read it before it is written.** **what will happen?** lists
   every file an install would write, back up and remove, and writes none of
-  them; **aim for _ fps** works the settings out from what your own last
-  runs measured, says how sure it is, and applies nothing on its own.
+  them; **aim for** works the work area out from what your own last runs
+  measured, says how sure it is, and applies nothing on its own.
 - **It tells you what it costs.** On optiscaler and the feeder's 64-bit
   D3D11 path it reads the last session back out of the add-on's own log -
   the model's own cost where that is logged, the frame rate where it is
@@ -64,14 +76,14 @@ NVIDIA RTX 20 or newer
 - **It reads what happened to everyone else.** Results people choose to
   share are pooled into one list the tool reads before an install: once a
   game has five, you are told which route worked most often on it, and
-  whether the one you picked did worse. A shared result carries the work
-  area it ran at, the milliseconds a frame spent on what grows with that
-  area, and the frame rate. (On OptiScaler that is the model's own cost;
-  on the feeder it is the model and the feed together.) Once three results
-  that worked on a route carry a measurement, you are told what those
-  sessions ran at before you install.
-- **It takes itself back out.** Uninstall restores every file it replaced
-  and removes only what it wrote.
+  whether the one you picked did worse. Once three results that worked on
+  a route carry a measurement, you are told what those sessions ran at.
+- **It watches from the tray too.** With **keep watching in the tray when
+  the window is closed** on (behind the eye at the bottom of the left bar),
+  closing the window leaves an icon in the notification area and the
+  answers arrive as Windows notifications.
+
+</details>
 
 > This repository holds installer logic only. No game files, no NVIDIA
 > binaries, no third-party code is redistributed - everything is fetched at
