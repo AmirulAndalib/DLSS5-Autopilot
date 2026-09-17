@@ -596,6 +596,21 @@
     }
    }
   },
+  "gridlegends.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "GridLegends",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "gtaiv.exe": {
    "drivers": {
     "616.64": {
@@ -1270,6 +1285,6 @@
    }
   }
  },
- "generated": "2026-09-17T00:13:56Z",
- "reports": 102
+ "generated": "2026-09-17T04:04:34Z",
+ "reports": 103
 }
