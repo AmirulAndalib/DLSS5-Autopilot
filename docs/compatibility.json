@@ -919,6 +919,21 @@
     }
    }
   },
+  "mpc-hc64.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Video player (MPC-HC)",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "mupen64pp.exe": {
    "drivers": {
     "616.92": {
@@ -1488,6 +1503,6 @@
    }
   }
  },
- "generated": "2026-09-17T23:06:30Z",
- "reports": 119
+ "generated": "2026-09-17T23:27:52Z",
+ "reports": 120
 }
