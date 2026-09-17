@@ -157,6 +157,21 @@
     }
    }
   },
+  "bully.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Bully: Scholarship Edition",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "cities.exe": {
    "drivers": {
     "610.62": {
@@ -1458,6 +1473,6 @@
    }
   }
  },
- "generated": "2026-09-17T21:08:39Z",
- "reports": 117
+ "generated": "2026-09-17T22:45:41Z",
+ "reports": 118
 }
