@@ -99,6 +99,7 @@ class Shell:
         self.on_watch = None
         self.on_help = None           # list of (label, cmd) for the help menu
         self.log_open = False
+        self.dialog: "Dialog | None" = None      # the question on screen, if any
 
         self._build_log()
         self.content.bind("<Configure>", self._configured)
@@ -107,6 +108,17 @@ class Shell:
         root.bind_all("<MouseWheel>", self._wheel, add="+")
         root.bind("<Escape>", self._escape)
         root.bind("<BackSpace>", self._backspace)
+        # a question that is open follows the window and comes back to the
+        # front with it. Bound once, here: a dialog that bound its own had to
+        # take them off again, and unbinding one handler takes all of them
+        # with it on the Python the release is built with.
+        root.bind("<Configure>", lambda _e: self.dialog and self.dialog._place(), add="+")
+        root.bind("<FocusIn>", lambda _e: self.dialog and self.dialog._front(), add="+")
+        # The window closing is an answer to whatever it was asking. Without
+        # it the question's wait has no writer left: quitting from the tray
+        # with one up left python.exe spinning on a dead interpreter for
+        # ever, and every later launch then met the "already open" guard.
+        root.bind("<Destroy>", lambda e: self._answer_dialog() if e.widget is root else None, add="+")
         root.bind("<Control-h>", lambda e: None if self._in_text(e) else self.home())
         root.bind("<KeyPress>", self._key, add="+")
 
@@ -250,7 +262,27 @@ class Shell:
                            outline="", tags="thumb")
 
     # ============================================================ keys
+    def _answer_dialog(self) -> bool:
+        """Answer the question on screen the way cancelling it answers it."""
+        d = self.dialog
+        if d is None:
+            return False
+        d._finish(None if d.entry is not None else False)
+        return True
+
     def _escape(self, e):
+        if self._answer_dialog():
+            # a question is up: it is what Escape is for, not the page behind it
+            return "break"
+        top = self.kit.top()
+        if top is not None and not str(top.tag).startswith("toast"):
+            # a menu closes even with the caret in the search box: a key that
+            # does nothing where the person is looking reads as a stuck window.
+            # A toast is not a menu - it goes on its own - so Escape with one
+            # on screen still belongs to the search box and the page.
+            self.kit._hide_tip()
+            self.kit.pop()
+            return "break"
         if isinstance(e.widget, tk.Entry):
             return None                      # the field clears itself first
         self.kit._hide_tip()
@@ -276,7 +308,8 @@ class Shell:
     # ============================================================ rail
     # A page's `rail` is its index here: "dlss" sits after the games it is about.
     RAIL_ITEMS = (("library", "game", "games"), ("dlss", "chip", "dlss"),
-                  ("video", "video", "video"), ("remix", "remix", "remix"))
+                  ("video", "video", "video"), ("remix", "remix", "remix"),
+                  ("vr", "headset", "vr"))
 
     def draw_rail(self) -> None:
         c = self.rail_c
@@ -705,13 +738,35 @@ class Dialog:
 
     def run(self):
         root = self.root
+        # A question asked while the window is minimised or in the tray would
+        # be placed on the window's own corner, which Windows reports as
+        # -32000: an invisible modal, in front of everything, holding the
+        # clicks. The window comes back first, and if it will not, the
+        # question goes in the middle of the screen.
+        if not root.winfo_viewable():
+            try:
+                root.deiconify()
+                root.lift()
+            except tk.TclError:
+                pass
         root.update_idletasks()
         rx, ry = root.winfo_rootx(), root.winfo_rooty()
         rw, rh = root.winfo_width(), root.winfo_height()
+        if rx < -1000 or ry < -1000 or rw < 100 or rh < 100:
+            rw, rh = min(T.px(900), root.winfo_screenwidth()), min(T.px(600), root.winfo_screenheight())
+            rx = (root.winfo_screenwidth() - rw) // 2
+            ry = (root.winfo_screenheight() - rh) // 2
         scrim = tk.Toplevel(root)
         scrim.overrideredirect(True)
         scrim.configure(bg="#000000")
         scrim.geometry(f"{rw}x{rh}+{rx}+{ry}")
+        # the dim and the card belong to the main window and stay over it: a
+        # bare overrideredirect window went behind the moment anything else
+        # was clicked, and the grab then swallowed every click (#263)
+        try:
+            scrim.transient(root)          # owned by the window: always over it,
+        except tk.TclError:                # and away with it when it is minimised
+            pass
         try:
             scrim.attributes("-alpha", 0.55)
         except tk.TclError:
@@ -725,9 +780,18 @@ class Dialog:
         probe.destroy()
         h = T.px(74) + (y2 - y1) + T.px(90) + (T.px(52) if self.entry is not None else 0)
         h = min(h, int(rh * 0.85))
-        card = tk.Toplevel(root)
+        # a child of the dim, not of the main window: a Tk grab covers the
+        # window it is set on and everything under it, so with the grab on the
+        # dim a click on the dim is delivered (cancel) and the card's own
+        # buttons keep working. The grab used to sit on the card, which threw
+        # away every click on the dim - "a click outside = cancel" never ran.
+        card = tk.Toplevel(scrim)
         card.overrideredirect(True)
         card.configure(bg=T.SURF2)
+        try:
+            card.transient(root)
+        except tk.TclError:
+            pass
         card.geometry(f"{w}x{h}+{rx + (rw - w) // 2}+{ry + (rh - h) // 2}")
         c = tk.Canvas(card, width=w, height=h, bg=T.SURF2, highlightthickness=0)
         c.pack(fill="both", expand=True)
@@ -757,25 +821,73 @@ class Dialog:
             cw = T.width(self.cancel, T.mono(11)) + T.px(44)
             k.button(bx - cw - T.px(12), by, cw, self.cancel, lambda: self._finish(
                 None if field is not None else False), h=T.px(40))
-        self.scrim, self.card = scrim, card
-        scrim.bind("<Button-1>", lambda _e: self._finish(None if field is not None else False))
-        card.bind("<Escape>", lambda _e: self._finish(None if field is not None else False))
+        self.scrim, self.card, self.field = scrim, card, field
+        # mastered on the card, not on whatever tkinter thinks the default
+        # root is: with a second Tk interpreter in the process the variable
+        # was created in one and waited on in the other, so the answer
+        # never arrived and the question hung for ever
+        self.done = tk.BooleanVar(master=card, value=False)
+        shut = lambda _e=None: self._finish(None if field is not None else False)
+        scrim.bind("<Button-1>", shut)
+        card.bind("<Escape>", shut)
+        scrim.bind("<Escape>", shut)
         if field is None:
             card.bind("<Return>", lambda _e: self._finish(True))
-        self._follow = root.bind("<Configure>", lambda _e: self._place(), add="+")
+        # Nothing is bound on the main window. Following it and coming back to
+        # the front are the shell's own handlers (Shell.__init__), which ask
+        # the dialog that is open. A dialog that bound its own had to unbind
+        # them again, and on the Python the release is built with (3.12)
+        # unbind(sequence, funcid) throws away EVERY binding for that
+        # sequence - one answered question and the window's own Escape key
+        # was gone for the rest of the session.
         card.lift()
         card.focus_force()
+        # Drawn NOW. Almost every question is asked from inside a button press,
+        # and a window made during one was mapped but never painted: people saw
+        # the screen go dim with no card on it, nothing answered (the grab), and
+        # only dragging the window brought it up - the move repainted it.
+        for wdg in (scrim, card):
+            try:
+                wdg.deiconify()
+                wdg.update_idletasks()
+            except tk.TclError:
+                pass
         try:
-            card.grab_set()
+            scrim.grab_set()
         except tk.TclError:
             pass
-        self.done = tk.BooleanVar(value=False)
-        self.shell.dialog = self          # what a test answers, and what is open
+        # and once the press that opened it has finished, in front and holding
+        # the keyboard, whatever the press did to the focus
+        self._first = root.after(1, self._front)
+        # a question asked while another is open (a worker's failure landing
+        # in the pump) goes on top of it, and the one underneath comes back
+        under, self.shell.dialog = self.shell.dialog, self    # what a test answers, and what is open
         try:
             card.wait_variable(self.done)
         finally:
-            self.shell.dialog = None
+            self.shell.dialog = under
+            if under is not None and not under.done.get():
+                under._front(grab=True)
         return self.result
+
+    def _front(self, grab: bool = False):
+        """Back in front of the window, with the keyboard."""
+        if self.done.get():
+            return
+        try:
+            self.scrim.lift()
+            self.card.lift()
+            if grab:
+                self.scrim.grab_set()
+            # the keyboard goes to the field when there is one, and a caret
+            # already inside the card is left where the person put it
+            here = self.card.focus_get()
+            if self.field is not None and here is not self.field.entry:
+                self.field.entry.focus_force()
+            elif here is None:
+                self.card.focus_force()
+        except tk.TclError:
+            pass
 
     def _place(self):
         if self.done.get():
@@ -783,6 +895,8 @@ class Dialog:
         try:
             r = self.root
             rx, ry, rw, rh = r.winfo_rootx(), r.winfo_rooty(), r.winfo_width(), r.winfo_height()
+            if rx < -1000 or ry < -1000:
+                return                        # the window is away; leave it where it is
             self.scrim.geometry(f"{rw}x{rh}+{rx}+{ry}")
             cw, ch = self.card.winfo_width(), self.card.winfo_height()
             self.card.geometry(f"+{rx + (rw - cw) // 2}+{ry + (rh - ch) // 2}")
@@ -793,15 +907,14 @@ class Dialog:
         if self.done.get():
             return
         self.result = value
-        # the follower on the main window goes with the dialog: left bound,
-        # every dialog added one more handler and kept itself alive
-        follow = getattr(self, "_follow", None)
-        if follow:
+        # the timer that puts it in front does not outlive it
+        first = getattr(self, "_first", None)
+        if first:
             try:
-                self.root.unbind("<Configure>", follow)
+                self.root.after_cancel(first)
             except (tk.TclError, ValueError):
                 pass
-            self._follow = None
+            self._first = None
         for wdg in (self.card, self.scrim):
             try:
                 wdg.grab_release()

@@ -52,8 +52,10 @@ beside it for **restore original**.
 The same neural pass runs on a video file, a live YouTube link, a webcam
 or a captured part of the screen, in a portable MPC-HC the tool sets up.
 The **remix** page finds the games in your library that have an RTX Remix
-mod and switches DLSS 5 on inside the mod's own renderer.
-[Video, YouTube, webcam](#video-youtube-webcam) · [RTX Remix](#rtx-remix)
+mod and switches DLSS 5 on inside the mod's own renderer. The **vr** page
+puts the pass where a headset looks, through ReShade's OpenXR layer - and
+says plainly what is still unproven there.
+[Video, YouTube, webcam](#video-youtube-webcam) · [RTX Remix](#rtx-remix) · [VR](#vr)
 
 <details>
 <summary>And the rest</summary>
@@ -112,9 +114,9 @@ current version of every part each time it runs.
    name; the executable's icon when there is none) and one line: installed, working, needs a
    look, update, anti-cheat - and, once other people have shared results
    for it, how many of them it worked for. Type anywhere to search; the
-   arrow keys and Enter work too. Right-click a game to hide it or to pick
-   your own cover, background or logo; **view**
-   shows hidden games again and sorts the library.
+   arrow keys and Enter work too. Right-click a game to hide it, open its
+   folder, pick your own cover, background or logo, or take DLSS 5 back out;
+   **view** shows hidden games again and sorts the library.
 3. The game's page says what was read - 32/64-bit, graphics API, where it
    came from - and the route it will take. Press **install**. Then
    **play**, press the key the tool named, and afterwards **did it work?**
@@ -129,8 +131,9 @@ The log is in a drawer at the bottom: drag its edge to give it more room,
 or **pop out** to read it in a window of its own. Esc closes whatever is
 open, then goes back; Backspace goes back; Ctrl+H goes to games.
 
-Uninstall removes exactly what was written, restores anything it replaced,
-and nothing else.
+**uninstall** - on the game's page, beside **open folder**, and in a game's
+right-click menu in the library - removes exactly what was written, restores
+anything it replaced, and nothing else.
 
 ## Which route a game gets
 
@@ -477,6 +480,29 @@ other project is a link.
 More on [ModDB](https://www.moddb.com/rtx). A mod existing is not the same
 as it running well.
 </details>
+
+## VR
+
+A VR game on OpenXR draws the headset's two eye images through the OpenXR
+runtime; the window on your desktop is only a mirror of it. A proxy DLL or
+the Vulkan layer reaches that mirror, so the headset sees nothing. ReShade's
+**OpenXR layer** is the one that reaches what the eyes get, and the **vr**
+page in the window is where that lives:
+
+- whether a layer is registered for your user, and whether it is ours or
+  ReShade's own installer's;
+- which games in your library carry `openxr_loader.dll`, the only evidence
+  read from disk that a game goes through OpenXR at all;
+- the button that takes our registration out again.
+
+Installing it is part of a game's install: tick **VR headset (OpenXR layer)**
+in a 64-bit game's settings. The registration is per user, not per game.
+Games that only offer OpenVR/SteamVR are not reached by this layer.
+
+Nobody here has a headset, so whether the feeder, the bridge and the DLSS 5
+add-on behave inside an OpenXR swapchain is unproven - the page says so, and
+a report from somebody with a headset is the only thing that can change it.
+[The whole of it, in detail](docs/vr.md)
 
 ## When it does not work
 

@@ -23,6 +23,8 @@ class RemixPage(Page):
         self.app = app
         self.busy_mod = None
         self.state: dict[str, tuple[str, str]] = {}      # mod url -> (label, colour)
+        self._dropped: str | None = None                # the mod url a removal is running for
+        self._ours: dict[str, bool] = {}                # game folder -> a mod this tool wrote is in it
 
     def refresh(self) -> int:
         self.shell.redraw()
@@ -37,15 +39,25 @@ class RemixPage(Page):
         def work():
             from .. import remix
             have = {}
+            ours = {}
             for g, m in owned:
                 try:
                     have[m.url] = bool(remix.is_remix_game(g.install_dir))
                 except Exception:
                     have[m.url] = False
-            a.q.put(("remixhave", have))
+                try:
+                    # the record beside the mod, read here and not in draw():
+                    # a file read per row per frame is what made the library
+                    # stutter when it was done that way
+                    ours[str(g.install_dir)] = bool(remixdl.installed(g.install_dir))
+                except Exception:
+                    ours[str(g.install_dir)] = False
+            a.q.put(("remixhave", (have, ours)))
         threading.Thread(target=work, daemon=True).start()
 
-    def got_have(self, have) -> None:
+    def got_have(self, payload) -> None:
+        have, ours = payload if isinstance(payload, tuple) else (payload, {})
+        self._ours = ours
         for url, present in have.items():
             if present and self.state.get(url, ("",))[0] != "working...":
                 self.state[url] = ("already in", T.MUTED)
@@ -168,6 +180,12 @@ class RemixPage(Page):
                 k.glyph(right - T.px(150), by + T.px(17), "check", T.OK, 11, anchor="w", tags=tags)
                 c.create_text(right - T.px(126), by + T.px(17), text="the mod is in", font=T.mono(10), fill=T.OK,
                               anchor="w", tags=tags)
+                # only a mod THIS tool wrote can be taken back out: the record
+                # beside it says which files were written and what they replaced
+                if getattr(self, "_ours", {}).get(str(g.install_dir)):
+                    k.link(right - T.px(150), by + T.px(46), "remove", lambda mm=m, gg=g: self.drop(mm, gg),
+                           glyph="trash", colour=T.WARN, hot=T.TEXT, tags=tags,
+                           tip="takes the mod's files out and puts back what it replaced")
             else:
                 k.button(right - T.px(260), by, T.px(260), label, lambda mm=m, gg=g: self.fetch(mm, gg),
                          glyph="download", kind="primary" if label == "download & install" else "secondary",
@@ -258,6 +276,41 @@ class RemixPage(Page):
                 a.q.put(("remixed", (mod, False, f"{mod.game}: {type(e).__name__}: {e}")))
         threading.Thread(target=work, daemon=True).start()
 
+    def drop(self, mod, game):
+        """Take a mod this tool installed back out of the game folder."""
+        if self.busy_mod is not None:
+            return
+        a = self.app
+        if a.busy:
+            self.shell.info("remix", "Wait until the job that is running now has finished, then press it again.")
+            return
+        rec = remixdl.installed(game.install_dir)
+        n = len(rec.get("files") or []) if rec else 0
+        if not self.shell.ask("remove the mod",
+                              f"Take {mod.mod} back out of {game.name}? The {n} files this tool wrote are "
+                              f"removed and anything they replaced is put back. The game's own files and a "
+                              f"DLSS 5 install in the same folder are left alone.",
+                              "remove", "keep", danger=True):
+            return
+        self.busy_mod = mod
+        self._dropped = mod.url
+        self.state[mod.url] = ("working...", T.AMBER)
+        a.busy, a.action = True, "remix"
+        a.job_game = game
+        self.shell.redraw()
+
+        def work():
+            try:
+                gone = remixdl.remove(game.install_dir, log=lambda t: a.q.put(("log", (t.strip(), ""))))
+                a.q.put(("remixed", (mod, True, f"{mod.game}: the mod is out, {len(gone)} files - rescan to "
+                                                f"see the game's routes again")))
+            except remixdl.NotAModError as e:
+                a.q.put(("remixed", (mod, False, f"{mod.game}: {e}")))
+            except Exception as e:
+                log.exception("removing a remix mod")
+                a.q.put(("remixed", (mod, False, f"{mod.game}: {type(e).__name__}: {e}")))
+        threading.Thread(target=work, daemon=True).start()
+
     def done(self, payload):
         mod, ok, text = payload
         self.busy_mod = None
@@ -265,7 +318,19 @@ class RemixPage(Page):
         if getattr(a, "action", "") == "remix":
             a.busy, a.action = False, ""
             a.job_game = None
-        self.state[mod.url] = ("installed" if ok else "retry", T.OK if ok else T.WARN)
+        # getattr: a page built without __init__ (a check does exactly
+        # that) must still be able to finish a job rather than raise
+        if getattr(self, "_dropped", None) == mod.url:
+            # a removal, not an install. Taken out, the row offers the install
+            # again; half out, it must not offer "retry", which downloads the
+            # mod and writes it over what is still there.
+            if ok:
+                self.state.pop(mod.url, None)
+            else:
+                self.state[mod.url] = ("already in", T.MUTED)
+        else:
+            self.state[mod.url] = ("installed" if ok else "retry", T.OK if ok else T.WARN)
+        self._dropped = None
         self.app.write(text, "ok" if ok else "err")
         self.shell.status(text)
         if self.shell.page is self:

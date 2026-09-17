@@ -105,19 +105,30 @@ def plan(first: str, offer: list[str], data: dict | None = None,
     elsewhere is tried before the rest of the list.
     """
     out = [first] if first and first in (offer or [first]) else []
+    rest = [n for n in (offer or []) if n not in out]
     if data is not None and game is not None:
         try:
-            said = community.next_route(data, game, out[0] if out else "",
-                                        list(offer or []))
+            # every remaining route in the order the shared results put them
+            # in, not just one promoted by matching a sentence
+            rest = [n for n, _why in community.rank_routes(data, game, rest)]
         except Exception:
-            said = ""
-        for name in (offer or []):
-            if name not in out and said and f" {name} route" in said:
-                out.append(name)
-    for name in (offer or []):
-        if name not in out:
-            out.append(name)
-    return out[:max(1, limit)]
+            pass
+    return (out + rest)[:max(1, limit)]
+
+
+def plan_reasons(offer: list[str], data: dict | None, game=None) -> list[tuple[str, str]]:
+    """(route, why it is in that place) for a plan, for the log to print.
+
+    A pass that reorders itself has to say what reordered it, or the person
+    watching the log sees the tool choose and cannot tell why.
+    """
+    if data is None or game is None:
+        return [(n, "") for n in offer]
+    try:
+        said = dict(community.rank_routes(data, game, offer))
+    except Exception:
+        said = {}
+    return [(n, said.get(n, "")) for n in offer]
 
 
 def may_start(game, check_running: bool = False) -> tuple[bool, str]:

@@ -26,6 +26,7 @@ from .gamepage import GamePage
 from .libpage import LibraryPage
 from .remixpage import RemixPage
 from .vidpage import VideoPage
+from .vrpage import VrPage
 from .shell import TITLE, Shell
 
 REPO_URL = f"https://github.com/{update.REPO}"
@@ -65,6 +66,8 @@ class App(LibraryControl, GameControl, VideoControl, WatchControl, DlssControl):
         self.shell.add(VideoPage(self.shell, self))
         self.remix_page = RemixPage(self.shell, self)
         self.shell.add(self.remix_page)
+        self.vr_page = VrPage(self.shell, self)
+        self.shell.add(self.vr_page)
         self._open_start()
         self.watch_refresh()
         root.after(60, self._pump)
@@ -125,7 +128,13 @@ class App(LibraryControl, GameControl, VideoControl, WatchControl, DlssControl):
                     self.offer_crash_report()
             except Exception:
                 pass
-            self.root.after(60, self._pump)
+            try:
+                # not into a window that has gone: the timer outlived the root
+                # and Tk ended the run on "invalid command name ..._pump"
+                if getattr(self.root, "winfo_exists", lambda: True)():
+                    self.root.after(60, self._pump)
+            except tk.TclError:
+                pass
 
     def _on_log(self, payload) -> None:
         text, tag = payload if isinstance(payload, tuple) else (payload, "")
@@ -138,6 +147,9 @@ class App(LibraryControl, GameControl, VideoControl, WatchControl, DlssControl):
 
     def _on_backdrop(self, payload) -> None:
         self.game_page.got_backdrop(payload)
+
+    def _on_vrfound(self, payload) -> None:
+        self.vr_page.got_found(payload)
 
     def _on_remixed(self, payload) -> None:
         self.remix_page.done(payload)

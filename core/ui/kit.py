@@ -50,7 +50,13 @@ class Kit:
         # what a click on empty canvas does when nothing is open (the shell
         # closes the log drawer with it)
         self.on_background = None
+        # commands waiting for the mouse button to come up (see when_up)
+        self._waiting: list = []
+        self._up_job = None
+        self._down = False
+        canvas.bind("<ButtonPress-1>", lambda _e: setattr(self, "_down", True), add="+")
         canvas.bind("<Button-1>", self._background_click, add="+")
+        canvas.bind("<ButtonRelease-1>", self._run_waiting, add="+")
 
     # ------------------------------------------------------------ plumbing
     def uid(self, prefix: str = "k") -> str:
@@ -243,8 +249,56 @@ class Kit:
             # opens a modal dialog ran its wait loop inside the press, and on
             # Windows the dialog did not show until the next click ("set up
             # the player" did nothing, then a click on empty space opened it).
-            self.c.after(1, cmd)
+            self.when_up(cmd, tag)
         self._bind(tag, "<Button-1>", click, role="click")
+
+    def when_up(self, cmd, tag: str = "") -> None:
+        """Run `cmd` once the mouse button is up again.
+
+        Windows keeps the mouse captured by the widget that was pressed until
+        the button comes up. A question opened one millisecond after the press
+        - which is what this used to do - therefore got none of the clicks
+        aimed at it while the button was still held: the window looked frozen
+        and only moving it put things right. The 400 ms is for a release that
+        never arrives (a click sent by a check, a pointer dragged off the
+        window); it is still later than the press.
+        """
+        self._waiting.append((tag, cmd))
+        self._arm()
+
+    def _arm(self) -> None:
+        """Re-check in 400 ms. While a button is still down the timer only
+        arms itself again: running the command mid-press is the very thing
+        this exists to prevent - Windows keeps the mouse captured by the
+        pressed widget, so a modal opened then gets none of the clicks."""
+        if self._up_job is not None:
+            return
+        self._up_job = self.c.after(400, self._timer)
+
+    def _timer(self) -> None:
+        self._up_job = None
+        if self._down:
+            self._arm()
+            return
+        self._run_waiting()
+
+    def _run_waiting(self, _e=None) -> None:
+        if _e is not None:
+            self._down = False
+        if self._up_job is not None:
+            try:
+                self.c.after_cancel(self._up_job)
+            except tk.TclError:
+                pass
+            self._up_job = None
+        waiting, self._waiting = self._waiting, []
+        for tag, cmd in waiting:
+            # the page may have been redrawn while the button was held (the
+            # pump redraws on a worker landing): a command whose own item is
+            # gone belongs to a page that no longer exists
+            if tag and not self.c.find_withtag(tag):
+                continue
+            self.c.after(1, cmd)
 
     def hover(self, tag: str, enter=None, leave=None, cursor: str = "hand2") -> None:
         def on_enter(_e):

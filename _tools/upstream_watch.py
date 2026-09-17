@@ -79,6 +79,21 @@ INSTALLED = {
 # Watched, deliberately not installed. The note says why, so a future
 # session does not have to work it out again.
 WATCHED = {
+    # VR. The one route into a headset is ReShade's OpenXR layer, and there
+    # is no headset here to prove any of it, so anything that moves in this
+    # corner is worth reading before the vr page's wording changes.
+    "crosire/reshade":
+        "the OpenXR layer the vr page registers ships in ReShade itself "
+        "(ReShade64_XR.json). Watch for changes to that manifest's name or "
+        "to how the layer is registered - the vr page reads both.",
+    "fholger/openxr_vulkan_layer":
+        "an OpenXR layer that touches the same implicit-layer registry key "
+        "as ours. If it gains a Windows build with our layer's name, that is "
+        "the collision that killed every 32-bit DXVK game once already.",
+    "mbucchia/OpenXR-Toolkit":
+        "the widest-used OpenXR layer on Windows, with its own upscalers. "
+        "People run it beside us: it is a second layer on the same swapchain, "
+        "so its notes are where a conflict would show first.",
     "sdli1995/dlssg_for_sm86":
         "frame generation on RTX 30 (sm_86). No release, no licence, and it "
         "is a version.dll proxy - the same slot as the MFG loader and one of "

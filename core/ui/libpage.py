@@ -375,6 +375,12 @@ class LibraryPage(Page):
                   lambda: a.set_hidden(g, not hid)),
                  ("open folder", lambda: __import__("webbrowser").open(str(g.install_dir))),
                  None] + a.picture_items(g)
+        if getattr(g, "installed", False):
+            # the install comes out from here too, without opening the game's
+            # settings (#259). "uninstall" alone, in a menu whose other entries
+            # act on the game, reads as uninstalling the game.
+            items += [None, ("uninstall dlss 5", lambda: (a.open_game(g),
+                                                          self.shell.root.after(1, a.uninstall)))]
         self.kit.menu(self.c.canvasx(e.x), self.c.canvasy(e.y), items, width=T.px(300))
 
     # ------------------------------------------------------------ keys and search

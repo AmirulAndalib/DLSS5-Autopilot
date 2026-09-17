@@ -297,9 +297,17 @@ class GamePage(Page):
         x = pad
         gap = T.px(12)
 
+        rows_used = [0]
+
         def btn(label, cmd, glyph=None, kind="secondary", w=None, enabled=True, tip=""):
-            nonlocal x
+            nonlocal x, y
             w = w or (T.width(label, T.mono(11, kind == "primary")) + T.px(70 if glyph else 44))
+            # no room on this row: the next button goes under it. Without
+            # this the last one - uninstall, since 2.0.1 - hung off the right
+            # edge at 250% scaling, and there is no sideways scroll
+            if x > pad and x + w > width - pad:
+                x, y = pad, y + h + T.px(12)
+                rows_used[0] += 1
             b = k.button(x, y, w, label, cmd, glyph=glyph, kind=kind, accent=accent, h=h, tags=tags,
                          enabled=enabled, tip=tip)
             x += w + gap
@@ -369,6 +377,11 @@ class GamePage(Page):
                     "and if not, tries the next route and tells you")
         s = btn("settings", self.toggle_settings, glyph="gear", enabled=not entering)
         self.settings_tag = s.tag
+        # the way out, next to the way in: it was only inside 'settings' in
+        # 2.0.0, which read as "2.0 cannot uninstall" (#259)
+        if g.installed:
+            btn("uninstall", a.uninstall, glyph="trash", enabled=not a.busy,
+                tip="takes out what was installed here; the game's own files come back")
         return y + h + T.px(24)
 
     def _features(self, g, pad, y, width, accent):
@@ -400,15 +413,32 @@ class GamePage(Page):
             quiet = a.dlss_line_quiet(g)          # an anti-cheat game: shown, not suggested
             items.insert(0, ("download", f"{dl}  update", T.MUTED if quiet else accent,
                              lambda: a.dlss_update_from_game(g)))
+        right = width - pad
         for glyph, label, colour, cmd in items:
+            wanted = T.px(22) + T.width(label, T.mono(9))
+            if x > pad and x + wanted > right:
+                x, y = pad, y + T.px(30)      # no room on this row: the rest go under it
             if cmd:
                 tag, wid = k.link(x, y, label, cmd, glyph=glyph, colour=colour, hot=T.TEXT, tags=tags)
             else:
                 k.glyph(x, y, glyph, colour, 11, anchor="w", tags=tags)
                 self.c.create_text(x + T.px(22), y, text=label, font=T.mono(9), fill=colour, anchor="w", tags=tags)
-                wid = T.px(22) + T.width(label, T.mono(9))
+                wid = wanted
             x += wid + T.px(30)
         return y + T.px(34)
+
+    def _wrapped(self, text, x, y, room, colour):
+        """One line of an answer, over as many rows as it needs. Cut to the
+        width, the sentence that says what happened stopped mid-word and there
+        was nowhere to read the rest of it."""
+        c = self.c
+        item = c.create_text(x, y, text=" ".join(str(text).split()), font=T.mono(9), fill=colour,
+                             anchor="nw", width=room, tags=("page",))
+        # the glyph beside it sits on the first row's middle, so the text
+        # starts half a row higher
+        c.move(item, 0, -T.px(8))
+        box = c.bbox(item)
+        return (box[3] + T.px(14)) if box else y + T.px(24)
 
     def _result(self, g, pad, y, width, accent):
         a, c, k = self.app, self.c, self.kit
@@ -437,9 +467,7 @@ class GamePage(Page):
             head, rest = self.headline(text)
             k.glyph(pad + T.px(20), y, "warn", T.AMBER, 10, anchor="w", tags=tags)
             line = head + (f" - {rest}" if rest else "")
-            c.create_text(pad + T.px(44), y, text=T.fit(line, T.mono(9), w - T.px(64)), font=T.mono(9),
-                          fill=T.TEXT, anchor="w", tags=tags)
-            y += T.px(24)
+            y = self._wrapped(line, pad + T.px(44), y, w - T.px(64), T.TEXT)
         if len(warnings) > 4:
             c.create_text(pad + T.px(44), y, text=f"{len(warnings) - 4} more in details", font=T.mono(9),
                           fill=T.DIM, anchor="w", tags=tags)
@@ -448,9 +476,7 @@ class GamePage(Page):
             for level, text in r.get("findings", []):
                 col = T.WARN if level == "bad" else T.AMBER
                 k.glyph(pad + T.px(20), y, "cross" if level == "bad" else "warn", col, 10, anchor="w", tags=tags)
-                c.create_text(pad + T.px(44), y, text=T.fit(text, T.mono(9), w - T.px(64)), font=T.mono(9),
-                              fill=T.MUTED, anchor="w", tags=tags)
-                y += T.px(24)
+                y = self._wrapped(text, pad + T.px(44), y, w - T.px(64), T.MUTED)
         elif kind == "autopilot":
             x = pad + T.px(20)
             for i, t in enumerate(r.get("tries", [])):
@@ -552,8 +578,47 @@ class GamePage(Page):
         self._others_y = y
         c.create_text(pad, y + T.px(10), text="what worked for others", font=T.mono(9), fill=T.DIM, anchor="w",
                       tags=tags)
+        # the same shared results, added up: how many people, how many got it
+        # working, and how it went on the driver THIS machine has
+        entry = None
+        try:
+            from .. import community
+            entry = community.for_game(getattr(a, "_community", None) or {}, g)
+        except Exception:
+            entry = None
+        # every read from the shared file is defended: it is written by
+        # another repository from bodies people type by hand, and one odd
+        # value used to stop the page mid-draw, on every redraw
+        def _n(v):
+            try:
+                return max(0, int(v))
+            except (TypeError, ValueError):
+                return 0
+        routes_in = (entry or {}).get("routes")
+        routes_in = routes_in if isinstance(routes_in, dict) else {}
+        totals = [(_n(v.get("worked")), _n(v.get("failed")))
+                  for v in routes_in.values() if isinstance(v, dict)]
+        n_ok = sum(w for w, _f in totals)
+        n_all = sum(w + f for w, f in totals)
+        head = ""
+        if n_all:
+            head = f"{n_all} shared result{'s' if n_all != 1 else ''}  \u00b7  {n_ok} worked"
+            from .. import gpu
+            drv = str(gpu.driver_version() or "")      # read once and cached in gpu
+            drivers_in = (entry or {}).get("drivers")
+            mine = drivers_in.get(drv) if isinstance(drivers_in, dict) else None
+            if isinstance(mine, dict):
+                mw, mf = _n(mine.get("worked")), _n(mine.get("failed"))
+                if mw + mf:
+                    head += f"  \u00b7  on driver {drv}: {mw} of {mw + mf}"
+        if head:
+            c.create_text(pad + T.width("what worked for others", T.mono(9)) + T.px(22), y + T.px(10),
+                          text=T.fit(head, T.mono(9), width - 2 * pad - T.px(220)), font=T.mono(9),
+                          fill=T.MUTED, anchor="w", tags=tags)
         y += T.px(40)
         bw = min(T.px(300), width - 2 * pad - T.px(260))
+        measured = (entry or {}).get("measured")
+        measured = measured if isinstance(measured, dict) else {}
         for i, (route, ok, n) in enumerate(rows[:5]):
             c.create_text(pad, y, text=route, font=T.mono(9), fill=T.MUTED, anchor="w", tags=tags)
             bx = pad + T.px(150)
@@ -562,6 +627,24 @@ class GamePage(Page):
                                fill=accent if i == 0 else T.MUTED, outline="", tags=tags)
             c.create_text(bx + bw + T.px(16), y, text=f"{ok} of {n}", font=T.mono(9),
                           fill=T.TEXT if i == 0 else T.MUTED, anchor="w", tags=tags)
+            m = measured.get(route)
+            m = m if isinstance(m, dict) else {}
+            try:
+                fps = float(m.get("fps") or 0)
+            except (TypeError, ValueError):
+                fps = 0.0
+            if fps > 0:
+                res, n_rep = _n(m.get("res")), max(1, _n(m.get("n")) or 1)
+                said = f"{fps:.0f} fps" + (f" at {res}%" if res else "")
+                said += f"  ({n_rep} report{'s' if n_rep != 1 else ''})"
+                c.create_text(bx + bw + T.px(110), y, text=said, font=T.mono(9), fill=T.DIM,
+                              anchor="w", tags=tags)
+            y += T.px(30)
+        if n_all:
+            c.create_text(pad, y + T.px(6), text=T.fit(
+                "counts, not a promise: a route that worked for somebody else can still fail here, "
+                "and one that failed for them can work", T.mono(9), width - 2 * pad),
+                font=T.mono(9), fill=T.DIM, anchor="w", tags=tags)
             y += T.px(30)
         return y
 

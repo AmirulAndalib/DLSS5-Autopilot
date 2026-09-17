@@ -458,13 +458,38 @@ def _proxy_name(api: str, chosen: str = "") -> str:
 VULKAN_LAYER = "(vulkan layer)"
 
 
+def _known_api(g: games.Game) -> str:
+    """The API to fall back on when the shown one cannot be used.
+
+    Normally what detection read. For the games known to close themselves on
+    a ReShade DLL it is DX11 whatever detection managed, because detection
+    can read nothing at all from a protected or unreadable executable - and
+    those are exactly the folders where being wrong means the game quits.
+    """
+    detected = getattr(g, "api_detected", "") or ""
+    if detected in dxvk.APIS:
+        return detected
+    return "DX11" if dxvk.wanted(g.exe) else detected
+
+
 def wants_dxvk(g: games.Game) -> str | None:
     """The game's name when it is known to need DXVK, else None.
 
     These games close themselves the moment ReShade hooks D3D11 - no crash,
     no message. Through DXVK they render on Vulkan and ReShade stays outside.
+
+    A game whose API has been set to Vulkan by hand still counts: Vulkan is
+    what this route produces, and reading it as the game's own API took the
+    tick off the one game that must have it (see dxvk_api).
     """
-    return dxvk.wanted(g.exe) if g.api in dxvk.APIS else None
+    api = g.api
+    detected = _known_api(g)
+    if api not in dxvk.APIS and detected in dxvk.APIS and dxvk.wanted(g.exe):
+        # a hand-set API hides it: MGS V arrived with DX10 in the settings and
+        # Vulkan in the library, both set by hand over a DX11 detection, and
+        # either one turned off the only transport the game works on
+        api = detected
+    return dxvk.wanted(g.exe) if api in dxvk.APIS else None
 
 
 def uses_dxvk(g: games.Game, opt: "Options") -> bool:
@@ -480,18 +505,41 @@ def uses_dxvk(g: games.Game, opt: "Options") -> bool:
     dgVoodoo2 was dropped. So a DX9 game takes it whether or not the box is
     ticked - the routes that handle D3D9 themselves are excluded above.
     """
-    if g.api not in dxvk.APIS:
-        return False
+    return bool(dxvk_api(g, opt))
+
+
+def dxvk_api(g: games.Game, opt: "Options") -> str:
+    """Which DirectX this install translates to Vulkan, or "" for none.
+
+    Normally the game's API. The exception is a game whose API somebody has
+    set to Vulkan by hand: that is what this route PRODUCES, not what the
+    game is. MGS V arrived that way - the tool says "the game will render on
+    Vulkan", the person set Vulkan to match, and DXVK, the one transport MGS
+    V works on, quietly switched itself off; the install then wrote the
+    ReShade dxgi.dll that makes MGS V close itself. So when the detected API
+    is one DXVK translates, and either the box is ticked or the executable is
+    one of the games known to need it, that detected API is used.
+    """
     if opt.path in (OPTI, ROUTE_RENODX, UPSTREAM, STANDALONE, ROUTE_REMIX):
-        return False
-    return bool(opt.dxvk) or g.api == "DX9"
+        return ""
+    api = g.api
+    if api not in dxvk.APIS:
+        detected = _known_api(g)
+        known = bool(dxvk.wanted(g.exe))
+        if detected in dxvk.APIS and (known or (api == "Vulkan" and opt.dxvk)):
+            api = detected
+        else:
+            return ""
+    # the tick still decides (--no-dxvk, and the box in the game's settings);
+    # what the fix above restores is the default, not the choice
+    return api if (opt.dxvk or api == "DX9") else ""
 
 
 def via_dxvk(g: games.Game, opt: "Options") -> games.Game:
     """The game as the rest of the install sees it: a Vulkan game."""
     if not uses_dxvk(g, opt):
         return g
-    return replace(g, api="Vulkan", api_why=f"DXVK: {g.api} -> Vulkan")
+    return replace(g, api="Vulkan", api_why=f"DXVK: {dxvk_api(g, opt) or g.api} -> Vulkan")
 
 
 def check_supported(g: games.Game) -> tuple[bool, str]:
@@ -1134,7 +1182,7 @@ def plan(g: games.Game, opt: Options) -> list[str]:
     if reengine.detected(g.install_dir):
         steps.append("REFramework (RE Engine - so ReShade survives)")
     if uses_dxvk(g, opt):
-        steps.append(f"DXVK ({g.api} -> Vulkan)")
+        steps.append(f"DXVK ({dxvk_api(g, opt) or g.api} -> Vulkan)")
         g = via_dxvk(g, opt)
     if opt.path == OPTI:
         # OptiScaler replaces ReShade entirely - it is the proxy DLL itself.
@@ -1301,7 +1349,7 @@ def preview(g: games.Game, opt: Options) -> Preview:
     x64 = g.bitness == 64
     if opt.path == FEEDER and g.api == "OpenGL" and opt.provider in (3, 4):
         opt = replace(opt, provider=2)       # as install() does: VORT on GL
-    dxvk_from = g.api if uses_dxvk(g, opt) else ""
+    dxvk_from = dxvk_api(g, opt)
     g = via_dxvk(g, opt)
     proxy = _proxy_name(g.api, opt.reshade_proxy)
 
@@ -2432,7 +2480,7 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
             "none on GL)")
     # Through DXVK the game is a Vulkan game from here on: no proxy DLL, the
     # Vulkan layer instead. DXVK itself goes in at step 0, below.
-    dxvk_from = g.api if uses_dxvk(g, opt) else ""
+    dxvk_from = dxvk_api(g, opt)
     steps = plan(g, opt)          # counted before the switch: DXVK is a step
     g = via_dxvk(g, opt)
     proxy = _proxy_name(g.api, opt.reshade_proxy)

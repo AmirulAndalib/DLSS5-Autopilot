@@ -525,6 +525,72 @@ def main() -> int:
         ok("...and what worked for others is drawn on the page",
            sb.text_tag(c, "what worked for others") is not None)
 
+        # ============================================ the questions buttons ask
+        # 2.0.0's autopilot looked broken to everybody who pressed it: the
+        # question it asks was made inside the press that opened it, so
+        # Windows mapped the card and never painted it - a dim screen, no
+        # card, and every click swallowed by the grab. Nothing in any suite
+        # pressed a button that asks something and then looked at the answer.
+        print("game page: the questions the buttons ask")
+
+        def asks_and_closes(label):
+            """Press `label`, and see the question drawn and answered."""
+            tag = k.find(label, "button")
+            if tag is None:
+                ok(f"'{label}' is on the page to press", False, [lab for _t, _k, lab in k.controls("button")])
+                return
+            said: dict = {}
+
+            def look(tries=[0]):
+                d = shell.dialog
+                if d is None:
+                    if tries[0] < 60:
+                        tries[0] += 1
+                        root.after(50, look)
+                    return
+                card = d.card.winfo_children()[0]
+                said["mapped"] = bool(d.card.winfo_ismapped())
+                said["drawn"] = len(card.find_all()) > 3
+                said["words"] = " ".join(card.itemcget(i, "text") for i in card.find_all()
+                                         if card.type(i) == "text")[:300]
+                for item in card.find_all():
+                    if card.type(item) != "text":
+                        continue
+                    if str(card.itemcget(item, "text")).strip().lower() in ("cancel", "keep", "no"):
+                        box = card.bbox(item)
+                        x, y = int((box[0] + box[2]) / 2), int((box[1] + box[3]) / 2)
+                        card.event_generate("<Motion>", x=x, y=y)
+                        card.event_generate("<ButtonPress-1>", x=x, y=y)
+                        card.event_generate("<ButtonRelease-1>", x=x, y=y)
+                        said["answered"] = True
+                        break
+            root.after(60, look)
+            sb.reveal(shell, tag)
+            sb.click(c, tag)
+            sb.until(root, lambda: bool(said.get("words")), 8)
+            sb.until(root, lambda: shell.dialog is None, 8)
+            ok(f"'{label}' asks first, and the question is drawn where it is asked",
+               bool(said.get("words")) and said.get("mapped") and said.get("drawn"), said)
+            ok(f"...and a real click on its own way out closes '{label}' and starts nothing",
+               said.get("answered") and shell.dialog is None and not app.busy,
+               (said.get("answered"), shell.dialog is not None, app.busy))
+            if shell.dialog is not None:
+                shell.dialog._finish(False)
+                sb.pump(root, 0.2)
+
+        shell.scroll_to(0)
+        sb.pump(root, 0.2)
+        asks_and_closes("uninstall")
+
+        # and on a game with nothing in it yet, where autopilot lives
+        app.open_game(zeta)
+        sb.until(root, lambda: not app.entering, 20)
+        sb.pump(root, 0.4)
+        asks_and_closes("autopilot")
+        app.open_game(main_game)
+        sb.until(root, lambda: not app.entering, 20)
+        sb.pump(root, 0.3)
+
         shell.scroll_to(0)
         sb.pump(root, 0.1)
         app.game_page.settings_open = False

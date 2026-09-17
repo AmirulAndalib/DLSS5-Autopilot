@@ -33,7 +33,7 @@ GLYPH = {
     "close": "\ue8bb", "add": "\ue710", "warn": "\ue7ba", "info": "\ue946",
     "bug": "\uebe8", "copy": "\ue8c8", "download": "\ue896", "link": "\ue71b",
     "hide": "\ued1a", "more": "\ue712", "refresh": "\ue72c", "save": "\ue74e",
-    "camera": "\ue722", "screen": "\ue7f4", "file": "\ue8a5", "update": "\ue777", "chip": "\ue950",
+    "camera": "\ue722", "headset": "\ue95b", "screen": "\ue7f4", "file": "\ue8a5", "update": "\ue777", "chip": "\ue950",
 }
 
 SCALE = 1.0             # pixels per 96-DPI pixel, set once at start

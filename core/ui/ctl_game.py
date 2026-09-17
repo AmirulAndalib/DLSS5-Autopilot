@@ -582,7 +582,12 @@ class GameControl:
             "fg": lambda: opti and api == "DX12",
             "feeder": lambda: feeder,
             "opti_build": lambda: opti,
-            "dxvk": lambda: bool(g) and r in (dlss.NATIVE, dlss.BRIDGE, dlss.FEEDER) and api == "DX11",
+            # api == DX11, or a game known to close itself on a ReShade DLL
+            # whose API somebody has set by hand: hiding the row then forced
+            # the box off (apply_route below), and the one game that must have
+            # DXVK was installed without it
+            "dxvk": lambda: bool(g) and r in (dlss.NATIVE, dlss.BRIDGE, dlss.FEEDER) and (
+                api == "DX11" or bool(installer.wants_dxvk(g))),
             "mfg": lambda: bool(g) and reshade_routes and self._mfg_applies(),
             "overlay_key": lambda: bool(g) and not remix,
             "vr": lambda: bool(g) and reshade_routes and (g.bitness or 64) == 64,
@@ -1143,6 +1148,13 @@ class GameControl:
         self.result = None
         self.write("")
         self.write(f"=== {g.name}: autopilot ({', '.join(routes)}) ===", "head")
+        # why that order, when other people's results put it there
+        try:
+            for name, why in autopilot.plan_reasons(routes, self._community, g):
+                if why:
+                    self.write(f"> {name}: {why}")
+        except Exception:
+            pass
         per_route = {r: self.opts(r) for r in routes}
         pass_plan = getattr(self, "_pass_plan", None)
         offered = list(getattr(self.support, "options", None) or [])

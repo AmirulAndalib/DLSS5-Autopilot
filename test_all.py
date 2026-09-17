@@ -506,9 +506,40 @@ class _UiLive:
                 self.app.lookout.stop()
         except Exception:
             pass
+        # The window's own workers (covers, a game's support, a scan) reach
+        # into Tk when they land. Destroying the interpreter while one is
+        # still running aborts the whole run with a Tcl panic ("async handler
+        # deleted by the wrong thread"), and every section after it never
+        # runs - which is what ended three gate runs at the same place.
+        # capped low on purpose: the watcher's poller is a daemon that never
+        # ends, so this can only ever be a grace period, not a join
+        import threading as _thr
+        end = time.monotonic() + 1.5
+        while time.monotonic() < end:
+            alive = [t for t in _thr.enumerate()
+                     if t is not _thr.main_thread() and t.is_alive() and t.daemon]
+            if not alive:
+                break
+            try:
+                self.root.update()
+            except Exception:
+                break
+            time.sleep(0.05)
         try:
             for job in self.root.tk.splitlist(self.root.tk.call("after", "info")):
                 self.root.after_cancel(job)
+        except Exception:
+            pass
+        # every Tk image dropped here, on this thread, while the interpreter
+        # is still alive: one collected later on a worker aborts the process
+        try:
+            sys.path.insert(0, str(SRC_DIR / "_tools"))
+            from ui_sandbox import drop_images as _drop, keep as _keep
+            _drop(self.root)
+            # and the window itself is kept referenced: its workers outlive
+            # it, and the last reference falling in one of them deletes the
+            # Tcl interpreter from the wrong thread and aborts the run
+            _keep(self.root, getattr(self.root, "tk", None), self.app)
         except Exception:
             pass
         try:
@@ -554,6 +585,27 @@ from core import remix, remixlist  # noqa: E402
 from core import pe, reengine, refw, watch, community  # noqa: E402
 from core import (diagnose, dlss, games, gpu, installer, net, optiscaler,  # noqa: E402
                   pe, prefs, reshade_ini, sources, update, vulkan)
+from core import log as _suite_log  # noqa: E402
+
+# A run that blocks is worse than a run that fails: three gate passes ended
+# with no verdict at all and nothing to read. If the whole suite has not
+# finished in twenty minutes, every thread's stack is printed and the run
+# ends - so a hang names its own line.
+try:
+    import faulthandler as _fh
+    _fh.enable()
+    _fh.dump_traceback_later(1200, exit=True)
+except Exception:
+    pass
+
+# The suite's own log goes in a temporary folder. It used to go into the real
+# one, so a run left "ValueError: deliberate" and "the tuner fell over" in the
+# owner's autopilot.log - the file the tool's own diagnosis reads, and the one
+# he is asked to send with a report.
+_LOG_DIR = Path(tempfile.mkdtemp(prefix="suite_log_"))
+atexit.register(shutil.rmtree, _LOG_DIR, True)
+_suite_log.DIR = _LOG_DIR
+_suite_log.FILE = _LOG_DIR / "autopilot.log"
 
 check("no Turkish characters in any source", not any(
     any(ch in p.read_text(encoding="utf8") for ch in "şğıöçüŞĞİÖÇÜ")
@@ -1205,7 +1257,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.0", update.VERSION == "2.0.0", update.VERSION)
+check("version is 2.0.1", update.VERSION == "2.0.1", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -4842,6 +4894,7 @@ class _Tk48:
 
 
 with patch.object(_uiapp48, "tk", _types48.SimpleNamespace(Tk=_Tk48)), \
+        patch.object(_uiapp48, "already_open", lambda: False), \
         patch.object(_uiapp48.win, "dpi_aware", lambda: _order48.append("dpi_aware")), \
         patch.object(_uiapp48.win, "apply_scale", lambda r: _order48.append("apply_scale")), \
         patch.object(_uiapp48, "App", lambda r: _order48.append("App")), \
@@ -7488,8 +7541,8 @@ check("the compatibility workflow does not filter on the label",
       "labels=result" not in _wf and "state=all" in _wf)
 
 # FEATURES: the version is the delivery mechanism for the library rescan.
-check("the version is 2.0.0 in the file the build reads too",
-      "2.0.0.0" in (Path(__file__).resolve().parent
+check("the version is 2.0.1 in the file the build reads too",
+      "2.0.1.0" in (Path(__file__).resolve().parent
                     / "version_info.txt").read_text(encoding="utf8"))
 check("...and the release notes the workflow publishes exist",
       (Path(__file__).resolve().parent / "docs" / "releases"
@@ -10498,11 +10551,13 @@ check("a route list this game is not offered never reaches routes[0]",
 check("the route order starts with the one the tool recommended",
       _ap.plan("optiscaler", ["feeder", "optiscaler", "bridge"])[0] == "optiscaler")
 # Which route goes SECOND is not the dropdown's order: it is the one other
-# people's results say rescued this game.
-_shared: dict = {"games": {}}
-_said = "In this game the bridge route is reported working by 3 of 4."
-with patch.object(community, "next_route", lambda *a, **k: _said):
-    _order = _ap.plan("feeder", ["feeder", "optiscaler", "bridge"], _shared, _g)
+# people's results put there. Read from the results themselves now, not from
+# the sentence written for a person (community.rank_routes).
+_shared = {"games": {(_g.exe.name.lower() if _g.exe else "game.exe"): {"routes": {
+    "bridge": {"worked": 3, "failed": 1},
+    "optiscaler": {"worked": 0, "failed": 3},
+}}}}
+_order = _ap.plan("feeder", ["feeder", "optiscaler", "bridge"], _shared, _g)
 check("...and the route the shared results rescued this game with goes next",
       _order == ["feeder", "bridge", "optiscaler"], _order)
 
@@ -13534,16 +13589,39 @@ try:
     _g3cfg = len([ln for ln in str(_g3live.root.bind("<Configure>")).splitlines() if ln.strip()])
     # answered once the dialog is really up: a single timer that fired before
     # the dialog existed left the whole suite waiting on it for hours
+    # A dialog blocks until it is answered, so a timer that never sees it
+    # hangs the whole run - which is exactly what happened here, three gate
+    # passes in a row, with no verdict and nothing to read. The net below
+    # answers it whatever happens, and what the timer saw is checked, so a
+    # dialog that never appears FAILS instead of waiting for ever.
+    _g3seen: dict = {"tries": 0}
+
     def _g3answer(tries=[0]):
-        if _g3sh.dialog is not None:
-            _g3sh.dialog._finish(True)
-        elif tries[0] < 200:
+        d = _g3sh.dialog
+        _g3seen["tries"] = tries[0]
+        _g3seen["saw"] = d is not None
+        if d is not None:
+            d._finish(True)
+            return
+        if tries[0] < 60:
             tries[0] += 1
             _g3live.root.after(50, _g3answer)
+
+    def _g3net(which):
+        d = _g3sh.dialog
+        if d is not None:
+            _g3seen[f"net_{which}"] = True
+            d._finish(False)
+
     _g3live.root.after(150, _g3answer)
+    _g3live.root.after(6000, lambda: _g3net("first"))
     _g3sh.ask("gate", "a question")
     _g3live.root.after(150, lambda: _g3answer([0]))
+    _g3live.root.after(6000, lambda: _g3net("second"))
     _g3sh.ask("gate", "another")
+    check("gate 2.0 window: a question the suite opens is answered by its own timer, not by the net",
+          _g3seen.get("saw") is True and not _g3seen.get("net_first")
+          and not _g3seen.get("net_second"), _g3seen)
     _g3cfg2 = len([ln for ln in str(_g3live.root.bind("<Configure>")).splitlines() if ln.strip()])
     check("gate 2.0 window: an answered dialog takes its handler on the main window with it",
           _g3cfg2 == _g3cfg, (_g3cfg, _g3cfg2))
@@ -14033,6 +14111,227 @@ finally:
     shutil.rmtree(_drv_root, ignore_errors=True)
 check("the driver's own nvapi64.dll answers, and the registry is not read", _drv_a == "616.92", _drv_a)
 check("without it, the newest of several NVIDIA registry entries is taken, not the first", _drv_b == "616.92", _drv_b)
+
+
+section("2.0.1: a question anyone can close, and an install anyone can take out (#263 #259)")
+# Both came in the day 2.0.0 went out. The dialog's grab sat on the card, so
+# every click on the dim around it was thrown away, and nothing held the two
+# windows in front: click anything else and the card went behind the window
+# that opened it, with the grab still on - "impossible to close". The
+# uninstall link existed only inside 'settings', which read as gone.
+_d263 = _UiLive()
+try:
+    if not _d263.ok:
+        check("2.0.1: the window opened for the dialog checks", False, _d263.error)
+    else:
+        _sh263 = _d263.app.shell
+        _seen263: dict = {}
+
+        def _probe263(way, tries):
+            d = _sh263.dialog
+            if d is None:
+                if tries[0] < 200:
+                    tries[0] += 1
+                    _d263.root.after(50, lambda: _probe263(way, tries))
+                return
+            _seen263["covered"] = (d.card.winfo_parent() == str(d.scrim)
+                                   and d.scrim.grab_status() == "local")
+            # owned by the window that opened them: Windows keeps an owned
+            # window over its owner, and takes it away when that is minimised
+            _seen263["front"] = (str(d.card.wm_transient()) == str(_d263.root),
+                                 str(d.scrim.wm_transient()) == str(_d263.root))
+            if way == "dim":
+                d.scrim.event_generate("<Button-1>", x=4, y=4)
+            elif way == "esc-window":
+                # the window has the keyboard, as it does for a person: a key
+                # event with nothing focused reaches nothing at all
+                _d263.root.focus_force()
+                _d263.root.update()
+                _d263.root.event_generate("<Escape>")
+            else:
+                d.card.event_generate("<Escape>")
+            _d263.root.update()
+            _seen263[way] = bool(d.done.get())
+            if not d.done.get():
+                d._finish(False)
+
+        _cfg263 = len([ln for ln in str(_d263.root.bind("<Configure>")).splitlines() if ln.strip()])
+        _esc263 = len([ln for ln in str(_d263.root.bind("<Escape>")).splitlines() if ln.strip()])
+        for _way263 in ("dim", "esc-window", "esc-card"):
+            _d263.root.after(150, lambda w=_way263: _probe263(w, [0]))
+            _sh263.info("driver 616.92", "what the driver does on this build")
+            _d263.settle(80)
+        check("2.0.1: the grab covers the dim as well as the card, so a click outside is delivered",
+              _seen263.get("covered") is True, _seen263.get("covered"))
+        check("...both windows are owned by the window that opened them, so they stay over it",
+              _seen263.get("front") == (True, True), _seen263.get("front"))
+        check("...a click on the dim closes it", _seen263.get("dim") is True, _seen263.get("dim"))
+        check("...Escape closes it from the main window", _seen263.get("esc-window") is True,
+              _seen263.get("esc-window"))
+        check("...and Escape closes it from the card", _seen263.get("esc-card") is True,
+              _seen263.get("esc-card"))
+        _cfg263b = len([ln for ln in str(_d263.root.bind("<Configure>")).splitlines() if ln.strip()])
+        _esc263b = len([ln for ln in str(_d263.root.bind("<Escape>")).splitlines() if ln.strip()])
+        check("...and three answered dialogs leave the main window's handlers exactly as they were",
+              (_cfg263b, _esc263b) == (_cfg263, _esc263), (_cfg263, _esc263, _cfg263b, _esc263b))
+        # the release is built on a Python where unbind(sequence, funcid)
+        # throws every binding for that sequence away: one answered question
+        # and the window's own Escape would be gone for the session
+        check("...and no dialog binds or unbinds anything on the main window at all",
+              "root.bind(" not in src_of(_ush191.Dialog.run)
+              and "unbind" not in src_of(_ush191.Dialog._finish),
+              [ln for ln in src_of(_ush191.Dialog.run).splitlines() if "root.bind" in ln])
+        check("...the window's own Escape still works after them", _esc263b >= 1, _esc263b)
+        # the variable it waits on belongs to its own window: mastered on the
+        # default root instead, a second Tk interpreter in the same process
+        # (every check that opens the window makes one) left the question
+        # waiting for an answer written in the other interpreter - for ever
+        check("...and the variable a question waits on is mastered on its own card",
+              "BooleanVar(master=card" in src_of(_ush191.Dialog.run),
+              [ln.strip() for ln in src_of(_ush191.Dialog.run).splitlines() if "BooleanVar" in ln])
+
+        # the way out of an install, without opening anything first
+        _g259 = _ui_game(name="Installed Game", api="DX12", installed=True)
+        _d263.enter(_g259, _ui_support([dlss.FEEDER, dlss.OPTI], dlss.FEEDER))
+        _d263.settle(200)
+        check("2.0.1: an installed game's page has uninstall beside settings, with no panel opened",
+              "uninstall" in _d263.labels("button"), sorted(set(_d263.labels()))[:14])
+        _asked259 = []
+        with patch.object(type(_sh263), "ask", lambda self, title, *a, **k: _asked259.append(title) or False):
+            _hit259 = _d263.press("uninstall", "button")
+        check("...and a real click on it asks before removing anything",
+              _hit259 and _asked259 == ["uninstall"], (_hit259, _asked259))
+
+        # #263 again, the half nobody could work around: a question asked from
+        # inside a button press was mapped and never painted - a dim screen
+        # with no card on it, and only dragging the window brought it up
+        _paint263: dict = {}
+
+        def _painted263(tries=[0]):
+            d = _sh263.dialog
+            if d is None:
+                if tries[0] < 200:
+                    tries[0] += 1
+                    _d263.root.after(50, _painted263)
+                return
+            _paint263["mapped"] = bool(d.card.winfo_ismapped())
+            _kids = d.card.winfo_children()
+            _paint263["drawn"] = bool(_kids) and len(_kids[0].find_all()) > 3
+            _paint263["said"] = [_kids[0].itemcget(i, "text") for i in _kids[0].find_all()
+                                 if _kids[0].type(i) == "text"] if _kids else []
+            d._finish(False)
+        _d263.root.after(120, _painted263)
+        _d263.press("uninstall", "button")
+        _d263.settle(400)
+        check("...a question asked from inside the press that opened it is painted there and then",
+              _paint263.get("mapped") is True and _paint263.get("drawn") is True, _paint263)
+        check("...and it is the uninstall question, with its two answers on it",
+              any("Remove everything" in t for t in _paint263.get("said", []))
+              and {"uninstall", "keep"} <= {t.strip() for t in _paint263.get("said", [])},
+              _paint263.get("said"))
+
+        # a remix mod that this tool put in can be taken out again (the owner's
+        # "update everywhere, no removal anywhere")
+        _rx263 = [n for n in dir(_d263.app.remix_page) if n == "drop"]
+        check("2.0.1: the remix page has a way to take an installed mod out",
+              _rx263 == ["drop"] and "remove" in src_of(_rp_rg.RemixPage._owned), _rx263)
+except Exception as _e263:
+    check("2.0.1: the dialog and uninstall checks ran to their end", False, repr(_e263))
+finally:
+    _d263.close()
+
+
+section("2.0.1: the autopilot tries the routes in the order other people's results put them in")
+# "autopilot adi gibi olmali" - the pass used to take whatever the dropdown
+# listed next, with one route promoted by matching a sentence written for a
+# person to read. Now the order comes from the shared results, and the log
+# says what put each route where.
+from core import community as _cm201, autopilot as _ap201  # noqa: E402
+
+_g201 = games.Game(name="Ranked", folder=Path("D:/x"), exe=Path("D:/x/game.exe"), bitness=64,
+                   api="DX12", source="Steam")
+_data201 = {"games": {"game.exe": {"routes": {
+    "optiscaler": {"worked": 9, "failed": 3},      # 75% of twelve
+    "feeder": {"worked": 1, "failed": 6},
+    "bridge": {"worked": 2, "failed": 0},          # 100% of two
+}}}}
+_offer201 = [dlss.FEEDER, dlss.OPTI, dlss.BRIDGE, dlss.STANDALONE]
+_plan201 = _ap201.plan(dlss.FEEDER, _offer201, _data201, _g201)
+_all201 = _ap201.plan(dlss.FEEDER, _offer201, _data201, _g201, limit=len(_offer201))
+check("2.0.1: the route the rules chose stays first, whatever the results say",
+      _plan201[0] == dlss.FEEDER, _plan201)
+check("...and two results out of two do not outrank nine out of twelve",
+      _plan201[1:3] == [dlss.OPTI, dlss.BRIDGE], _plan201)
+check("...a pass tries no more routes than it is allowed",
+      len(_plan201) == _ap201.MAX_ATTEMPTS, _plan201)
+check("...a route nobody has reported goes last, not missing",
+      _all201[-1] == dlss.STANDALONE, _all201)
+check("...the same names come back, none added, none dropped",
+      sorted(_all201) == sorted(_offer201), (_all201, _offer201))
+check("2.0.1: the confidence of a rate falls with the count behind it",
+      _cm201.confidence(2, 2) < _cm201.confidence(9, 12) and _cm201.confidence(1, 7) < 0.1,
+      (round(_cm201.confidence(2, 2), 3), round(_cm201.confidence(9, 12), 3)))
+check("...and an empty count is worth nothing rather than raising",
+      _cm201.confidence(0, 0) == 0.0)
+_why201 = dict(_ap201.plan_reasons(_all201, _data201, _g201))
+check("2.0.1: every reordered route carries the counts that put it there, for the log",
+      _why201[dlss.OPTI] == "9 of 12 in this game" and _why201[dlss.BRIDGE] == "2 of 2 in this game"
+      and _why201[dlss.STANDALONE] == "", _why201)
+check("...and with no shared data at all the order is the one it was offered in",
+      _ap201.plan(dlss.FEEDER, _offer201, None, None, limit=len(_offer201)) == _offer201,
+      _ap201.plan(dlss.FEEDER, _offer201, None, None, limit=len(_offer201)))
+# a route with too few reports across every game is not promoted on that alone
+_thin201 = {"games": {"other.exe": {"routes": {"bridge": {"worked": 2, "failed": 0}}}}}
+check("...a handful of reports from other games promotes nothing",
+      _ap201.plan(dlss.FEEDER, _offer201, _thin201, _g201, limit=len(_offer201)) == _offer201,
+      _ap201.plan(dlss.FEEDER, _offer201, _thin201, _g201, limit=len(_offer201)))
+from core.ui import ctl_game as _cgi201  # noqa: E402
+_said201 = src_of(_cgi201.GameControl._autopilot_run)
+check("...and the pass writes those counts into the log, not only into the order",
+      "plan_reasons" in _said201, _said201[:200])
+
+
+section("2.0.1: our own files are never read as the game's own DLSS (#238's rule, through the missing-record door)")
+# MGS V, a 2015 game with no DLSS at all, was read as a game that ships it:
+# a removed or half-finished install leaves the nvngx runtimes and takes the
+# record with it, and _theirs() then said "the game shipped this". The route
+# for a game WITH DLSS is not the route for a game without one.
+import atexit as _at201  # noqa: E402
+_d201 = Path(tempfile.mkdtemp(prefix="own201_"))
+_at201.register(shutil.rmtree, _d201, True)
+
+
+def _folder201(*files):
+    d = Path(tempfile.mkdtemp(prefix="own201_", dir=_d201))
+    shutil.copyfile(X64, d / "Game.exe")
+    for f in files:
+        p = d / f
+        p.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(X64, p)
+    return d
+
+
+def _native201(d, api="DX11"):
+    return dlss.detect(d, d, api, 64, 89).native_dlss
+
+
+check("2.0.1: a game that really ships nvngx_dlss.dll still reads as having DLSS",
+      _native201(_folder201("nvngx_dlss.dll")) is True)
+_left201 = _folder201("nvngx_dlss.dll", "nvngx_dlssnr.dll", "dlss5-feed.addon64")
+check("...but the same file beside a DLSS 5 install with no record is ours, not the game's",
+      _native201(_left201) is False, dlss.detect(_left201, _left201, "DX11", 64, 89).evidence)
+check("...so the route for it is the one for a game without DLSS",
+      dlss.detect(_left201, _left201, "DX11", 64, 89).recommended == dlss.FEEDER,
+      dlss.detect(_left201, _left201, "DX11", 64, 89).recommended)
+check("...a Streamline game keeps its own evidence whatever else is in the folder",
+      _native201(_folder201("nvngx_dlss.dll", "sl.interposer.dll", "dlss5-feed.addon64"), "DX12") is True)
+check("...and a runtime we swapped keeps the game's own beside it, which still proves DLSS",
+      _native201(_folder201("nvngx_dlss.dll", "nvngx_dlss.dll" + installer.BACKUP_SUFFIX,
+                            "dlss5-feed.addon64")) is True)
+check("...the host64 folder alone is enough of a marker",
+      _native201(_folder201("nvngx_dlss.dll", f"{installer.HOST_DIR}/dlss5-feed-host64.exe")) is False)
+check("...and a folder with no install of ours in it is untouched by the rule",
+      _native201(_folder201("nvngx_dlss.dll", "d3d11.dll")) is True)
 
 
 section("RESULT")

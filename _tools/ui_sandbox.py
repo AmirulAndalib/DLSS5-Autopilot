@@ -40,6 +40,58 @@ def _no_network(*_a, **_k):
     raise OSError("the network is switched off in this check")
 
 
+# Every window a check has finished with, kept referenced until the process
+# ends. Nothing here is a leak that matters (a few dozen dead interpreters
+# with their images already deleted) and it removes a whole class of abort:
+# the window's own workers - the library's cover reader is the usual one -
+# outlive the window, and when the LAST reference to a destroyed
+# interpreter falls in one of those threads, Tcl deletes the interpreter on
+# the wrong thread and kills the process ("Tcl_AsyncDelete: async handler
+# deleted by the wrong thread"). Three gate runs ended that way, each in a
+# different section, which is what made it look like a different bug every
+# time.
+_KEPT: list = []
+
+
+def keep(*objs) -> None:
+    _KEPT.extend(o for o in objs if o is not None)
+
+
+def drop_images(root) -> int:
+    """Delete every Tk image of this interpreter, here on the Tk thread, and
+    leave the Python objects unable to do it themselves.
+
+    tkinter's Image.__del__ calls into Tcl. Garbage collection runs on
+    whatever thread happens to trigger it, so an image collected on one of
+    the window's workers calls Tk from the wrong thread: "main thread is not
+    in main loop" in a live process, and "Tcl_AsyncDelete: async handler
+    deleted by the wrong thread" - a hard abort - once the interpreter is
+    gone. That abort ended three gate runs with no verdict at all.
+
+    Called before a root is destroyed. Returns how many it dropped.
+    """
+    import gc
+    import tkinter as _tk
+    n = 0
+    try:
+        names = root.tk.splitlist(root.tk.call("image", "names"))
+    except Exception:
+        names = ()
+    for name in names:
+        try:
+            root.tk.call("image", "delete", name)
+            n += 1
+        except Exception:
+            pass
+    for obj in gc.get_objects():
+        try:
+            if isinstance(obj, _tk.Image) and getattr(obj, "tk", None) is root.tk:
+                obj.name = None          # __del__ is a no-op from now on
+        except Exception:
+            pass
+    return n
+
+
 class Sandbox:
     def __init__(self, prefix: str = "ui_check_"):
         self.dir = Path(tempfile.mkdtemp(prefix=prefix))
@@ -162,6 +214,8 @@ class Sandbox:
                 root.after_cancel(job)
         except tk.TclError:
             pass
+        drop_images(root)
+        keep(root, getattr(root, "tk", None))
         try:
             root.destroy()
         except tk.TclError:

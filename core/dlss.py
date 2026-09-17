@@ -314,8 +314,40 @@ class Support:
             self.upscaler_evidence = []
 
 
+# Files that only a DLSS 5 install puts in a game folder. Their presence
+# says the nvngx runtimes beside them arrived with that install - whether it
+# was this tool, a half-removed one of ours, or a hand-made setup. No game
+# ever shipped any of these.
+DLSS5_MARKERS = ("dlss5-feed.addon64", "dlss5-feed.addon32", "dlss5-feed.cfg",
+                 "dlss5-bridge.addon64", "dlss5-bridge.cfg",
+                 "standalone-dlssnr.addon64", "renodx-dlss5.addon64",
+                 "nvngx_dlssnr.dll")
+
+
+def _dlss5_install_here(folder: Path) -> bool:
+    """Does this folder plainly carry a DLSS 5 install, record or no record?"""
+    from . import installer
+    if (folder / installer.MANIFEST).is_file():
+        return True
+    for name in DLSS5_MARKERS:
+        if (folder / name).is_file():
+            return True
+    return (folder / installer.HOST_DIR).is_dir()
+
+
 def _ours(folder: Path, name: str) -> bool:
-    """Is this file one we installed, rather than the game's own?"""
+    """Is this file one we installed, rather than the game's own?
+
+    Three signals, in order of how sure each one is: the game's own copy
+    kept beside it as a backup, our install record, and - for the case that
+    has neither - the unmistakable files of a DLSS 5 install in the same
+    folder. That last one is here because a removed or half-finished
+    install leaves the runtimes and takes the record with it, and then our
+    own nvngx_dlss.dll was read back as proof the GAME shipped DLSS: it sent
+    MGS V, a 2015 game with no DLSS at all, down a route meant for games
+    that have it. "Own files are never game evidence" - including through
+    the door a missing record leaves open.
+    """
     from . import installer
     if (folder / (name + installer.BACKUP_SUFFIX)).is_file():
         return True                       # we replaced the game's copy
@@ -327,7 +359,9 @@ def _ours(folder: Path, name: str) -> bool:
             return name in data.get("files", [])
         except Exception:
             return False
-    return False
+    # no record: an NGX runtime standing in a folder that carries a DLSS 5
+    # install is that install's, not the game's
+    return name.lower().startswith("nvngx_") and _dlss5_install_here(folder)
 
 
 def detect(install_dir: Path, folder: Path, api: str, bitness: int,
@@ -368,11 +402,11 @@ def detect(install_dir: Path, folder: Path, api: str, bitness: int,
                     f"neural rendering, with the model-resolution dial. "
                     f"Works in many games, not all - the feeder is the proven "
                     f"fallback.")
-    _driver_steer(s, driver)
+    _driver_steer(s, driver, folder, install_dir)
     return s
 
 
-def _driver_steer(s: Support, driver: str | None) -> None:
+def _driver_steer(s: Support, driver: str | None, folder=None, install_dir=None) -> None:
     """On 616.64 and newer, off the routes that load renodx-dlss5.
 
     Every route in _RENODX_ROUTES reaches NVIDIA's runtime through the
@@ -406,6 +440,15 @@ def _driver_steer(s: Support, driver: str | None) -> None:
         return
     if not gpu.driver_at_least(sources.DRIVER_FAULT_MIN, driver):
         return
+    # Nor is a game that closes itself the moment ReShade hooks it: those
+    # reach DLSS 5 only through DXVK, and the standalone route does not go
+    # that way (installer.uses_dxvk leaves it out). Steering MGS V there
+    # named the one route that cannot work in that game.
+    from . import dxvk as _dxvk
+    for _name in _dxvk.NEEDS_DXVK:
+        for _where in (folder, install_dir):
+            if _where is not None and (_where / _name).is_file():
+                return
     was = LABELS.get(s.recommended, s.recommended).split(" - ")[0]
     s.steered_from = s.recommended
     s.recommended = STANDALONE

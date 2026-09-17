@@ -227,12 +227,10 @@ class SettingsSection:
         y += T.px(62)
         c.create_line(x0, y, x0 + w, y, fill=T.LINE, tags=tags)
         y += T.px(26)
+        # uninstall is on the page itself (gamepage._features), a few rows
+        # above this panel: two of the same link, same word, same colour, is
+        # one too many - and the one down here was the one nobody found (#259)
         right = x0 + w
-        if a.game is not None and a.game.installed:
-            tag, wid = k.link(x0 + w, y, "uninstall", a.uninstall, glyph="trash", colour=T.WARN, hot=T.TEXT,
-                              anchor="e", tags=tags)
-            box = c.bbox(tag)
-            right = (box[0] if box else x0 + w - wid) - T.px(30)
         x = x0
         for label, glyph, cmd in (("what will happen?", "info", a.preview),
                                   ("check versions", "update", a.check_versions),
