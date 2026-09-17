@@ -454,6 +454,21 @@
     }
    }
   },
+  "farcry3_d3d11.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Far Cry 3 - Duology",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "ffxiiiimg.exe": {
    "drivers": {
     "616.92": {
@@ -1285,6 +1300,6 @@
    }
   }
  },
- "generated": "2026-09-17T11:46:07Z",
- "reports": 103
+ "generated": "2026-09-17T13:14:47Z",
+ "reports": 104
 }
