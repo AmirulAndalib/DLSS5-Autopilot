@@ -262,7 +262,7 @@
   "dawnwalker.exe": {
    "drivers": {
     "616.56": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     },
     "616.64": {
@@ -275,6 +275,10 @@
     "optiscaler": {
      "failed": 0,
      "worked": 2
+    },
+    "renodx": {
+     "failed": 1,
+     "worked": 0
     }
    }
   },
@@ -1450,6 +1454,6 @@
    }
   }
  },
- "generated": "2026-09-17T20:14:46Z",
- "reports": 115
+ "generated": "2026-09-17T20:16:58Z",
+ "reports": 116
 }
