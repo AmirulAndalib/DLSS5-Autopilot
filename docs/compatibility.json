@@ -1110,6 +1110,21 @@
     }
    }
   },
+  "re3.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Resident Evil 3",
+   "routes": {
+    "bridge": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "re9.exe": {
    "drivers": {
     "616.92": {
@@ -1473,6 +1488,6 @@
    }
   }
  },
- "generated": "2026-09-17T22:45:41Z",
- "reports": 118
+ "generated": "2026-09-17T23:06:30Z",
+ "reports": 119
 }
