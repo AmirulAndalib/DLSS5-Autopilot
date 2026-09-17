@@ -311,7 +311,7 @@
   "dsclient-win64-shipping.exe": {
    "drivers": {
     "616.92": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    },
@@ -324,6 +324,10 @@
    },
    "name": "DragonSword : Awakening",
    "routes": {
+    "native": {
+     "failed": 1,
+     "worked": 0
+    },
     "optiscaler": {
      "failed": 0,
      "worked": 1
@@ -1266,6 +1270,6 @@
    }
   }
  },
- "generated": "2026-09-16T23:55:07Z",
- "reports": 101
+ "generated": "2026-09-17T00:13:56Z",
+ "reports": 102
 }
