@@ -671,6 +671,21 @@
     }
    }
   },
+  "helldivers2.exe": {
+   "drivers": {
+    "591.44": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "HELLDIVERS\u2122 2",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "hl2.exe": {
    "drivers": {
     "616.92": {
@@ -1315,6 +1330,6 @@
    }
   }
  },
- "generated": "2026-09-17T14:30:47Z",
- "reports": 105
+ "generated": "2026-09-17T14:57:58Z",
+ "reports": 106
 }
