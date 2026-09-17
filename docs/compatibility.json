@@ -1261,6 +1261,21 @@
     }
    }
   },
+  "tlou-ii-l.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "The Last of Us\u2122 Part II Remastered",
+   "routes": {
+    "upstream": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "uboat launcher.exe": {
    "drivers": {
     "616.56": {
@@ -1330,6 +1345,6 @@
    }
   }
  },
- "generated": "2026-09-17T15:09:00Z",
- "reports": 106
+ "generated": "2026-09-17T16:15:21Z",
+ "reports": 107
 }
