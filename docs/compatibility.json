@@ -1479,6 +1479,21 @@
     }
    }
   },
+  "tomb456.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Tomb Raider IV-VI Remastered",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "uboat launcher.exe": {
    "drivers": {
     "616.56": {
@@ -1563,6 +1578,6 @@
    }
   }
  },
- "generated": "2026-09-18T03:14:39Z",
- "reports": 124
+ "generated": "2026-09-18T03:22:36Z",
+ "reports": 125
 }
