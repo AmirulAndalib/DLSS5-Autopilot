@@ -273,7 +273,7 @@
    "drivers": {
     "616.92": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    },
    "name": "Cronos The New Dawn",
@@ -281,6 +281,10 @@
     "optiscaler": {
      "failed": 1,
      "worked": 0
+    },
+    "upstream": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -1653,6 +1657,6 @@
    }
   }
  },
- "generated": "2026-09-18T12:40:27Z",
- "reports": 132
+ "generated": "2026-09-18T12:46:48Z",
+ "reports": 133
 }
