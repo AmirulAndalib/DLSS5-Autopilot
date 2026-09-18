@@ -269,6 +269,21 @@
     }
    }
   },
+  "cronos-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Cronos The New Dawn",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "cyberpunk2077.exe": {
    "drivers": {
     "610.88": {
@@ -1638,6 +1653,6 @@
    }
   }
  },
- "generated": "2026-09-18T12:08:38Z",
- "reports": 131
+ "generated": "2026-09-18T12:40:27Z",
+ "reports": 132
 }
