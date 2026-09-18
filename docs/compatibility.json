@@ -1050,14 +1050,14 @@
      "worked": 0
     },
     "616.92": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "No Man's Sky",
    "routes": {
     "bridge": {
-     "failed": 2,
+     "failed": 3,
      "worked": 0
     },
     "feeder": {
@@ -1582,6 +1582,6 @@
    }
   }
  },
- "generated": "2026-09-18T07:27:19Z",
- "reports": 126
+ "generated": "2026-09-18T07:46:44Z",
+ "reports": 127
 }
