@@ -1460,6 +1460,21 @@
     }
    }
   },
+  "super woden rally edge.exe": {
+   "drivers": {
+    "616.64": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Super Woden: Rally Edge",
+   "routes": {
+    "standalone": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "supremecommander2.exe": {
    "drivers": {
     "616.64": {
@@ -1604,6 +1619,6 @@
    }
   }
  },
- "generated": "2026-09-18T10:41:06Z",
- "reports": 128
+ "generated": "2026-09-18T10:56:28Z",
+ "reports": 129
 }
