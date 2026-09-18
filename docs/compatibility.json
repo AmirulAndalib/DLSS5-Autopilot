@@ -82,6 +82,28 @@
     }
    }
   },
+  "alanwake2.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 3.97,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Alan Wake 2",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "bannerlord.exe": {
    "drivers": {
     "616.64": {
@@ -1582,6 +1604,6 @@
    }
   }
  },
- "generated": "2026-09-18T09:17:39Z",
- "reports": 127
+ "generated": "2026-09-18T10:41:06Z",
+ "reports": 128
 }
