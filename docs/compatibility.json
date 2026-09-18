@@ -1016,6 +1016,21 @@
     }
    }
   },
+  "needforspeedpayback.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Need for Speed Payback",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "nfs13.exe": {
    "drivers": {
     "616.64": {
@@ -1619,6 +1634,6 @@
    }
   }
  },
- "generated": "2026-09-18T10:56:28Z",
- "reports": 129
+ "generated": "2026-09-18T11:23:20Z",
+ "reports": 130
 }
