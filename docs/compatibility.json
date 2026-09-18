@@ -269,6 +269,28 @@
     }
    }
   },
+  "crimsondesert.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 5.45,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Crimson Desert Enhanced",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "cronos-win64-shipping.exe": {
    "drivers": {
     "616.92": {
@@ -1694,6 +1716,6 @@
    }
   }
  },
- "generated": "2026-09-18T20:24:40Z",
- "reports": 136
+ "generated": "2026-09-18T21:09:03Z",
+ "reports": 137
 }
