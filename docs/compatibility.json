@@ -979,6 +979,21 @@
     }
    }
   },
+  "maxpayne3.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Max Payne 3",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "mpc-hc64.exe": {
    "drivers": {
     "616.56": {
@@ -1657,6 +1672,6 @@
    }
   }
  },
- "generated": "2026-09-18T16:44:08Z",
- "reports": 133
+ "generated": "2026-09-18T17:08:34Z",
+ "reports": 134
 }
