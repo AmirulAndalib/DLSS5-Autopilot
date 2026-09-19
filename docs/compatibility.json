@@ -694,6 +694,21 @@
     }
    }
   },
+  "ffxvi.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "FINAL FANTASY XVI",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "firestorm-releasex64.exe": {
    "drivers": {
     "616.56": {
@@ -1938,6 +1953,6 @@
    }
   }
  },
- "generated": "2026-09-19T20:14:33Z",
- "reports": 159
+ "generated": "2026-09-19T20:16:49Z",
+ "reports": 160
 }
