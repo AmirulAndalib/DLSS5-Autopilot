@@ -23,6 +23,21 @@
     }
    }
   },
+  "acmirage_plus.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Assassins Creed Mirage",
+   "routes": {
+    "renodx": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "acodyssey.exe": {
    "drivers": {
     "616.56": {
@@ -1908,6 +1923,6 @@
    }
   }
  },
- "generated": "2026-09-19T19:47:26Z",
- "reports": 156
+ "generated": "2026-09-19T19:55:48Z",
+ "reports": 157
 }
