@@ -1095,6 +1095,21 @@
     }
    }
   },
+  "mm.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Dark Messiah of Might & Magic Single Player",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "mpc-hc64.exe": {
    "drivers": {
     "616.56": {
@@ -1878,6 +1893,6 @@
    }
   }
  },
- "generated": "2026-09-19T17:46:51Z",
- "reports": 153
+ "generated": "2026-09-19T17:55:24Z",
+ "reports": 154
 }
