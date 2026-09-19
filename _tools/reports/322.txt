@@ -1,0 +1,64 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+It closed itself.
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 4060 (sm_89), driver 616.92
+- game: OMSI 2
+- exe: Omsi.exe
+- arch/api: 32-bit / DX9 (imports d3d9.dll, no DXGI)
+- route: feeder
+
+**Diagnosis**: Inconclusive - the feed did not get far enough to tell.
+- [ok] ReShade loaded add-on: DLSS 5 Feed (32-bit) 1.16.0-beta.5 0.0.0.0
+- [ok] DLSS5_Feed.fx loaded and its textures were found.
+- [ok] Motion vectors: LumeniteFX Kernel is enabled.
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 19 Sep 19:07)
+- process: Omsi.exe
+- DLLs in the process: 84
+- ours, loaded: d3d9.dll
+- ours, not loaded: dlss5-feed.addon32
+
+**ReShade.log**
+```
+19:09:36:682 [ 9636] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 1.16.0-beta.5" v0.0.0.0 using ReShade API version 20.
+20:28:53:363 [14960] | WARN  | [DLSS 5 Feed (32-bit) 1.16.0-beta.5] [DLSS 5 Feed 32] MartysMods_Launchpad is enabled, but DLSS5_Feed.fx is compiled for provider 3 (LumeniteFX Kernel) and does not read
+20:29:59:852 [14960] | WARN  | [DLSS 5 Feed (32-bit) 1.16.0-beta.5] [DLSS 5 Feed 32] MartysMods_Launchpad is enabled, but DLSS5_Feed.fx is compiled for provider 3 (LumeniteFX Kernel) and does not read
+20:42:29:756 [ 9128] | ERROR | Failed to create upload buffer (width = 6279410240234688384)!
+20:42:35:778 [ 9128] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+...
+20:30:42.778  [feed] vkCreateDevice -> 0
+20:31:05.825  [feed32] effect runtime 2BFA9A10 initialised (device 119F8078, window class 'TPanel'; 2 runtimes in this process)
+20:42:11.374  [feed] vkCreateDevice #3: app asked for 46 extension(s), added 5, timelineSemaphore already enabled by the app, graphics queue family 0
+20:42:11.388  [feed]   VK_KHR_external_memory                   ADDED
+20:42:11.388  [feed]   VK_KHR_external_memory_win32             (app)
+20:42:11.388  [feed]   VK_KHR_external_semaphore                ADDED
+20:42:11.389  [feed]   VK_KHR_external_semaphore_win32          (app)
+20:42:11.389  [feed]   VK_KHR_dedicated_allocation              ADDED
+20:42:11.389  [feed]   VK_KHR_get_memory_requirements2          ADDED
+20:42:11.389  [feed]   VK_KHR_timeline_semaphore                ADDED
+20:42:11.485  [feed] vkCreateDevice -> 0
+20:42:26.478  [feed32] effect runtime 6A6245D0 initialised (device 15C28078, window class 'TPanel'; 3 runtimes in this process)
+20:42:29.791  ### EXCEPTION RECORDED ###  exception 0xE06D7363 (C++ exception: std::bad_alloc -- "bad allocation") at 7742B882 in C:\Windows\System32\KERNELBASE.dll; this add-on was last doing: nothin
+20:42:29.798  [feed32] crash dump FAILED (D:\SteamLibrary\steamapps\common\OMSI 2\dlss5-feed-crash.dmp, error 1)
+20:42:35.775  [feed] vkCreateDevice hook removed
+20:42:35.776  shut down cleanly.
+```

@@ -309,8 +309,16 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
         if digits:
             n = int(digits.group(1))
             if route == "optiscaler":
+                # Enabled as well as WorkingScale, because the install writes
+                # both. A file with only the scale in it is a folder nobody
+                # ever had: the diagnosis finds no Enabled line, sees a file
+                # that exists, and says "the install writes one, so it has
+                # been changed since" - an accusation the report carries no
+                # evidence for (it does not include OptiScaler.ini at all).
+                # Every optiscaler report with a work-area header got it.
                 (d / "OptiScaler.ini").write_text(
-                    f"[DlssNr]\nWorkingScale={n / 100:.3f}\n", encoding="utf8")
+                    f"[DlssNr]\nEnabled=true\nWorkingScale={n / 100:.3f}\n",
+                    encoding="utf8")
             else:
                 cfg = d / "dlss5-feed.cfg"
                 was = cfg.read_text(encoding="utf8") if cfg.exists() else ""

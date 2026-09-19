@@ -1,0 +1,43 @@
+**Did the game start?** it started and ran
+
+**What happened**
+This looks like a regression or follow-up to #168. It affects multiple games using OptiScaler v0.8.4 because successful timing lines now use DlssNr_Dx12::State::EndGpuTiming DLSS-NR elapsed: instead of DlssNr_Dx12::Dispatch.
+
+Neural Rendering is working, but Autopilot 2.0.1 reports “Neural rendering did not start.” I reproduced the same false negative in both games I tried, Death Stranding Director’s Cut and The Blood of Dawnwalker.
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 616.92
+- game: DEATH STRANDING DIRECTOR'S CUT
+- exe: ds.exe
+- arch/api: 64-bit / DX12 (loads d3d12.dll at run time (named in the exe); no static graphics import)
+- route: optiscaler
+
+**Diagnosis**: OptiScaler loaded, but the model refused or failed.
+- [bad] Neural rendering did not start.
+- [info] OptiScaler needs driver 616.56 or newer, and a nvngx_dlssnr build for your card (the tool picks one). If it keeps refusing, the native or renodx-dlss route is one click away.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 2.3.7 kept beside it)
+- optiscaler build: wilsjo2
+- d3dcompiler_47.dll: present (the game's own)
+
+**What ran, and what it loaded** (seen at 19 Sep 00:26)
+- process: ds.exe
+- DLLs in the process: 144
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll, nvngx_dlssnr.dll
+
+**OptiScaler.log**
+```
+...
+[00:30:01.339570] [I] OptiInput::ApplyMenuVisibilityChangeLocked menu visibility changed 1 -> 0 blockMouse:0 blockKeyboard:0 blockCursor:0 input:0x24023c target:0x24023c
+[00:30:01.339598] [I] OptiInput::EndCursorClipBlockLocked end cursor clip block hasDeferred:0 deferredNull:0 hasSaved:1 savedActive:1
+[00:30:05.339430] [I] DlssNr_Dx12::State::ApplyFinishedColor DLSS-NR finished picture: 3600 frames, 3840x2160, OptiScaler FG false, same producer queue true, game-frame handoff false
+[00:30:06.553013] [I] DlssNr_Dx12::State::EndGpuTiming DLSS-NR elapsed: 6.07 ms total, 5.91 ms model, 0.16 ms surrounding work (3%; intervals may include other GPU work)
+[00:30:15.083401] [W] OptiInput::hkUnhookWindowsHookEx UnhookWindowsHookEx failed hook:0x0
+[00:30:15.714345] [I]
+[00:30:15.714377] [I] DLL_PROCESS_DETACH
+[00:30:15.714386] [I] Unloading OptiScaler
+```

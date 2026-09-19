@@ -29,6 +29,60 @@ __all__ = ["_loaded_note", "_foreign_hooks", "_name_foreign_hooks"]
 _LOADS_ON_CREATE = ("nvngx_dlssnr.dll",)
 
 
+# The clock of a line that belongs to a LAUNCH: "04:12:59:122 [55536] | INFO |
+# Registered add-on ...", or ReShade's own first line. No date in it. Not any
+# line: the log's last one is written when the game closes, and measuring
+# from it called every session longer than two minutes "started again".
+_LOG_CLOCK = re.compile(r"^(\d{2}):(\d{2}):(\d{2}):\d+ [^\n]*"
+                        r"(?:Initializing crosire's ReShade|Registered add-on)", re.M)
+
+# A launch later than the sighting by less than this is the same launch seen
+# from its two ends: the snapshot is taken as the game comes up and ReShade
+# registers its add-ons a moment afterwards (#250: 49 s apart). Beyond it,
+# the game was started again after the snapshot was taken (#287: the log ends
+# with a launch three minutes after it).
+_SAME_LAUNCH_S = 120
+
+
+def _sighting_is_older_than_the_last_launch(install_dir: Path, at) -> bool:
+    """Did the game start again after this snapshot was taken?
+
+    The module list is the strongest evidence the diagnosis has - it is the
+    running game rather than a log - but only about the run it was taken
+    from. #287's was taken at 04:10, between a launch at 04:09 and the one
+    the log ends with at 04:12, and every line built from it still opened
+    "When it last ran": a finished launch read out as the current one, its
+    add-ons reported missing from a session that was over.
+
+    ReShade's own clock carries no date, so this compares times of day and
+    says nothing when they are hours apart rather than guessing a day.
+    """
+    try:
+        if not at:
+            return False
+        log = install_dir / "ReShade.log"
+        if not log.is_file():
+            return False
+        # A launch after the snapshot wrote the log after it. A log last
+        # written before it is an earlier day's, whatever its clock reads -
+        # and today's list is then the only evidence there is.
+        if log.stat().st_mtime <= float(at):
+            return False
+        text = log.read_text(encoding="utf8", errors="replace")[-250_000:]
+        marks = _LOG_CLOCK.findall(text)
+        if not marks:
+            return False
+        h, m, s = (int(x) for x in marks[-1])
+        seen_at = datetime.fromtimestamp(float(at))
+        last = seen_at.replace(hour=h, minute=m, second=s, microsecond=0)
+    except (OSError, TypeError, ValueError, OverflowError):
+        return False
+    gap = (last - seen_at).total_seconds()
+    # Only a gap on the same day, and only a plausible one: a log whose last
+    # line reads hours after the snapshot is a log from another day.
+    return _SAME_LAUNCH_S < gap < 3 * 3600
+
+
 def _loaded_note(install_dir: Path, man: dict, rep: Report) -> None:
     """Say what the process really had in it, where the log cannot.
 
@@ -53,6 +107,8 @@ def _loaded_note(install_dir: Path, man: dict, rep: Report) -> None:
     except Exception:
         return
     if not seen or seen.get("refused"):
+        return
+    if _sighting_is_older_than_the_last_launch(install_dir, seen.get("at")):
         return
     later = [n for n in need if str(n).lower() in _LOADS_ON_CREATE]
     need = [n for n in need if n not in later]

@@ -47,6 +47,8 @@ CHAIN = (
         "The install went beside a launcher",
         "is running and has loaded nothing from this folder",
         "and loaded nothing from this folder",
+        # #328: "The game loads d3d9.dll from another folder - ours is never reached."
+        "from another folder - ours is never",
         "Not run yet, or the Remix runtime never",
         "It looks as though it ran and nothing this install wrote was loaded",
         "and no log was written - ReShade's Vulkan layer is not reaching the game",
@@ -71,11 +73,13 @@ CHAIN = (
         "Set up correctly, but not switched on yet",
         "Loaded and set up; no neural frame yet",
         "OptiScaler loaded; neural rendering not switched on",
+        "The add-ons are loaded and the neural pass is switched off",
         "ReShade never gave it an effect runtime",
     )),
     ("7 loaded, and we cannot see", "us", (
         "Inconclusive - open the overlay",
         "Add-ons loaded. Confirm in",
+        "Add-ons loaded and the switch is on",
         "Frames reach the 64-bit helper, and only its own log",
     )),
     ("8 the add-on crashed", "upstream", (

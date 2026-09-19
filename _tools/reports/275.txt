@@ -1,0 +1,53 @@
+**Did the game start?** it started and ran
+
+**What happened**
+It started but the DLSS5 never worked.
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 616.92
+- game: theHunter: Call of the Wild™
+- exe: theHunterCotW_F.exe
+- arch/api: 64-bit / DX12 (imports d3d11.dll, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: Inconclusive - open the overlay (Insert) and read the status under the Neural Rendering checkbox.
+- [warn] OptiScaler mentions neural rendering but never reports it running.
+- [ok] When it last ran (17 Sep 17:05), the process had amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll loaded.
+- [info] nvngx_dlssnr.dll was not loaded yet when the game was seen.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.8.0 kept beside it)
+- nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.8.0 kept beside it)
+- nvngx_dlssd.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.7.129 kept beside it)
+- optiscaler build: Dagherbou
+
+**What ran, and what it loaded** (seen at 17 Sep 17:05)
+- process: theHunterCotW_F.exe
+- DLLs in the process: 148
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll
+- ours, not loaded: nvngx_dlssnr.dll
+- also written, loaded only if the game asks: nvngx.dll_dlssnr.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[17:07:30.191202] [W] OptiInput::LogInputHealthSnapshotLocked menu is visible but no window/queue/raw input was received this frame. input:0x1e13f2 foreground:0x1e13f2 focused:yes subclassed:yes. Chec
+[17:07:31.622171] [I] Config::SaveIni Trying to save ini to: E:\SteamLibrary\steamapps\common\theHunterCotW\OptiScaler.ini
+[17:07:34.358017] [W] OptiInput::LogInputHealthSnapshotLocked menu is visible but no window/queue/raw input was received this frame. input:0x1e13f2 foreground:0x1e13f2 focused:yes subclassed:yes. Chec
+[17:07:34.566654] [I] OptiInput::ApplyMenuVisibilityChangeLocked menu visibility changed 1 -> 0 blockMouse:0 blockKeyboard:0 blockCursor:0 input:0x1e13f2 target:0x1e13f2
+[17:07:34.566687] [I] OptiInput::EndCursorClipBlockLocked end cursor clip block hasDeferred:1 deferredNull:0 hasSaved:1 savedActive:1
+```

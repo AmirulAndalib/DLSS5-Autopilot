@@ -49,6 +49,9 @@ PHRASES = {
         ("falling back to real frames", "falling back to real frames"),
         ("frame generation disabled", "frame generation disabled"),
         ("native presentation", "native presentation"),
+        # #309: the output-window rule hangs on the add-on's own two failure lines
+        ("native presentation initialization failed", "native presentation"),
+        ("native presentation initialization rejected", "native presentation"),
         ("waiting for a valid", "waiting for a valid"),
         ("shared frame", "shared frame"),
     ],
@@ -75,7 +78,8 @@ PHRASES = {
         ("[host] neural consumer outcome: ", "neural consumer outcome: "),
         ("did not intercept", "did not intercept"),
         ("consumer intercepted DLSS but feature 18 failed", "feature 18 failed"),
-        ("(ReShade.log is unavailable)", "unavailable"),
+        # 1.16.0-beta.5 reworded "(ReShade.log is unavailable)"
+        ("ReShade.log could not be opened", "could not be opened"),
         ("[host] DLSS 5 add-on file: %s", "DLSS 5 add-on file: "),
         ("[host] frame %llu evaluated", "evaluated"),
     ],
@@ -83,6 +87,13 @@ PHRASES = {
         ("DlssNr_Dx12::Dispatch", "DlssNr_Dx12::Dispatch"),
         ("forwarder loaded", "forwarder loaded"),
         ("Vulkan is creating swapchain", "Vulkan is creating swapchain"),
+    ],
+    # #311: this fork moved its timing line and nothing here was reading the
+    # build that writes it - the default build's phrases were the only ones
+    # checked. "running" in core/diagnose/routes.py hangs on these.
+    "OptiScaler (wilsjo2's pre-SR fork)": [
+        ("DLSS-NR elapsed:", "DLSS-NR elapsed:"),
+        ("DLSS-NR finished picture:", "DLSS-NR finished picture:"),
     ],
     "renodx-dlss5": [
         # The 616.64+ verdict hangs on this pair: the add-on's own hook
@@ -143,6 +154,13 @@ def _archives() -> dict:
                   "installer's own path if this needs checking")
     except Exception as e:
         print(f"   !! optiscaler: {e}")
+    try:
+        tag, u = optiscaler.resolve(optiscaler.PRESR)
+        if u.lower().endswith(".zip"):
+            got["OptiScaler (wilsjo2's pre-SR fork)"] = (
+                tag, net.download(u, f"phrasecheck-presr-{tag}.zip"))
+    except Exception as e:
+        print(f"   !! optiscaler, wilsjo2: {e}")
     return got
 
 

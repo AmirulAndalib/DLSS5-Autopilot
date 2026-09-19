@@ -509,8 +509,8 @@ a report from somebody with a headset is the only thing that can change it.
 **did it work?** reads `ReShade.log`, `dlss5-feed.log`, `OptiScaler.log`,
 the DXVK and Remix logs, what the game had loaded while the tool watched it
 run, and - when the game left no log at all - Windows' own Application Error
-record, and names the cause. The watcher reads the same logs when a game
-closes; for Windows' crash record, press **did it work?**.
+record, and names the cause. The watcher reads the same logs, and Windows'
+crash record, when a game closes.
 
 <details>
 <summary>The game closes a second after starting, no message</summary>

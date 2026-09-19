@@ -1,0 +1,43 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+I launch it, and either a white screen appears and it crashes with an error, or it just runs in the background and nothing happens.
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 616.92
+- game: Dark Messiah of Might & Magic Single Player
+- exe: mm.exe
+- arch/api: 32-bit / DX9 (set by hand (detected Unknown))
+- route: feeder
+
+**Diagnosis**: The game loads d3d9.dll from another folder - ours is never reached.
+- [bad] At 19 Sep 18:22 the game had d3d9.dll loaded from somewhere else, not from this folder.
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- bin/d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 19 Sep 18:22)
+- process: mm.exe
+- DLLs in the process: 138
+- ours, loaded: none
+- same name, loaded from elsewhere: C:\WINDOWS\SYSTEM32\d3d9.dll
+- ours, not loaded: dlss5-feed.addon32
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

@@ -523,6 +523,46 @@
   "route": "bridge",
   "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
  },
+ "275": {
+  "findings": [
+   "warn: OptiScaler ran, but neural rendering was never asked for.",
+   "info: OptiScaler.ini: no [DlssNr] Enabled line (the file is not there).",
+   "info: nvngx_dlssnr.dll: present.",
+   "info: nvngx.dll_dlssnr.dll: not in this folder (this build may not use one).",
+   "info: the game's own upscaler, recorded at install: none recorded - the game was expected to use DLSS. It has to be running for the model to have anything to attach to.",
+   "info: driver 616.92: new enough"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "OptiScaler loaded; neural rendering not switched on."
+ },
+ "287": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
+   "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
+   "ok: The add-on's own switch is on.",
+   "info: This route leaves no frame log of its own."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "bridge",
+  "verdict": "Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture."
+ },
+ "289": {
+  "findings": [
+   "warn: OptiScaler ran, but neural rendering was never asked for.",
+   "info: OptiScaler.ini: no [DlssNr] Enabled line (the file is not there).",
+   "info: nvngx_dlssnr.dll: present.",
+   "info: nvngx.dll_dlssnr.dll: not in this folder (this build may not use one).",
+   "info: the game's own upscaler, recorded at install: none recorded - the game was expected to use DLSS. It has to be running for the model to have anything to attach to.",
+   "info: driver 616.92: new enough"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "OptiScaler loaded; neural rendering not switched on."
+ },
  "29": {
   "findings": [
    "warn: OptiScaler ran, but neural rendering was never asked for.",
@@ -537,6 +577,35 @@
   "route": "optiscaler",
   "verdict": "OptiScaler loaded; neural rendering not switched on."
  },
+ "294": {
+  "findings": [
+   "ok: Neural rendering is running."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "Working."
+ },
+ "295": {
+  "findings": [
+   "ok: Neural rendering is running."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "Working."
+ },
+ "296": {
+  "findings": [
+   "warn: The game has not been started since the install.",
+   "info: If you DID start it, it launches something other than -.",
+   "info: Or the game ignores dxgi.dll."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "-",
+  "verdict": "Not started since the install - run the game once, then check again."
+ },
  "30": {
   "findings": [
    "bad: Every DLSS evaluate faults inside NVIDIA's NGX runtime (D3D12Core.dll <- nvngx_dlssnr.dll <- _nvngx.dll <- renodx-dlss5)."
@@ -546,6 +615,36 @@
   "route": "feeder",
   "verdict": "Driver 616.64+ faults with renodx-dlss5 4.6/4.7 - install again (the tool pins 4.55), or try the standalone route."
  },
+ "300": {
+  "findings": [
+   "warn: The game has not been started since the install.",
+   "info: If you DID start it, it launches something other than -.",
+   "info: Or the game ignores dxgi.dll."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "-",
+  "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "306": {
+  "findings": [
+   "bad: The install did not finish."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "The install never finished - install again."
+ },
+ "309": {
+  "findings": [
+   "ok: ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0",
+   "warn: The add-on attached but never reached a contract."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "standalone",
+  "verdict": "Inconclusive - the add-on attached but built nothing."
+ },
  "31": {
   "findings": [
    "bad: Nothing of this tool is in this folder."
@@ -554,6 +653,52 @@
   "ran": false,
   "route": "",
   "verdict": "Nothing is installed in this folder - install first."
+ },
+ "311": {
+  "findings": [
+   "ok: Neural rendering is running."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "Working."
+ },
+ "322": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 1.16.0-beta.5 0.0.0.0",
+   "bad: The game closed before it drew a single frame."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "Inconclusive - the feed did not get far enough to tell."
+ },
+ "325": {
+  "findings": [
+   "bad: ReShade loaded no add-ons."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "-feeder",
+  "verdict": "Inconclusive - the feed did not get far enough to tell."
+ },
+ "327": {
+  "findings": [
+   "bad: Nothing of this tool is in this folder."
+  ],
+  "never_ran": true,
+  "ran": false,
+  "route": "",
+  "verdict": "Nothing is installed in this folder - install first."
+ },
+ "328": {
+  "findings": [
+   "bad: At 19 Sep 18:22 the game had d3d9.dll loaded from somewhere else, not from this folder."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "The game loads d3d9.dll from another folder - ours is never reached."
  },
  "34": {
   "findings": [

@@ -1,0 +1,67 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+Video -> Webcam and screen -> Screen -> Screen 1 or any selected -> Start -> Players oppens Then Crashes
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 5070 Ti (sm_120), driver 616.56
+- game: -mpc
+- exe: -mpc-hc64.exe
+- arch/api: - / -
+- route: -feeder
+- ffmpeg manually installed: [ffmpeg-master-latest-win64-gpl](https://github.com/BtbN/FFmpeg-Builds/releases/tag/latest?utm_source=chatgpt.com) (2 files copied ffmpeg.exe and ffprobe.exe)
+
+---
+
+**ReShade.log**
+```
+[ReShade.log](https://github.com/user-attachments/files/32416775/ReShade.log)
+```
+
+**dlss5-feed.log**
+```
+[dlss5-feed.log](https://github.com/user-attachments/files/32416772/dlss5-feed.log)
+```
+
+
+
+**Mpc crash**
+```
+d3d11!CreateDirect3D11SurfaceFromDXGISurface+0x772bc
+renodx_dlss5+0x2ebbc
+dxgi!D3D11On12CreateDevice+0x1d17e
+dxgi!UnhookWindowsHookEx+0xdbf1
+dxgi!DXGID3D10RegisterLayers+0x47fc
+dxgi!DXGID3D10RegisterLayers+0x2485
+mpcvideorenderer64!CDX11VideoProcessor::FillBlack+0x1bb
+mpcvideorenderer64!CMpcVideoRenderer::Redraw+0x63
+mpcvideorenderer64!CMpcVideoRenderer::Flt_SetBool+0xfd
+mpc_hc64!DSObjects::CMPCVRAllocatorPresenter::Paint+0x55
+mpc_hc64!CSubPicAllocatorPresenterImpl::SetPosition+0x2cf
+mpc_hc64!DSObjects::CMPCVRAllocatorPresenter::SetPosition+0x139
+mpc_hc64!CMainFrame::MoveVideoWindow+0x81e
+mpc_hc64!CMainFrame::OnPlayPlay+0x389
+mpc_hc64!CMainFrame::OnFilePostOpenmedia+0x6f1
+mpc_hc64!CWnd::OnWndMsg+0xe43
+mpc_hc64!CWnd::WindowProc+0x3f
+mpc_hc64!CMainFrame::WindowProc+0x3cc
+mpc_hc64!AfxCallWndProc+0x122
+mpc_hc64!AfxWndProc+0x54
+user32!CallWindowProcW+0x60c
+user32!CallWindowProcW+0x8e
+mpcvideorenderer64!ParentWndProc+0x20a
+user32!CallWindowProcW+0x60c
+user32!DispatchMessageW+0x4a4
+mpc_hc64!AfxInternalPumpMessage+0x52
+mpc_hc64!CWinThread::Run+0x75
+mpc_hc64!AfxWinMain+0xbf
+mpc_hc64!__scrt_common_main_seh+0x106
+kernel32!BaseThreadInitThunk+0x14
+ntdll!RtlUserThreadStart+0x21
+```
+
+**Folder Structure**
+``` 
+[dlss5-folder-structure.txt](https://github.com/user-attachments/files/32416838/dlss5-folder-structure.txt)
+```

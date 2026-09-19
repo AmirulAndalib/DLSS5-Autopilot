@@ -1,0 +1,56 @@
+**Did the game start?** it started and ran
+
+**What happened**
+neural dont work
+
+---
+- version: 2.0.0
+- gpu: NVIDIA GeForce RTX 4060 Ti (sm_89), driver 616.92
+- game: RPCS3 (PlayStation 3)
+- exe: rpcs3.exe
+- arch/api: 64-bit / Vulkan (imports vulkan-1.dll, no DXGI)
+- route: bridge
+
+**Diagnosis**: Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture.
+- [ok] ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0
+- [ok] ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517
+- [warn] The add-on flagged your nvngx_dlssnr as an untested build.
+- [ok] The add-on's own switch is on.
+- [info] This route leaves no frame log of its own.
+- [warn] When it last ran (18 Sep 04:10), the process did not have dlss5-bridge.addon64, renodx-dlss5.addon64 loaded.
+- [info] nvngx_dlssnr.dll was not loaded yet when the game was seen.
+
+**Files in the folder**
+- dlss5-bridge.addon64: present
+- renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- ReShade 64-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 18 Sep 04:10)
+- process: rpcs3.exe
+- DLLs in the process: 137
+- ours, loaded: none
+- ours, not loaded: dlss5-bridge.addon64, nvngx_dlssnr.dll, renodx-dlss5.addon64
+- also written, loaded only if the game asks: nvngx_dlss.dll
+
+**ReShade.log**
+```
+04:09:51:718 [ 8676] | INFO  | Registered add-on "DLSS 5 Neural Rendering" v0.2026.828.517 using ReShade API version 18.
+04:09:51:726 [ 8676] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff987ba8740 ) (0x00007ff9879a6d48))
+04:09:51:726 [ 8676] | ERROR | [DLSS 5 Neural Rendering] vtable::Hook(Failed to find NVSDK_NGX_D3D12_EvaluateFeature_C)
+04:09:51:761 [ 8676] | INFO  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature unhooked successfully)
+04:09:51:761 [ 8676] | WARN  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature_C not hooked, skipping)
+04:12:59:122 [55536] | INFO  | Registered add-on "DLSS 5 Bridge 1.4.12" v1.4.12.0 using ReShade API version 18.
+04:12:59:174 [55536] | INFO  | Registered add-on "DLSS 5 Neural Rendering" v0.2026.828.517 using ReShade API version 18.
+04:12:59:180 [55536] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff987ba8740 ) (0x00007ff987636d48))
+04:12:59:180 [55536] | ERROR | [DLSS 5 Neural Rendering] vtable::Hook(Failed to find NVSDK_NGX_D3D12_EvaluateFeature_C)
+04:15:50:183 [55536] | INFO  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature unhooked successfully)
+04:15:50:183 [55536] | WARN  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature_C not hooked, skipping)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

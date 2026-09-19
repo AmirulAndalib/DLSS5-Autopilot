@@ -1,0 +1,55 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+Skyrim crash on main menu.
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 3060 (sm_86), driver 616.92
+- game: The Elder Scrolls V: Skyrim Special Edition
+- exe: SkyrimSE.exe
+- arch/api: 64-bit / DX11 (set by hand (detected DX12))
+- route: standalone
+
+**Diagnosis**: Working.
+- [ok] ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0
+- [warn] Running on zero-motion guides - expect ghosting.
+- [bad] The add-on's own output window could not be created.
+- [ok] Frames are going through the pipeline (8 logged, last was frame 8).
+- [info] Active contract: NR=feature 18 active passes=1 requested=1 at 1920x1080, DLAA (DLAA preset L) -> 1920x1080, DLSS-G=fallback-off, model=1 style=0, profile=sRGB
+
+**Files in the folder**
+- dxgi.dll: present
+- standalone-dlssnr.addon64: present
+- nvngx.dll: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_AIO_Feed.fx: present
+- reshade-shaders/Shaders/vort_Motion.fx: present
+
+**What ran, and what it loaded** (seen at 18 Sep 18:13)
+- process: SkyrimSE.exe
+- DLL list: refused - the process is protected (anti-cheat, or a store build) and will not be opened
+
+**ReShade.log**
+```
+18:14:27:667 [16028] | INFO  | Registered add-on "Standalone DLSS-NR + SR 2.2.4" v0.0.0.0 using ReShade API version 20.
+18:14:28:188 [16028] | INFO  | Calling IDXGIFactory::CreateSwapChain:
+18:14:28:191 [16028] | INFO  | Redirecting IDXGIFactory::CreateSwapChain(this = 000002B5F8EFA630, pDevice = 000002B5FC2D96D0, pDesc = 000000BDF33361A0, ppSwapChain = 00007FF685658830) ...
+18:14:58:534 [15300] | INFO  | Redirecting IDXGIFactory2::CreateSwapChainForComposition(this = 000002B7922607C0, pDevice = 000002B7006D1220, pDesc = 000000BDF78BF0D8, pRestrictToOutput = 0000000000000
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**standalone-dlssnr.log**
+```
+...
+18:15:38.981 performance direct handoff: active=1 slots=5 neural_limit=2 submit->ready=91.390ms peak=169.784ms ready->present=0.001ms submit->present=91.390ms samples=401 output_deferrals=0 admission_
+18:15:38.981 performance capture mailbox: active=0 slots=3 submissions=0 consumed=0 stale_drops=0 no_slot=0 submit->GPU-ready=0.000ms peak=0.000ms capture->selected=0.000ms peak=0.000ms source_age=0 f
+18:15:38.982 performance neural dispatcher: active=0 submissions=0 completion->next-submit=0.000ms peak=0.000ms
+18:15:38.983 performance phase-scheduled FG: active=0 api=D3D11 common-post-capture=1 submissions=0 outstanding=0 dispatcher-waits=0 common-deferrals=0 completed-in-window=0 queue-pressure-bypasses=0 
+18:15:38.984 performance adaptive governor: enabled=1 active=0 target=0 real_FPS pacing_wait=45.412ms waits=553 pressure=0ms healthy=0ms
+```

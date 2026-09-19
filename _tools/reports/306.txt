@@ -1,0 +1,43 @@
+**Did the game start?** it never started
+
+**What happened**
+Installation not complete
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 4090 (sm_89), driver 616.56
+- game: Street Fighter™ 6 Demo
+- exe: StreetFighter6.exe
+- arch/api: 64-bit / DX12 (imports d3d11.dll, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: feeder
+
+**Diagnosis**: The install never finished - install again.
+- [bad] The install did not finish.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-feed.addon64: present
+- ReShade.ini: MISSING
+- nvngx_dlssnr.dll: MISSING
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**Last error**
+```
+Traceback (most recent call last):
+  File "core\installer.py", line 3111, in install
+  File "core\installer.py", line 1926, in _install_feeder_parts
+  File "pathlib.py", line 682, in relative_to
+ValueError: 'D:\\Games\\Games\\common\\Street Fighter 6 Demo\\reshade-shaders\\Shaders\\lumenite_Kernel.fx' is not in the subpath of 'd:\\games\\games\\steam\\steamapps\\common\\Street Fighter 6 Demo'
+
+```

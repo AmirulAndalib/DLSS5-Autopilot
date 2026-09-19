@@ -775,11 +775,22 @@ class Dialog:
         f = T.mono(10)
         # measure the text to size the card
         probe = tk.Canvas(root)
-        tid = probe.create_text(0, 0, text=self.text, font=f, width=w - T.px(64), anchor="nw")
-        x1, y1, x2, y2 = probe.bbox(tid) or (0, 0, 0, 0)
+
+        def tall(width):
+            tid = probe.create_text(0, 0, text=self.text, font=f, width=width - T.px(64), anchor="nw")
+            x1, y1, x2, y2 = probe.bbox(tid) or (0, 0, 0, 0)
+            probe.delete(tid)
+            return T.px(74) + (y2 - y1) + T.px(90) + (T.px(52) if self.entry is not None else 0)
+        h = tall(w)
+        # #302: the card was cut to 85% of the WINDOW and a long text lost its
+        # end in a small one. The card is its own window: it grows wider first,
+        # and the screen is the limit, not the window under it.
+        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+        if h > int(rh * 0.85):
+            w = max(w, min(T.px(860), int(sw * 0.9)))
+            h = tall(w)
         probe.destroy()
-        h = T.px(74) + (y2 - y1) + T.px(90) + (T.px(52) if self.entry is not None else 0)
-        h = min(h, int(rh * 0.85))
+        h = min(h, int(sh * 0.9))
         # a child of the dim, not of the main window: a Tk grab covers the
         # window it is set on and everything under it, so with the grab on the
         # dim a click on the dim is delivered (cancel) and the card's own
@@ -792,7 +803,8 @@ class Dialog:
             card.transient(root)
         except tk.TclError:
             pass
-        card.geometry(f"{w}x{h}+{rx + (rw - w) // 2}+{ry + (rh - h) // 2}")
+        cx, cy = self._pos(rx, ry, rw, rh, w, h)
+        card.geometry(f"{w}x{h}+{cx}+{cy}")
         c = tk.Canvas(card, width=w, height=h, bg=T.SURF2, highlightthickness=0)
         c.pack(fill="both", expand=True)
         k = Kit(c)
@@ -899,9 +911,22 @@ class Dialog:
                 return                        # the window is away; leave it where it is
             self.scrim.geometry(f"{rw}x{rh}+{rx}+{ry}")
             cw, ch = self.card.winfo_width(), self.card.winfo_height()
-            self.card.geometry(f"+{rx + (rw - cw) // 2}+{ry + (rh - ch) // 2}")
+            cx, cy = self._pos(rx, ry, rw, rh, cw, ch)
+            self.card.geometry(f"+{cx}+{cy}")
         except tk.TclError:
             pass
+
+    def _pos(self, rx, ry, rw, rh, w, h):
+        """The card centred on the window and kept on the desktop - the whole
+        of it, the window may be on a second monitor left of or above the
+        first. One place: the first placement clamped a card taller than its
+        window (#302) and the next <Configure> centred it back off the top."""
+        r = self.root
+        vx, vy = r.winfo_vrootx(), r.winfo_vrooty()
+        vw = max(r.winfo_screenwidth(), r.winfo_vrootwidth())
+        vh = max(r.winfo_screenheight(), r.winfo_vrootheight())
+        return (max(vx, min(rx + (rw - w) // 2, vx + vw - w)),
+                max(vy, min(ry + (rh - h) // 2, vy + vh - h)))
 
     def _finish(self, value):
         if self.done.get():

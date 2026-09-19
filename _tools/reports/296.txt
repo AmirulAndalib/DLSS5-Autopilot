@@ -1,0 +1,38 @@
+**Did the game start?** it never started
+
+**What happened**
+I dont know what happend, try to experiment with native DLSS on Red Dead Redemption 1
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 616.56
+- game: -
+- exe: -
+- arch/api: - / -
+- route: -
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**Last error in this session (not from an install into this folder)**
+```
+exception in a tkinter callback
+Traceback (most recent call last):
+  File "tkinter\__init__.py", line 1968, in __call__
+  File "tkinter\__init__.py", line 862, in callit
+  File "core\ui\shell.py", line 376, in go
+  File "core\ui\shell.py", line 146, in home
+  File "core\ui\shell.py", line 140, in show
+  File "core\ui\shell.py", line 168, in redraw
+  File "core\ui\libpage.py", line 71, in draw
+  File "core\ui\kit.py", line 832, in get
+  File "tkinter\__init__.py", line 3145, in get
+_tkinter.TclError: invalid command name ".!frame.!canvas3.!entry3"
+```

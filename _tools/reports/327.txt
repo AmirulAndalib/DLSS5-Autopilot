@@ -1,0 +1,41 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+https://github.com/perseval-BLR/dlss5-classic-games/blob/main/README.md
+
+DXVK 3.0.2 x86 (D3D9→Vulkan) + global ReShade Vulkan layer + Feeder addon32 + host64 + Lumenite
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 616.92
+- game: Dark Messiah of Might & Magic Single Player
+- exe: mm.exe
+- arch/api: 32-bit / Unknown (graphics DLL loaded at runtime; assuming DX11/DX12 via dxgi.dll)
+- route: feeder
+
+**Diagnosis**: Not started since the install - run the game once, then check again.
+- [warn] The game has not been started since the install.
+- [info] If you DID start it, it launches something other than mm.exe.
+- [info] Or the game is not running on Vulkan.
+
+**Files in the folder**
+- ReShade.ini: MISSING
+- nvngx_dlssnr.dll: MISSING
+- reshade-shaders/Shaders/DLSS5_Feed.fx: MISSING
+- install record: MISSING (no install recorded in this folder)
+
+**What ran, and what it loaded** (seen at 19 Sep 18:05)
+- process: mm.exe
+- DLLs in the process: 83
+- ours, loaded: none
+- ours, not loaded: dlss5-feed.addon32
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

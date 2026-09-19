@@ -155,6 +155,87 @@ def fault_in_this_folder(crash, install_dir) -> bool:
     return here.rstrip("\\") in mod.lower()
 
 
+# OptiScaler's own unload. A process that faults does not write it: Windows
+# ends it without running the unload.
+_OPTI_UNLOAD = ("DLL_PROCESS_DETACH", "Unloading OptiScaler")
+# A fault this long after the log's last write still belongs to those lines
+# (#289: one second). Longer, or before it, and the log is about something else.
+_CLOSING_WINDOW_S = 30
+
+
+def fault_while_closing(install_dir, crash=None) -> bool:
+    """Was the game on its way out when Windows recorded this fault?
+
+    #289: FINAL FANTASY VII REBIRTH ran at 78 fps, the person closed it, and
+    ntdll recorded a heap fault one second after the game handed back its NGX
+    parameters. "It ran, and then the game crashed" was said about a session
+    that had been played and closed on purpose - and shared as a failure.
+
+    Three things have to hold, because the log is appended to run after run
+    and the markers are not only written at the end of one:
+      - the install is the optiscaler route (no other route writes this log);
+      - the fault is within _CLOSING_WINDOW_S after the log's last write - a
+        game that died before OptiScaler wrote a line leaves the PREVIOUS
+        run's unload at the end of the file;
+      - the log's last lines are OptiScaler unloading, or the game destroying
+        its NGX parameters AFTER releasing the feature. Parameters are also
+        destroyed at start-up, right after the capability query.
+
+    LIMIT: an engine that catches its own crash and exits in order writes the
+    same ending, and a fault in its teardown then reads as one from closing
+    although the person saw a crash. Nothing in the log tells the two apart.
+    """
+    d = Path(install_dir)
+    try:
+        if str((diagnose._manifest(d) or {}).get("path") or "") != "optiscaler":
+            return False
+        f = diagnose._opti_log(d) or d / "OptiScaler.log"
+        # Windows gives the fault in whole seconds and the file's time has a
+        # fraction: a fault in the same second as the last write reads as
+        # up to a second BEFORE it.
+        after = event_epoch(getattr(crash, "when", "")) - f.stat().st_mtime
+        if not -1.0 <= after <= _CLOSING_WINDOW_S:
+            return False
+        with open(f, "rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - 4096))
+            lines = [ln for ln in fh.read().decode("utf8", "replace").splitlines() if ln.strip()]
+    except (OSError, TypeError, ValueError):
+        return False
+    last = lines[-4:]
+    if any(k in ln for ln in last for k in _OPTI_UNLOAD):
+        return True
+    return any("TryDestroyNGXParameters" in ln for ln in last) \
+        and any("ReleaseFeature" in ln for ln in lines[-40:])
+
+
+CLOSING_FAULT_NOTE = ("        OptiScaler.log ends with the game releasing its DLSS resources or OptiScaler "
+                      "unloading - what the log shows when a game is on its way out - and Windows recorded the fault within "
+                      "seconds of that. It is read as a fault from closing, after the session, and does not "
+                      "count against the result.")
+
+
+def note_closing_fault(rep, crash) -> str:
+    """The fault that is not counted still goes on the record: a finding, so
+    the bug report carries it (its `windows event:` line is only printed for a
+    fault that counts), and the sentence for the screen."""
+    mod = str(getattr(crash, "module", "") or "")
+    said = (f"Windows recorded {getattr(crash, 'exe', 'the game')} faulting" + (f" in {mod}" if mod else "")
+            + f" at {getattr(crash, 'when', '?')} UTC, as the game closed - not counted.")
+    try:
+        # once: the watcher's answer and a late "did it work?" can meet on one report
+        if not any(f.title == said for f in rep.findings):
+            rep.add(diagnose.INFO, said, " ".join(CLOSING_FAULT_NOTE.split()))
+    except Exception:
+        pass
+    return said
+
+
+def crash_counts(crash, install_dir) -> bool:
+    """A fault of this session that ended it - not one recorded as it closed."""
+    return crash_is_this_session(crash, install_dir) and not fault_while_closing(install_dir, crash)
+
+
 class GameControl:
     # ================================================================ state
     def _game_init(self) -> None:
@@ -1751,11 +1832,16 @@ class GameControl:
         g = self.game
         if g is None or g.install_dir != where:
             return
-        self._last_crash = crash if crash_is_this_session(crash, g.install_dir) else None
+        self._last_crash = crash if crash_counts(crash, g.install_dir) else None
         self.write("")
         self.write("=== what Windows recorded ===", "head")
-        self.write(f"[fail] {said[0]}", "err")
-        self.write(f"        {said[1]}")
+        if crash_is_this_session(crash, g.install_dir) and self._last_crash is None:
+            # #289: played, closed on purpose, and a fault as the process went
+            self.write(f"[--]   {note_closing_fault(self._last_diag, crash)}")
+            self.write(CLOSING_FAULT_NOTE)
+        else:
+            self.write(f"[fail] {said[0]}", "err")
+            self.write(f"        {said[1]}")
         self.crash_overrides(crash)
         if self._last_diag is not None:
             self._record_verdict(self._last_diag, self._measured)
@@ -1771,7 +1857,7 @@ class GameControl:
         never_ran = bool(getattr(d, "never_ran", False))
         if not working and not never_ran:
             return
-        if not crash_is_this_session(crash, g.install_dir):
+        if not crash_counts(crash, g.install_dir):
             return
         mod = str(getattr(crash, "module", "") or "")
         if never_ran:

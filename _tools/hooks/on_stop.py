@@ -39,7 +39,24 @@ def _parses(p: Path) -> str:
         return ""
 
 
+def _already_said() -> bool:
+    """True when this stop is the one our own last message caused.
+
+    Claude Code sets stop_hook_active on the stop that follows a Stop hook's
+    output. Without asking, a tree that cannot be made clean from inside the
+    session - another session mid-round on the same files - brought the same
+    paragraph back after every reply, for as long as the person let it.
+    Once a round is enough; the next real turn asks again.
+    """
+    try:
+        return bool(json.loads(sys.stdin.read() or "{}").get("stop_hook_active"))
+    except (ValueError, OSError, AttributeError):
+        return False
+
+
 def main() -> int:
+    if _already_said():
+        return 0
     bad: list[str] = []
     # recursive: the 2.0 window lives in core/ui, and a flat glob never saw it
     for p in sorted((SRC / "core").rglob("*.py")):
@@ -70,8 +87,8 @@ def main() -> int:
         "hookSpecificOutput": {
             "hookEventName": "Stop",
             "additionalContext":
-                "Before this round ends, these are broken and were not "
-                "mentioned:\n\n" + "\n".join(bad),
+                "Before this round ends, these are broken - say so if the "
+                "round has not:\n\n" + "\n".join(bad),
         },
     }))
     return 0

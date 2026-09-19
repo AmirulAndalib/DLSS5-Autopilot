@@ -1,0 +1,50 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+Changing the model resolution in the overlay caused a crash
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 3080 (sm_86), driver 596.36
+- game: Forza.Horizon.6.Premium.Edition
+- exe: forzahorizon6.exe
+- arch/api: 64-bit / DX12 (imports d3d12.dll statically)
+- route: optiscaler
+- work area: 75%
+- windows event: forzahorizon6.exe faulted in forzahorizon6.exe 0xC0000005 at 2026-09-18 11:49:03 UTC
+
+**Diagnosis**: Working.
+- [ok] Neural rendering is running.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- optiscaler build: Dagherbou
+
+**What ran, and what it loaded** (seen at 18 Sep 12:45)
+- process: forzahorizon6.exe
+- DLLs in the process: 171
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll
+- same name, loaded from elsewhere: C:\Games\Forza.Horizon.6.Premium.Edition\D3D12\D3D12Core.dll
+- ours, not loaded: nvngx_dlssnr.dll
+- also written, loaded only if the game asks: nvngx.dll_dlssnr.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[12:48:54.795739] [I] Util::FindFilePath nvngx_dlssnr.dll found at C:\Games\Forza.Horizon.6.Premium.Edition
+[12:48:54.893871] [I] DlssNr_Dx12::Dispatch DLSS-NR running at 1920x1080, guides 1920x1080 (preset 0, intensity 2, style 0)
+[12:48:54.895704] [I] StreamlineHooks::streamlineLogCallback [12-48-54][streamline][info][tid:11248][242s:950ms:357us]commonInterface.cpp:626[presentCommon] Total VRAM used: 7.96 GB
+[12:48:54.895742] [W] StreamlineHooks::streamlineLogCallback [12-48-54][streamline][warn][tid:11248][242s:950ms:406us]dlfgPresent.cpp:1321[presentCommon] Frame rate over 100.00ms, reseting frame timer
+[12:48:54.906270] [I] DlssNr_Dx12::Dispatch DLSS-NR composition: paper white 1.00x, detail 2.00, colour 1.00, guard 2.0x, colour transform on (linear HDR), transfer matched residual, model 1344x756, d
+```

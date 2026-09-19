@@ -1,0 +1,51 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+i opened the map and when i pressed X to fast travel it crashed
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 3080 (sm_86), driver 596.36
+- game: Forza.Horizon.6.Premium.Edition
+- exe: forzahorizon6.exe
+- arch/api: 64-bit / DX12 (imports d3d12.dll statically)
+- route: optiscaler
+- work area: 75%
+- windows event: forzahorizon6.exe faulted in forzahorizon6.exe 0xC0000005 at 2026-09-18 11:43:19 UTC
+
+**Diagnosis**: Working.
+- [ok] OptiScaler loaded and found the neural-rendering forwarder.
+- [ok] Neural rendering is running.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- optiscaler build: Dagherbou
+
+**What ran, and what it loaded** (seen at 18 Sep 12:37)
+- process: forzahorizon6.exe
+- DLLs in the process: 156
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll
+- same name, loaded from elsewhere: C:\Games\Forza.Horizon.6.Premium.Edition\D3D12\D3D12Core.dll
+- ours, not loaded: nvngx_dlssnr.dll
+- also written, loaded only if the game asks: nvngx.dll_dlssnr.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[12:43:02.627176] [I] StreamlineHooks::streamlineLogCallback [12-43-02][streamline][info][tid:3076][329s:497ms:220us]generic.cpp:954[collectGarbage] Destroyed 0x2469ca3d2d0(nv.sl.buf.resource.dlssg.re
+[12:43:02.627315] [I] StreamlineHooks::streamlineLogCallback [12-43-02][streamline][info][tid:3076][329s:497ms:357us]generic.cpp:954[collectGarbage] Destroyed 0x24689b7a870(nv.sl.dlss_g.buf.disable-in
+[12:43:02.627488] [I] StreamlineHooks::streamlineLogCallback [12-43-02][streamline][info][tid:3076][329s:497ms:533us]generic.cpp:954[collectGarbage] Destroyed 0x24689b79af0(nv.sl.dlss_g.buf.disable-in
+[12:43:02.644764] [I] ReflexHooks::setFPSLimit Set FPS Limit to: 0
+[12:43:09.940380] [I] DlssNr_Dx12::Dispatch DLSS-NR cost: 21.24 ms total = 21.04 ms model + 0.20 ms ours (1% ours)
+```

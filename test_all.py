@@ -1257,7 +1257,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.1", update.VERSION == "2.0.1", update.VERSION)
+check("version is 2.0.2", update.VERSION == "2.0.2", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -3289,6 +3289,25 @@ try:
     check("a contract and frames in the log is Working",
           _r.verdict == "Working." and not _levels(_r, "bad")
           and any("VORT" in t for t in _levels(_r, "ok")), str(_r.findings))
+    # #309: "Working." with "[bad] The add-on's own output window could not
+    # be created" under it - the rule asked for "native presentation" and
+    # "failed" anywhere in the log, and the first is in every healthy session
+    _np309 = ("post-ReShade native presentation active; effects and overlay are available to the "
+              "proxy compositor\n")
+    _fr309 = ("standalone contract ready: NR=on at 1920x1080\n"
+              "on-present frame 8: NR=on, DLSS SR=Success, model=1\n")
+    diagnose.model.STANDALONE_LOG.write_text(
+        _ATTACH + _np309 + "DLSS-G probe failed: no nvngx_dlssg.dll\n" + _fr309, encoding="utf8")
+    _r = diagnose.analyse(_d)
+    check("#309: a healthy session's 'native presentation active' beside an unrelated 'failed' is not a "
+          "missing output window", not any("output window" in b for b in _levels(_r, "bad")),
+          str(_levels(_r, "bad")))
+    diagnose.model.STANDALONE_LOG.write_text(
+        _ATTACH + "native presentation initialization failed at CreateWindowExW: hr=0x80070005 win32=5\n"
+        + _fr309, encoding="utf8")
+    _r = diagnose.analyse(_d)
+    check("...and the add-on's own failure line still is",
+          any("output window" in b for b in _levels(_r, "bad")), str(_levels(_r, "bad")))
     diagnose.model.STANDALONE_LOG.write_text(
         _ATTACH + "standalone contract ready: NR=on at 1920x1080\n"
         "active on present: per-frame reset / zero motion + fallback guides\n"
@@ -7541,8 +7560,8 @@ check("the compatibility workflow does not filter on the label",
       "labels=result" not in _wf and "state=all" in _wf)
 
 # FEATURES: the version is the delivery mechanism for the library rescan.
-check("the version is 2.0.1 in the file the build reads too",
-      "2.0.1.0" in (Path(__file__).resolve().parent
+check("the version is 2.0.2 in the file the build reads too",
+      "2.0.2.0" in (Path(__file__).resolve().parent
                     / "version_info.txt").read_text(encoding="utf8"))
 check("...and the release notes the workflow publishes exist",
       (Path(__file__).resolve().parent / "docs" / "releases"
@@ -7933,6 +7952,67 @@ check("...so the whole report says the neural pass is running",
       and any("Neural rendering is running" in t for t in _levels(_r168, "ok")),
       _r168.verdict)
 shutil.rmtree(_opti_run, ignore_errors=True)
+
+
+# #311: wilsjo2 0.8.4 took the timing out of Dispatch altogether. Both lines
+# are the reporter's own; the failure line above them is what a session that
+# then ran must outlive.
+_d311 = tempfile.mkdtemp(prefix="diag_opti_084_")
+(Path(_d311) / "dlss5-autopilot.json").write_text(json.dumps(
+    {"version": 1, "complete": True, "path": "optiscaler", "proxy": "dxgi.dll",
+     "api": "DX12", "bitness": 64, "exe": "ds.exe", "files": ["dxgi.dll"]}), encoding="utf8")
+(Path(_d311) / "dxgi.dll").write_bytes(b"MZ")
+_l311 = ("[00:30:05.339430] [I] DlssNr_Dx12::State::ApplyFinishedColor DLSS-NR finished picture: "
+         "3600 frames, 3840x2160, OptiScaler FG false, same producer queue true, game-frame handoff false\n"
+         "[00:30:06.553013] [I] DlssNr_Dx12::State::EndGpuTiming DLSS-NR elapsed: 6.07 ms total, "
+         "5.91 ms model, 0.16 ms surrounding work (3%; intervals may include other GPU work)\n")
+for _name311, _body311 in (("the timing line", _l311.splitlines()[1] + "\n"),
+                           ("the finished-picture count", _l311.splitlines()[0] + "\n"),
+                           ("both, after a refusal earlier in the session",
+                            "[00:29:00.000000] [W] DlssNr_Dx12 DLSS-NR unavailable: waiting\n" + _l311)):
+    (Path(_d311) / "OptiScaler.log").write_text(
+        "[00:28:59.000000] [I] DlssNr forwarder loaded\n" + _body311, encoding="utf8")
+    _r311 = diagnose.analyse(Path(_d311))
+    check(f"#311 wilsjo2 0.8.4: {_name311} is the model running, whatever function prints it",
+          _r311.verdict.startswith("Working"), _r311.verdict)
+for _tail311, _want311 in (
+        ("[00:30:10.000000] [I] DlssNr_Dx12::State::ReportSkipOnce DLSS-NR did not run: the upscaler could "
+         "not restore state this frame\n", "Working"),
+        ("[00:30:10.000000] [I] DlssNr::NgxDiagnostics::RuntimeReport NR diagnostic: runtime module found "
+         "but its path is unavailable\n", "Working"),
+        ("[00:30:10.000000] [I] DlssNr_Dx12::State::ReportSkipOnce DLSS-NR did not run: it already failed "
+         "this session\n", "Neural rendering stopped")):
+    (Path(_d311) / "OptiScaler.log").write_text(
+        "[00:28:59.000000] [I] DlssNr forwarder loaded\n" + _l311 + _tail311, encoding="utf8")
+    _r311 = diagnose.analyse(Path(_d311))
+    check(f"...after the last timing line, '{_tail311.strip()[-46:]}' reads as {_want311}",
+          _r311.verdict.startswith(_want311), _r311.verdict)
+# ...but the build prints a skip ONCE (ReportSkipOnce): with nothing drawn, the
+# same words are the reason the model never ran, and have to stay one.
+(Path(_d311) / "OptiScaler.log").write_text(
+    "[00:28:59.000000] [I] DlssNr forwarder loaded\n"
+    "[00:29:05.000000] [I] DlssNr_Dx12::State::ReportSkipOnce DLSS-NR did not run: the game's depth or "
+    "motion vectors could not be made readable this frame\n", encoding="utf8")
+_r311 = diagnose.analyse(Path(_d311))
+check("...while the same skip in a session that never drew is still the failure, with its reason",
+      _r311.verdict.startswith("OptiScaler loaded, but the model refused or failed")
+      and any("could not be made readable" in (f.detail or "") for f in _r311.findings), _r311.verdict)
+(Path(_d311) / "OptiScaler.log").write_text(
+    "[00:28:59.000000] [I] DlssNr forwarder loaded\n"
+    "[00:30:05.339430] [I] DlssNr_Dx12::State::ApplyFinishedColor DLSS-NR finished picture: 0 frames\n",
+    encoding="utf8")
+_r311 = diagnose.analyse(Path(_d311))
+check("...and a count of no finished pictures is not the model running",
+      _r311.verdict.startswith("Inconclusive"), _r311.verdict)
+shutil.rmtree(_d311, ignore_errors=True)
+from core import autotune as _at311  # noqa: E402
+_m311 = _at311.measure("", _l311, "optiscaler", 3840 * 2160)
+check("...and the work-area measurement reads the model's time out of the same line",
+      _m311 is not None and abs((_m311.model_ms or 0) - 5.91) < 0.001, _m311)
+_m311b = _at311.measure("", "DlssNr_Dx12::Dispatch DLSS-NR cost: 7.41 ms total = 7.23 ms model\n",
+                        "optiscaler", 1)
+check("...as it still does from the older 'cost: a = b' shape",
+      _m311b is not None and abs((_m311b.model_ms or 0) - 7.23) < 0.001, _m311b)
 
 
 # #164: a ReShade.log read from its tail can lose the registration lines
@@ -10890,7 +10970,12 @@ from core import diagnose as _dpkg  # noqa: E402
 # _RAN_SKIP, and the "ui" package in _install_modules' exclusions. None of
 # it can move down: model imports nothing, and layer.py is about the Vulkan
 # layer, not about what a session left on disk.
-_parts = {"model": 414, "layer": 104, "evidence": 1026, "process": 150,
+#
+# 2.0.2: process took _sighting_is_older_than_the_last_launch (#287, a module
+# list from an earlier launch read out as the last one). It reads what the
+# process had against the log's clock, which is this part's subject, and the
+# cap is what is on disk.
+_parts = {"model": 414, "layer": 104, "evidence": 1026, "process": 200,
           "helper": 150, "routes": 900, "body": 500, "chain": 1400}
 _sizes = {n: sum(1 for _ in open(SRC_DIR / "core" / "diagnose" / f"{n}.py",
                                  encoding="utf8"))
@@ -13261,7 +13346,8 @@ with _ui_isolated():
 
     # Windows' fault record: the watcher's answer agrees with "did it work?"
     _g3crash = _G3NS(when="", exe="Game.exe", module="nvngx_dlssnr.dll")
-    _g3work = _G3NS(ran=True, never_ran=False, route="feeder", findings=[], verdict="Working.")
+    _g3work = diagnose.Report(route="feeder")
+    _g3work.ran, _g3work.verdict = True, "Working."
     _g3asked = []
     while not _g3c.q.empty():
         _g3c.q.get_nowait()
@@ -13280,10 +13366,61 @@ with _ui_isolated():
     check("...and a 'Working' session that ended in a crash is answered as a crash, naming the module",
           _g3e.get("ok") is False and str(_g3e.get("said")).startswith("It ran, and then the game crashed")
           and "crashed in nvngx_dlssnr.dll" in str(_g3c.shell.toasts[-1:]), (_g3e, _g3c.shell.toasts[-1:]))
+    # #294 #295: report_bug prints _last_diag.verdict - "Diagnosis: Working."
+    # went out beside the windows event line, the correction was in the toast alone
+    check("...and the report's own diagnosis carries the correction, not 'Working.'",
+          _g3work.verdict.startswith("It ran, and then the game crashed")
+          and any("faulting in nvngx_dlssnr.dll" in f.title for f in _g3work.findings), _g3work.verdict)
+    _g3work.verdict, _g3work.findings = "Working.", []
     with patch.object(_g3cw, "crash_is_this_session", lambda c, d: False):
         _g3c._on_lookdiag(_g3msg[1])
     check("...while a fault from an earlier launch leaves it working",
           (_g3c.verdicts.get(str(_g3g.install_dir)) or {}).get("ok") is True)
+    # #289: played at 78 fps, closed by hand, and ntdll faulted a second after
+    # the game handed back its NGX parameters - "the game crashed" about a
+    # session closed on purpose. The lines are the reporter's own last ones.
+    _g3olog = Path(_g3g.install_dir) / "OptiScaler.log"
+    _g3man = Path(_g3g.install_dir) / "dlss5-autopilot.json"
+    _g3man0 = _g3man.read_text(encoding="utf8")
+    _g3closing = ("[19:12:32.341529] [I] NVSDK_NGX_D3D12_ReleaseFeature releasing feature with id 1000001\n"
+                  "[19:12:32.347156] [I] TryDestroyNGXParameters Calling NVFree\n"
+                  "[19:12:32.347199] [I] TryDestroyNGXParameters Calling NVFree result: 1\n")
+
+    def _g3close(log_text, route="optiscaler", seconds_after=1.0):
+        """The watcher's answer for a Working session with this log and a fault that long after it."""
+        _g3man.write_text(json.dumps(dict(json.loads(_g3man0), path=route)), encoding="utf8")
+        _g3olog.write_text(log_text, encoding="utf8")
+        when = time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(_g3olog.stat().st_mtime + seconds_after))
+        _g3work.verdict, _g3work.findings = "Working.", []
+        _g3c._on_lookdiag(_g3msg[1][:3] + (_G3NS(when=when, exe="Game.exe", module="ntdll.dll"),))
+        return (_g3c.verdicts.get(str(_g3g.install_dir)) or {}).get("ok")
+
+    check("#289 watcher: a fault a second after the game released its NGX resources is not a crashed session",
+          _g3close(_g3closing) is True and _g3work.verdict == "Working.", _g3work.verdict)
+    check("...and it is shown, not dropped - on the screen, and as a finding the bug report prints",
+          "fault from closing" in _g3c.text()
+          and any("as the game closed - not counted" in f.title for f in _g3work.findings),
+          (_g3c.text()[-300:], [f.title for f in _g3work.findings]))
+    # Windows stamps the fault in whole seconds, the file's time has a fraction:
+    # a fault in the same second as the last write reads as just before it
+    check("...a fault in the same second as the log's last write is still one from closing",
+          _g3close(_g3closing, seconds_after=0.0) is True)
+    check("...nor is one after OptiScaler's own unload",
+          _g3close("[00:30:15.714377] [I] DLL_PROCESS_DETACH\n[00:30:15.714386] [I] Unloading OptiScaler\n") is True)
+    check("...while a fault after a released feature alone (a resolution change does that) still is a crash",
+          _g3close("[19:12:31.434129] [I] Destroyed DXGISwapChain proxy\n"
+                   "[19:12:32.341529] [I] NVSDK_NGX_D3D12_ReleaseFeature releasing feature with id 1000001\n")
+          is False)
+    check("...parameters destroyed with no feature released before them is start-up, not closing",
+          _g3close("[19:00:01.000000] [I] NVSDK_NGX_D3D12_GetCapabilityParameters\n"
+                   "[19:00:01.100000] [I] TryDestroyNGXParameters Calling NVFree result: 1\n") is False)
+    check("...a fault minutes after the log's last write is about another run: the unload at the end of "
+          "the file is the PREVIOUS session's", _g3close(_g3closing, seconds_after=600.0) is False)
+    check("...and an OptiScaler.log left in a folder installed on another route says nothing",
+          _g3close(_g3closing, route="feeder") is False)
+    _g3olog.unlink()
+    _g3man.write_text(_g3man0, encoding="utf8")
+    _g3work.verdict, _g3work.findings = "Working.", []
 
     # try <route>: bounded, cancelled by another game, says when busy
     _g3after = []
@@ -13585,6 +13722,22 @@ try:
           and not _g3live.kit.field(10, 10, 200, "name", on_enter=lambda: None, glyph=None).entry.bind("<Down>"))
     _g3sh.redraw()
 
+    # #296 #300: text in the search box, another page, back home - the page
+    # asked the entry that went with the old draw and the window raised
+    _g3field = _g3sh.pages["library"].field
+    _g3field.focus(append="zelda")
+    _g3field.entry.destroy()
+    _g3raised = ""
+    try:
+        _g3sh.redraw()
+    except Exception as _g3e2:
+        _g3raised = repr(_g3e2)
+    check("2.0.2 window: a page redrawn after its text box went with the old page does not raise, and keeps the text",
+          not _g3raised and _g3sh.pages["library"].field.get() == "zelda",
+          (_g3raised, _g3sh.pages["library"].field.get() if not _g3raised else ""))
+    _g3sh.pages["library"].field.reset()
+    _g3sh.redraw()
+
     # a dialog leaves no handler on the main window
     _g3cfg = len([ln for ln in str(_g3live.root.bind("<Configure>")).splitlines() if ln.strip()])
     # answered once the dialog is really up: a single timer that fired before
@@ -13625,6 +13778,43 @@ try:
     _g3cfg2 = len([ln for ln in str(_g3live.root.bind("<Configure>")).splitlines() if ln.strip()])
     check("gate 2.0 window: an answered dialog takes its handler on the main window with it",
           _g3cfg2 == _g3cfg, (_g3cfg, _g3cfg2))
+
+    # #302: a long message in a small window lost its end - the card was cut
+    # to 85% of the window and the text ran on under the button
+    _g3geo = _g3live.root.geometry()
+    _g3live.root.geometry("%dx%d+0+0" % (_uth.px(620), _uth.px(260)))
+    _g3live.root.update()
+    _g3long = " ".join(["Driver 616.92 faults inside the neural runtime on some games."] * 14)
+    _g3fit: dict = {}
+
+    def _g3measure(tries=[0]):
+        d = _g3sh.dialog
+        if d is None:
+            if tries[0] < 60:
+                tries[0] += 1
+                _g3live.root.after(50, _g3measure)
+            return
+        try:
+            cv = [w for w in d.card.winfo_children() if isinstance(w, _g3tk.Canvas)][0]
+            txt = [i for i in cv.find_all() if cv.type(i) == "text" and cv.itemcget(i, "text") == _g3long]
+            _g3fit["bottom"] = cv.bbox(txt[0])[3]
+            _g3fit["buttons"] = d.card.winfo_height() - _uth.px(62)
+            # the window's next <Configure> re-places the card: it has to stay on the screen
+            d._place()
+            d.card.update_idletasks()
+            _g3fit["top"] = d.card.winfo_rooty() - _g3live.root.winfo_vrooty()
+        finally:
+            d._finish(True)
+
+    _g3live.root.after(150, _g3measure)
+    _g3live.root.after(6000, lambda: _g3net("long"))
+    _g3sh.info("gate", _g3long)
+    check("2.0.2 window: a long message in a small window ends above its button",
+          _g3fit.get("bottom", 10 ** 6) <= _g3fit.get("buttons", 0), _g3fit)
+    check("...and the card, taller than its window, keeps its title on the screen when the window moves",
+          _g3fit.get("top", -1) >= 0, _g3fit)
+    _g3live.root.geometry(_g3geo)
+    _g3live.root.update()
 except RuntimeError:
     pass
 except Exception as _g3e:
@@ -14332,6 +14522,124 @@ check("...the host64 folder alone is enough of a marker",
       _native201(_folder201("nvngx_dlss.dll", f"{installer.HOST_DIR}/dlss5-feed-host64.exe")) is False)
 check("...and a folder with no install of ours in it is untouched by the rule",
       _native201(_folder201("nvngx_dlss.dll", "d3d11.dll")) is True)
+
+
+section("2.0.1: a snapshot taken before the last launch is not read out as that launch (#287)")
+# #287's module list was taken at 04:10, between a launch at 04:09 and the
+# one its ReShade.log ends with at 04:12. Every line built from it opened
+# "When it last ran", so a finished launch was reported as the current one
+# and its add-ons as missing from a session that was already over. #250 is
+# the other side of the same measurement: its log registers add-ons 49 s
+# after its snapshot, which is one launch seen from both ends, and that
+# evidence has to survive.
+_rep287 = SRC_DIR / "_tools" / "reports" / "287.txt"
+_rep250 = SRC_DIR / "_tools" / "reports" / "250.txt"
+
+
+def _replayed(p):
+    return subprocess.run(
+        [sys.executable, str(SRC_DIR / "_tools" / "replay_report.py"), str(p)],
+        capture_output=True, text=True, cwd=str(SRC_DIR)).stdout
+
+
+if _rep287.is_file() and _rep250.is_file():
+    _out287, _out250 = _replayed(_rep287), _replayed(_rep250)
+    check("a snapshot older than the last launch says nothing about it",
+          "When it last ran" not in _out287, _out287[-400:])
+    check("...and the launch it could not describe is not called missing",
+          "did not have dlss5-bridge.addon64" not in _out287, _out287[-400:])
+    check("...while a snapshot and a launch 49 s apart are still one launch",
+          "When it last ran" in _out250, _out250[-400:])
+    check("...so that report keeps what the running game really had in it",
+          "nvngx.dll.addon64 loaded" in _out250, _out250[-400:])
+else:
+    check("reports 287 and 250 are in the corpus to replay", False,
+          f"{_rep287} {_rep250}")
+# The gate's finding on the first version of this: it measured from the log's
+# LAST line, which is written when the game closes, so one launch played for
+# half an hour read as "started again" and the module list was dropped.
+from datetime import datetime as _dt287  # noqa: E402
+from core.diagnose import process as _proc287  # noqa: E402
+_d287 =Path(tempfile.mkdtemp(prefix="sighting_"))
+_at287 = _dt287(2026, 9, 18, 20, 0, 10).timestamp()
+(_d287 / "ReShade.log").write_text(
+    "20:00:01:100 [100] | INFO  | Initializing crosire's ReShade version '6.5.1'\n"
+    "20:00:02:500 [100] | INFO  | Registered add-on \"DLSS 5 Neural Rendering\" v4.7.0.0\n"
+    "20:35:50:900 [100] | INFO  | Exiting ... (add-ons are still loaded)\n", encoding="utf8")
+check("one launch, played for half an hour: its snapshot is still that launch's",
+      _proc287._sighting_is_older_than_the_last_launch(_d287, _at287) is False)
+(_d287 / "ReShade.log").write_text(
+    "20:00:01:100 [100] | INFO  | Initializing crosire's ReShade version '6.5.1'\n"
+    "20:04:30:000 [200] | INFO  | Initializing crosire's ReShade version '6.5.1'\n"
+    "20:04:31:000 [200] | INFO  | Registered add-on \"DLSS 5 Neural Rendering\" v4.7.0.0\n", encoding="utf8")
+check("...and a second launch four minutes after the snapshot makes it the older one's",
+      _proc287._sighting_is_older_than_the_last_launch(_d287, _at287) is True)
+# an earlier day's log, whatever its clock reads: last written before the
+# snapshot, so no launch in it can be later than the snapshot
+os.utime(_d287 / "ReShade.log", (_at287 - 86400, _at287 - 86400))
+check("...and a log last written before the snapshot is an earlier day's - today's list is kept",
+      _proc287._sighting_is_older_than_the_last_launch(_d287, _at287) is False)
+check("...a snapshot time that is not a number says nothing and raises nothing",
+      _proc287._sighting_is_older_than_the_last_launch(_d287, "soon") is False)
+shutil.rmtree(_d287, ignore_errors=True)
+
+
+section("2.0.1: the replay's rebuilt folder does not invent a fact the report never carried")
+# A report does not include OptiScaler.ini. The replay used to rebuild one
+# holding nothing but WorkingScale, so the diagnosis found a file that
+# existed with no Enabled line in it and said "the install writes one, so it
+# has been changed since" - an accusation about a file nobody had seen, on
+# every optiscaler report with a work-area header (#275, #225). A rebuilt
+# folder may only hold what the report attests or what the install itself
+# writes; anything else is the replay talking, not the person.
+_rep275 = SRC_DIR / "_tools" / "reports" / "275.txt"
+if _rep275.is_file():
+    _out275 = subprocess.run(
+        [sys.executable, str(SRC_DIR / "_tools" / "replay_report.py"), str(_rep275)],
+        capture_output=True, text=True, cwd=str(SRC_DIR)).stdout
+    check("a work-area report's rebuilt OptiScaler.ini carries the Enabled the install writes",
+          "[DlssNr] Enabled=true" in _out275, _out275[-300:])
+    check("...so no report is told its ini was edited on the strength of the rebuild",
+          "has been changed since" not in _out275, _out275[-300:])
+else:
+    check("report 275 is in the corpus to replay", False, str(_rep275))
+
+
+section("2.0.2: a game folder reached through a junction installs (#306)")
+# Street Fighter 6 Demo: the library was moved and linked back with mklink,
+# net.inside() resolved the link, and every relative_to(root) on what
+# extract_tree returned raised - the install stopped after the add-on.
+try:
+    import zipfile
+    from core import net as _net306
+    _real306 = Path(tempfile.mkdtemp(prefix="junction_real_"))
+    _link306 = Path(tempfile.mkdtemp(prefix="junction_link_")) / "Game"
+    _mk306 = subprocess.run(["cmd", "/c", "mklink", "/J", str(_link306), str(_real306)],
+                            capture_output=True, text=True)
+    if _mk306.returncode == 0 and _link306.is_dir():
+        _zip306 = _real306.parent / (_real306.name + ".zip")
+        with zipfile.ZipFile(_zip306, "w") as _z306:
+            _z306.writestr("Pack-main/Shaders/lumenite_Kernel.fx", "// fx")
+            _z306.writestr("Pack-main/Shaders/../../escape.fx", "// no")
+        _w306 = _net306.extract_tree(_zip306, "Shaders", "reshade-shaders/Shaders", _link306,
+                                     only_ext=(".fx",))
+        try:
+            _rel306 = [str(p.relative_to(_link306)).replace("\\", "/") for p in _w306]
+        except ValueError as _e306:
+            _rel306 = [repr(_e306)]
+        check("what extract_tree returns is under the folder as the caller spelled it",
+              _rel306 == ["reshade-shaders/Shaders/lumenite_Kernel.fx"], _rel306)
+        check("...the file is really there, and nothing was written outside",
+              (_real306 / "reshade-shaders" / "Shaders" / "lumenite_Kernel.fx").is_file()
+              and not list(_real306.parent.glob("escape.fx")))
+        _zip306.unlink()
+        subprocess.run(["cmd", "/c", "rmdir", str(_link306)], capture_output=True)
+    else:
+        print("   SKIP  this machine will not make a junction:", (_mk306.stderr or "").strip()[:120])
+    shutil.rmtree(_real306, ignore_errors=True)
+    shutil.rmtree(_link306.parent, ignore_errors=True)
+except Exception as _e306b:
+    check("the junction checks ran to their end", False, repr(_e306b))
 
 
 section("RESULT")

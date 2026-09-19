@@ -71,6 +71,29 @@ def _check_inputs(text: str, upscaler: str, rep: "Report") -> None:
                 f"nothing to hook - try the feeder route.")
 
 
+def _is_note(line: str) -> bool:
+    """A DLSS-NR line with a failure word in it that reports no failure.
+
+    Read out of wilsjo2 0.8.4's own format strings (#311) - a healthy session
+    prints both, and "unavailable" is in each:
+      "NR diagnostic: runtime module found but its path is unavailable"
+      "DLSS-NR supersample: upscaler unavailable, falling back to a blocky enlarge."
+    LIMIT: "CreateFeature(18) failed 0x.. -- falling back is the caller's
+    decision" (Dagherbou 0.2.0) IS a failure. It matches none of the failure
+    words today; a word added for it must be tested above this exclusion.
+    """
+    return "NR diagnostic" in line or "falling back" in line
+
+
+def _one_frame(line: str) -> bool:
+    """"DLSS-NR did not run: the upscaler could not restore state this frame":
+    one landing after the last timing line - those come every ten seconds, a
+    skipped frame comes when the pause menu opens - read as "Neural rendering
+    stopped after it started" (#311). A skip that names no single frame ("it
+    already failed this session", "a resource was missing") is a failure."""
+    return "did not run" in line and "this frame" in line
+
+
 def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
                         man: dict | None = None) -> "Report":
     """The OptiScaler route has no ReShade: its own log says everything.
@@ -165,9 +188,16 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
     # Matching "cost" called the second one - Spider-Man 2 dispatching every
     # frame on wilsjo2 - "never reports it running" (#168). Ask for a dispatch
     # and a duration instead, and let them name it what they like.
+    #
+    # wilsjo2 0.8.4 then moved the timing out of Dispatch altogether (#311):
+    #   "DlssNr_Dx12::State::EndGpuTiming DLSS-NR elapsed: 6.07 ms total, ..."
+    #   "DlssNr_Dx12::State::ApplyFinishedColor DLSS-NR finished picture: 3600 frames"
+    # so the function name is theirs to change too: a DLSS-NR line with a
+    # duration, or a count of finished pictures, less the three kinds below.
     failed = [x for x in nr if any(k in x[1] for k in (
         "create failed", "unavailable", "did not run", "not found beside",
-        "would not load", "disabling for this session", "refused"))]
+        "would not load", "disabling for this session", "refused"))
+              and not _is_note(x[1])]
     # Settings echoed at startup ("DlssNr.Enabled: true") say what was asked
     # for, not what happened. Separating them keeps the "never ran" verdict
     # from sounding like the tool has no idea what went on.
@@ -182,7 +212,13 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
                if x not in failed and x not in settings_only
                and not any(k in x[1].lower() for k in _not_work)
                and ("running at" in x[1]
-                    or ("Dispatch" in x[1] and _DISPATCH_MS.search(x[1])))]
+                    or ("DLSS-NR" in x[1] and _DISPATCH_MS.search(x[1]))
+                    or re.search(r"finished picture:\s*[1-9]\d* frames", x[1]))]
+    if running:
+        # A skipped frame in a session that drew is a skipped frame. With
+        # nothing drawn it stays the reason: the build prints a skip ONCE
+        # (ReportSkipOnce), so depth the model can never read is one line too.
+        failed = [x for x in failed if not _one_frame(x[1])]
     if "forwarder loaded" in text:
         rep.add(OK, "OptiScaler loaded and found the neural-rendering forwarder.")
     # The game is running on Vulkan while this route was installed for D3D12.
@@ -254,8 +290,9 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
         rep.add(BAD, "Neural rendering was switched on, but the model never "
                      "drew a frame.", settings_only[-1][1].strip()[-160:])
         rep.add(INFO, "OptiScaler runs the model around the game's own "
-                      "upscaler. Turn DLSS (or FSR/XeSS) on in the game's "
-                      "graphics menu and set it to anything but 'off' - with "
+                      "upscaler. Turn DLSS (or FSR 2 or later, or XeSS) on in "
+                      "the game's graphics menu - FSR 1.0 does not count, it "
+                      "makes no call OptiScaler can take over. With "
                       "no upscaler running there is nothing for neural "
                       "rendering to attach to, which is what the overlay "
                       "means by 'waiting for the upscaler to run'. If the "
@@ -755,7 +792,13 @@ def _analyse_standalone(rep: Report, since: float, reshade_ran: bool,
         rep.add(WARN, "Frame generation failed and was switched off.",
                 text[text.rfind("DLSS-G"):][:160].splitlines()[0]
                 if "DLSS-G" in text else "")
-    if "native presentation" in text and "failed" in text:
+    # The add-on's own words, on one line: "native presentation initialization
+    # failed at <stage>: hr=..." / "...initialization rejected: output
+    # dimensions are 0x0". Asking for the two words anywhere in the log (#309)
+    # fired on every healthy session - "post-ReShade native presentation
+    # active" plus any "failed" ReShade wrote about a shader.
+    # (1.7.x wrote "native presentation failed: proxy UI thread/window error".)
+    if re.search(r"native presentation (?:initialization )?(?:failed|rejected)", text):
         rep.add(BAD, "The add-on's own output window could not be created.",
                 "It presents through a topmost window of its own; that "
                 "failed here. Try borderless instead of fullscreen, or the "

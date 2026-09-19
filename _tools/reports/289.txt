@@ -1,0 +1,53 @@
+**Did the game start?** it started and ran
+
+**What happened**
+Open the game and played for a few seconds at a 100% area work. Game ran fine at around 78 FPS and then I closed the game manually, doesn't look like it crashed at all.
+
+---
+- version: 2.0.1
+- gpu: NVIDIA GeForce RTX 4060 Laptop GPU (sm_89), driver 616.92
+- game: FINAL FANTASY VII REBIRTH
+- exe: ff7rebirth_.exe
+- arch/api: 64-bit / DX12 (imports d3d11.dll, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: optiscaler
+- windows event: ff7rebirth_.exe faulted in ntdll.dll 0xC0000374 at 2026-09-18 09:12:33 UTC
+
+**Diagnosis**: Working.
+- [ok] OptiScaler loaded and found the neural-rendering forwarder.
+- [ok] Neural rendering is running.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- Engine/Plugins/DLSSSubset/Binaries/ThirdParty/Win64/nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.3.0 kept beside it)
+- Engine/Plugins/StreamlineSubset/Binaries/ThirdParty/Win64/nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.3.0 kept beside it)
+- Engine/Plugins/StreamlineSubset/Binaries/ThirdParty/Win64/nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.3.0 kept beside it)
+- Engine/Plugins/StreamlineSubset/Binaries/ThirdParty/Win64/nvngx_dlssd.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.3.0 kept beside it)
+- optiscaler build: Dagherbou
+
+**What ran, and what it loaded** (seen at 18 Sep 19:11)
+- process: ff7rebirth_.exe
+- DLLs in the process: 151
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll, nvngx.dll_dlssnr.dll, nvngx_dlssnr.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[19:12:31.425848] [I] StreamlineHooks::streamlineLogCallback [19-12-31][streamline][info][tid:7120][43s:167ms:917us]generic.cpp:917[collectGarbage] Destroyed 0x1bebfa97b60(sl.dlssg.fake-swapchain-buff
+[19:12:31.434129] [I] StreamlineHooks::streamlineLogCallback [19-12-31][streamline][info][tid:7120][43s:176ms:193us]dxgiSwapchain.cpp:207[Release] Destroyed DXGISwapChain proxy 0x1bdca44bee0 - native 
+[19:12:32.341529] [I] NVSDK_NGX_D3D12_ReleaseFeature releasing feature with id 1000001
+[19:12:32.347156] [I] TryDestroyNGXParameters Calling NVFree
+[19:12:32.347199] [I] TryDestroyNGXParameters Calling NVFree result: 1
+[19:12:32.347205] [I] TryDestroyNGXParameters Calling NVFree
+[19:12:32.347230] [I] TryDestroyNGXParameters Calling NVFree result: 1
+```
