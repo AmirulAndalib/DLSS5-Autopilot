@@ -1519,6 +1519,21 @@
     }
    }
   },
+  "readyornotsteam-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Ready or Not",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "realrtcw.x64.exe": {
    "drivers": {
     "616.56": {
@@ -2006,6 +2021,6 @@
    }
   }
  },
- "generated": "2026-09-19T22:08:21Z",
- "reports": 166
+ "generated": "2026-09-19T22:16:40Z",
+ "reports": 167
 }
