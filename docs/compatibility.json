@@ -295,7 +295,7 @@
   "crimsondesert.exe": {
    "drivers": {
     "616.92": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    },
@@ -309,7 +309,7 @@
    "name": "Crimson Desert Enhanced",
    "routes": {
     "optiscaler": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    }
@@ -1878,6 +1878,6 @@
    }
   }
  },
- "generated": "2026-09-19T17:05:15Z",
- "reports": 152
+ "generated": "2026-09-19T17:46:51Z",
+ "reports": 153
 }
