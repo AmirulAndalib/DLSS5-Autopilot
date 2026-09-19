@@ -1576,6 +1576,21 @@
     }
    }
   },
+  "spyro-win64-shipping.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Spyro Reignited Trilogy",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "super woden rally edge.exe": {
    "drivers": {
     "616.64": {
@@ -1765,6 +1780,6 @@
    }
   }
  },
- "generated": "2026-09-19T08:48:03Z",
- "reports": 143
+ "generated": "2026-09-19T09:17:20Z",
+ "reports": 144
 }
