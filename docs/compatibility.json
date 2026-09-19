@@ -1026,12 +1026,16 @@
   "masseffect1.exe": {
    "drivers": {
     "616.56": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    },
    "name": "Mass Effect\u2122 Legendary Edition",
    "routes": {
+    "bridge": {
+     "failed": 1,
+     "worked": 0
+    },
     "feeder": {
      "failed": 0,
      "worked": 1
@@ -1746,6 +1750,6 @@
    }
   }
  },
- "generated": "2026-09-19T00:21:26Z",
- "reports": 139
+ "generated": "2026-09-19T00:30:25Z",
+ "reports": 140
 }
