@@ -1219,6 +1219,21 @@
     }
    }
   },
+  "omsi.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "OMSI 2",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "onimushawots.exe": {
    "drivers": {
     "616.92": {
@@ -1825,6 +1840,6 @@
    }
   }
  },
- "generated": "2026-09-19T11:06:39Z",
- "reports": 147
+ "generated": "2026-09-19T11:08:08Z",
+ "reports": 148
 }
