@@ -822,10 +822,18 @@
     "616.56": {
      "failed": 1,
      "worked": 0
+    },
+    "616.92": {
+     "failed": 0,
+     "worked": 1
     }
    },
-   "name": "Ghost of Tsushima",
+   "name": "Ghost of Tsushima DIRECTOR'S CUT",
    "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    },
     "upstream": {
      "failed": 1,
      "worked": 0
@@ -1953,6 +1961,6 @@
    }
   }
  },
- "generated": "2026-09-19T20:16:49Z",
- "reports": 160
+ "generated": "2026-09-19T20:17:21Z",
+ "reports": 161
 }
