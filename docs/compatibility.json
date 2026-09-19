@@ -1749,6 +1749,21 @@
     }
    }
   },
+  "wolong2.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Wo Long 2: Wings of Ember Alpha Demo",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "xrengine.exe": {
    "drivers": {
     "616.92": {
@@ -1780,6 +1795,6 @@
    }
   }
  },
- "generated": "2026-09-19T09:17:20Z",
- "reports": 144
+ "generated": "2026-09-19T09:48:36Z",
+ "reports": 145
 }
