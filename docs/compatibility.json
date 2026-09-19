@@ -424,7 +424,14 @@
    "drivers": {
     "616.92": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 5.26,
+     "n": 1,
+     "res": 75
     }
    },
    "name": "Dead Space",
@@ -432,6 +439,10 @@
     "bridge": {
      "failed": 1,
      "worked": 0
+    },
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -1923,6 +1934,6 @@
    }
   }
  },
- "generated": "2026-09-19T19:55:48Z",
- "reports": 157
+ "generated": "2026-09-19T20:07:49Z",
+ "reports": 158
 }
