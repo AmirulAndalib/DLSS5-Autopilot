@@ -52,6 +52,21 @@
     }
    }
   },
+  "acvalhalla.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Assassin's Creed Valhalla",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "ai.exe": {
    "drivers": {
     "616.56": {
@@ -1810,6 +1825,6 @@
    }
   }
  },
- "generated": "2026-09-19T10:14:30Z",
- "reports": 146
+ "generated": "2026-09-19T11:06:39Z",
+ "reports": 147
 }
