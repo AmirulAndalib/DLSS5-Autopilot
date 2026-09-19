@@ -1862,6 +1862,28 @@
     }
    }
   },
+  "tanki.exe": {
+   "drivers": {
+    "610.74": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "feeder": {
+     "fps": 8.6,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "WoT",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "teardown.exe": {
    "drivers": {
     "616.92": {
@@ -2036,6 +2058,6 @@
    }
   }
  },
- "generated": "2026-09-19T22:35:53Z",
- "reports": 168
+ "generated": "2026-09-19T22:56:07Z",
+ "reports": 169
 }
