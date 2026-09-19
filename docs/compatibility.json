@@ -1734,6 +1734,21 @@
     }
    }
   },
+  "xrengine.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "1 STALKER Shadow of Chornobyl Enhanced Edition",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "yakuzakiwami2_r.exe": {
    "drivers": {
     "616.92": {
@@ -1750,6 +1765,6 @@
    }
   }
  },
- "generated": "2026-09-19T00:49:11Z",
- "reports": 142
+ "generated": "2026-09-19T07:11:34Z",
+ "reports": 143
 }
