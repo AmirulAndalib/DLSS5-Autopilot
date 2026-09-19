@@ -232,6 +232,21 @@
     }
    }
   },
+  "bloodlines2-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Vampire: The Masquerade - Bloodlines 2",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "bully.exe": {
    "drivers": {
     "616.92": {
@@ -1961,6 +1976,6 @@
    }
   }
  },
- "generated": "2026-09-19T20:18:13Z",
- "reports": 162
+ "generated": "2026-09-19T20:53:48Z",
+ "reports": 163
 }
