@@ -1,0 +1,36 @@
+**Did the game start?** it never started
+
+**What happened**
+Nothing opens, nithing at all.
+
+---
+- version: 2.0.3
+- gpu: NVIDIA GeForce RTX 4060 Ti (sm_89), driver 560.94
+- game: Spore
+- exe: SporeApp.exe
+- arch/api: 32-bit / DX9 (loads d3d9.dll at run time (named in the exe); no static graphics import)
+- route: feeder
+
+**Diagnosis**: Inconclusive - the feed did not get far enough to tell.
+- [ok] ReShade loaded add-on: DLSS 5 Feed (32-bit) 1.16.0-beta.6 0.0.0.0
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**ReShade.log**
+```
+00:37:25:954 [ 4884] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 1.16.0-beta.6" v0.0.0.0 using ReShade API version 20.
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

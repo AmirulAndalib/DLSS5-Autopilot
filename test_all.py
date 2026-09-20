@@ -11454,6 +11454,19 @@ try:
     for _g in _gl191:
         _a191.set_hidden(_g, False)
     _ui191.settle(60)
+    # #374: a search that finds nothing is where somebody is looking for a
+    # game no store reports. Adding it by hand was only in the 'scan'
+    # dropdown, so the answer was "please add a button".
+    _a191.set_query("warcraft")
+    _ui191.settle(60)
+    check("a search that matches nothing offers to add a game by hand (#374)",
+          any('no game matches "warcraft"' in t for t in _ui191.texts())
+          and bool(_ui191.kit.find("choose a folder  -  add it by hand", "link")),
+          [t for t in _ui191.texts() if "match" in t])
+    _a191.set_query("")
+    _ui191.settle(60)
+    check("...and it is not in the way when the list has games in it",
+          not _ui191.kit.find("choose a folder  -  add it by hand", "link"))
     # the keyboard reaches the same menu: arrows to a card, then the menu key
     _ui191.canvas.focus_force()
     _ui191.canvas.event_generate("<KeyPress>", keysym="Right")

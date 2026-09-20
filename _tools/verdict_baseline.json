@@ -770,6 +770,15 @@
   "route": "feeder",
   "verdict": "Driver 616.64+ faults with renodx-dlss5 4.6/4.7 - install again (the tool pins 4.55)."
  },
+ "377": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 1.16.0-beta.6 0.0.0.0"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "Inconclusive - the feed did not get far enough to tell."
+ },
  "38": {
   "findings": [
    "bad: The install did not finish."

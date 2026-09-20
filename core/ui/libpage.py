@@ -205,6 +205,15 @@ class LibraryPage(Page):
         c.create_text(pad, top + T.px(40), text=msg, font=T.mono(12), fill=T.MUTED, anchor="w", tags=tags)
         k.link(pad, top + T.px(76), "show all games", self._reset_view, glyph="refresh", colour=T.AMBER,
                hot=T.TEXT, tags=tags)
+        # A row of its own, and only when a search found nothing: that is
+        # the moment a game the scanners do not know about is being looked
+        # for, and until now the only way in was a dropdown behind 'scan'
+        # (#374 - "please add a button that can search for a game").
+        if q:
+            k.link(pad, top + T.px(106), "choose a folder  -  add it by hand",
+                   a.pick_folder, glyph="folder", tags=tags,
+                   tip="for a game no store reports - pick the folder its .exe is in")
+            return top + T.px(190)
         return top + T.px(160)
 
     # ------------------------------------------------------------ a card
