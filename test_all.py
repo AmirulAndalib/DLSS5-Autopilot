@@ -1257,7 +1257,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.2", update.VERSION == "2.0.2", update.VERSION)
+check("version is 2.0.3", update.VERSION == "2.0.3", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -7560,8 +7560,8 @@ check("the compatibility workflow does not filter on the label",
       "labels=result" not in _wf and "state=all" in _wf)
 
 # FEATURES: the version is the delivery mechanism for the library rescan.
-check("the version is 2.0.2 in the file the build reads too",
-      "2.0.2.0" in (Path(__file__).resolve().parent
+check("the version is 2.0.3 in the file the build reads too",
+      "2.0.3.0" in (Path(__file__).resolve().parent
                     / "version_info.txt").read_text(encoding="utf8"))
 check("...and the release notes the workflow publishes exist",
       (Path(__file__).resolve().parent / "docs" / "releases"
@@ -10975,7 +10975,7 @@ from core import diagnose as _dpkg  # noqa: E402
 # list from an earlier launch read out as the last one). It reads what the
 # process had against the log's clock, which is this part's subject, and the
 # cap is what is on disk.
-_parts = {"model": 414, "layer": 104, "evidence": 1026, "process": 200,
+_parts = {"model": 414, "layer": 104, "evidence": 1026, "process": 223,
           "helper": 150, "routes": 900, "body": 500, "chain": 1400}
 _sizes = {n: sum(1 for _ in open(SRC_DIR / "core" / "diagnose" / f"{n}.py",
                                  encoding="utf8"))
@@ -14640,6 +14640,199 @@ try:
     shutil.rmtree(_link306.parent, ignore_errors=True)
 except Exception as _e306b:
     check("the junction checks ran to their end", False, repr(_e306b))
+
+
+section("2.0.3: a look taken as the game came up does not contradict the session's own log (#352)")
+# Eden on the bridge route: "[ok] ReShade loaded add-on: DLSS 5 Bridge" and,
+# four lines down, "[warn] ...the process did not have dlss5-bridge.addon64,
+# renodx-dlss5.addon64 loaded". The log registers both and runs them for eleven
+# minutes; the snapshot is from the minute the process started.
+_rep352 = SRC_DIR / "_tools" / "reports" / "352.txt"
+if _rep352.is_file():
+    _out352 = subprocess.run(
+        [sys.executable, str(SRC_DIR / "_tools" / "replay_report.py"), str(_rep352)],
+        capture_output=True, text=True, cwd=str(SRC_DIR)).stdout
+    check("add-ons ReShade registered in the session are not reported missing from it",
+          "ReShade loaded add-on: DLSS 5 Bridge" in _out352 and "did not have" not in _out352
+          and ".addon64" not in _out352.split("VERDICT", 1)[-1], _out352[-500:])
+    check("...while what NVIDIA's runtime loads later is still said, as a note",
+          "nvngx_dlssnr.dll was not loaded yet" in _out352, _out352[-300:])
+else:
+    check("report 352 is in the corpus to replay", False, str(_rep352))
+# The gate's finding on the first version: one add-on registering silenced all
+# of them. Add-on by add-on - the neural add-on registering says nothing about
+# a bridge that is not in the process.
+from core.diagnose import process as _proc352  # noqa: E402
+from core import watch as _watch352  # noqa: E402
+_d352 = Path(tempfile.mkdtemp(prefix="loaded_note_"))
+_man352 = {"path": "bridge", "proxy": "dxgi.dll",
+           "files": ["dxgi.dll", "dlss5-bridge.addon64", "renodx-dlss5.addon64"]}
+_seen352 = {"at": time.time(), "ours": ["dxgi.dll", "renodx-dlss5.addon64"],
+            "missing": ["dlss5-bridge.addon64"]}
+for _titles352, _want352, _say352 in (
+        (["ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026"], True,
+         "only the neural add-on registered: the bridge missing from the process is still said"),
+        (["ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026",
+          "ReShade loaded add-on: DLSS 5 Bridge 1.4.12"], False,
+         "the bridge registered too: an early look does not call it missing")):
+    _rep352b = diagnose.Report(route="bridge")
+    for _t352 in _titles352:
+        _rep352b.add(diagnose.OK, _t352)
+    with patch.object(_watch352, "last_sighting", lambda *a, **k: dict(_seen352)), \
+            patch.object(_watch352, "settle", lambda seen, files: seen):
+        _proc352._loaded_note(_d352, _man352, _rep352b)
+    _warn352 = [f.title for f in _rep352b.findings if f.level == diagnose.WARN]
+    check(f"...{_say352}", any("dlss5-bridge.addon64" in t for t in _warn352) is _want352, _warn352)
+# ...and file by file: an add-on of some other name registering - the MFG unlock
+# this tool installs, an HDR mod, another route's add-on - says nothing about ours.
+for _route352, _files352, _miss352, _titles352 in (
+        ("bridge", ["dxgi.dll", "dlss5-bridge.addon64", "renodx-dlss5.addon64"], "renodx-dlss5.addon64",
+         ["ReShade loaded add-on: DLSS 5 Bridge 1.4.12", "ReShade loaded add-on: Universal RTX 40 MFG Unlock V1.2"]),
+        ("native", ["dxgi.dll", "renodx-dlss5.addon64"], "renodx-dlss5.addon64",
+         ["ReShade loaded add-on: Lilium HDR analysis 2.1"]),
+        ("upstream", ["dxgi.dll", "nvngx.dll.addon64"], "nvngx.dll.addon64",
+         ["ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026"])):
+    _rep352c = diagnose.Report(route=_route352)
+    for _t352 in _titles352:
+        _rep352c.add(diagnose.OK, _t352)
+    _seen352c = {"at": time.time(), "ours": ["dxgi.dll"], "missing": [_miss352]}
+    with patch.object(_watch352, "last_sighting", lambda *a, **k: dict(_seen352c)), \
+            patch.object(_watch352, "settle", lambda seen, files: seen):
+        _proc352._loaded_note(_d352, {"path": _route352, "proxy": "dxgi.dll", "files": _files352}, _rep352c)
+    check(f"...{_route352}: {_miss352} missing is still said beside '{_titles352[-1][24:]}'",
+          any(_miss352 in f.title for f in _rep352c.findings if f.level == diagnose.WARN),
+          [f.title for f in _rep352c.findings])
+shutil.rmtree(_d352, ignore_errors=True)
+
+
+section("2.0.3: an emulator that cannot draw with Direct3D is not read as a Direct3D program (#352)")
+# eden.exe is a Qt program; its imports read as DX12, the Direct3D routes were
+# offered, and the feeder - the route for Vulkan without DLSS - only after the
+# person had set Vulkan by hand.
+try:
+    from core import games as _games352, pe as _pe352
+    _e352 = Path(tempfile.mkdtemp(prefix="emu_api_"))
+    for _n352, _want352 in (("eden.exe", "Vulkan"), ("mGBA.exe", "OpenGL"),
+                            ("duckstation-qt-x64-ReleaseLTCG.exe", "DX12")):
+        shutil.copyfile(X64, _e352 / _n352)
+        _g352 = _games352.Game(name="x", folder=_e352, exe=_e352 / _n352)
+        with patch.object(_pe352, "detect_api", lambda p: ("DX12", "imports d3d12.dll")):
+            _games352.enrich(_g352, chosen=True)
+        check(f"{_n352}: read as {_want352}" + (", and the reason names the emulator" if _want352 != "DX12" else
+                                                 " - an emulator that has a Direct3D backend keeps what it imports"),
+              _g352.api == _want352 and (_want352 == "DX12" or "Vulkan or OpenGL only" in _g352.api_why),
+              (_g352.api, _g352.api_why, getattr(_g352.emu, "key", None)))
+    _g352 = _games352.Game(name="x", folder=_e352, exe=_e352 / "eden.exe")
+    with patch.object(_pe352, "detect_api", lambda p: ("DX12", "imports d3d12.dll")), \
+            patch.object(_games352, "api_override", lambda folder: "DX11"):
+        _games352.enrich(_g352, chosen=True)
+    check("...and a graphics API set by hand still wins", _g352.api == "DX11", (_g352.api, _g352.api_why))
+    # 'auto' is decided in three places - enrich(), the settings' "back to auto"
+    # and the dim label beside the dropdown - and all three ask the same function
+    _ctl352 = (SRC_DIR / "core" / "ui" / "ctl_game.py").read_text(encoding="utf8")
+    check("...the settings' 'back to auto' and the label beside the dropdown give the same answer as the scan",
+          _ctl352.count("games.emu_api(") == 3
+          and _games352.emu_api(_g352, "DX12", "x")[0] == "Vulkan"
+          and _games352.emu_api(_g352, "Vulkan", "kept") == ("Vulkan", "kept")
+          and _games352.emu_api(None, "DX12", "kept") == ("DX12", "kept"), _ctl352.count("games.emu_api("))
+    shutil.rmtree(_e352, ignore_errors=True)
+except Exception as _e352x:
+    check("the emulator API checks ran to their end", False, repr(_e352x))
+
+
+section("2.0.3: a program started from the frozen exe does not get its DLL folder (#287)")
+# RPCS3 started with 'play': "vcruntime140.dll was incorrectly installed at
+# ...\Temp\_MEI000083a02". The onefile bootloader's SetDllDirectoryW is handed
+# to every child process, ahead of System32 in its search order.
+try:
+    import subprocess as _sp287
+    from core import child as _child287
+    _calls287: list = []
+    _real287 = (_child287._set_dll_directory, _sp287.Popen)
+    _child287._set_dll_directory = lambda p: _calls287.append(("dll", p)) or True
+    _sp287.Popen = lambda a, **k: _calls287.append(("popen", a, k)) or "proc"
+    try:
+        with patch.object(sys, "frozen", True, create=True), \
+                patch.object(sys, "_MEIPASS", r"C:\Temp\_MEI123", create=True), \
+                patch.dict(os.environ, {"_PYI_ARCHIVE_FILE": "x", "_PYI_PARENT_PROCESS_LEVEL": "1"}):
+            _got287 = _child287.popen(["game.exe"], cwd="C:/g")
+        _kinds287 = [(c[0], c[1]) if c[0] == "dll" else c[0] for c in _calls287]
+        check("frozen: the DLL directory is lifted, the program started, and ours put back - in that order",
+              _got287 == "proc" and _kinds287 == [("dll", None), "popen", ("dll", r"C:\Temp\_MEI123")], _kinds287)
+        _env287 = next(c[2].get("env") or {} for c in _calls287 if c[0] == "popen")
+        check("...and the bootloader's own variables stay behind",
+              not any(k.upper().startswith("_PYI_") for k in _env287) and "PATH" in {k.upper() for k in _env287},
+              sorted(k for k in _env287 if k.upper().startswith("_PYI"))[:3])
+        _calls287.clear()
+        _sp287.Popen = lambda a, **k: (_ for _ in ()).throw(OSError("would not start"))
+        with patch.object(sys, "frozen", True, create=True), \
+                patch.object(sys, "_MEIPASS", r"C:\Temp\_MEI123", create=True):
+            try:
+                _child287.popen(["game.exe"])
+            except OSError:
+                pass
+        check("...a program that would not start still leaves our own DLL directory in place",
+              _calls287[-1:] == [("dll", r"C:\Temp\_MEI123")], _calls287)
+        _calls287.clear()
+        _sp287.Popen = lambda a, **k: _calls287.append(("popen", a, k)) or "proc"
+        _child287.popen(["game.exe"])
+        check("from source there is no bootloader and nothing is touched",
+              [c[0] for c in _calls287] == ["popen"], _calls287)
+    finally:
+        _child287._set_dll_directory, _sp287.Popen = _real287
+    _raw287 = {n: (SRC_DIR / "core" / n).read_text(encoding="utf8") for n in ("autopilot.py", "video.py")}
+    check("the game, the player, yt-dlp and every ffmpeg and ffprobe call are started through it",
+          all("subprocess.Popen(" not in t and "subprocess.run(" not in t and "child.popen(" in t
+              for t in _raw287.values()) and _raw287["video.py"].count("child.run(") == 2,
+          {n: (t.count("subprocess.Popen("), t.count("subprocess.run(")) for n, t in _raw287.items()})
+    # run(): the first version held the lock - and kept the directory lifted -
+    # for the whole of an `ffmpeg -list_devices`, and 'open player' on the Tk
+    # thread waited behind it. Lifted while the program is created, no longer.
+    _calls287.clear()
+
+    class _Proc287:
+        args, returncode = ["ffprobe.exe"], 0
+
+        def __init__(self, a, **k):
+            _calls287.append(("popen", a, k))
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def communicate(self, input=None, timeout=None):
+            free = _child287._lock.acquire(timeout=0)
+            if free:
+                _child287._lock.release()
+            _calls287.append(("waiting", free, timeout))
+            return "out", "err"
+
+        def poll(self):
+            return 0
+
+        def kill(self):
+            _calls287.append(("kill",))
+
+    _real287r = (_child287._set_dll_directory, _sp287.Popen)
+    _child287._set_dll_directory = lambda p: _calls287.append(("dll", p)) or True
+    _sp287.Popen = _Proc287
+    try:
+        with patch.object(sys, "frozen", True, create=True), \
+                patch.object(sys, "_MEIPASS", r"C:\Temp\_MEI123", create=True):
+            _done287 = _child287.run(["ffprobe.exe"], capture_output=True, text=True, timeout=20)
+        check("...run(): the directory is back, and the lock free, BEFORE the program is waited for",
+              [c[0] for c in _calls287] == ["dll", "popen", "dll", "waiting"]
+              and _calls287[2][1] == r"C:\Temp\_MEI123" and _calls287[3][1:] == (True, 20), _calls287)
+        _kw287 = _calls287[1][2]
+        check("...and it is still subprocess.run to its caller: captured output, the text flag, the return code",
+              (_done287.stdout, _done287.stderr, _done287.returncode) == ("out", "err", 0)
+              and _kw287.get("stdout") == _sp287.PIPE and _kw287.get("text") is True, (_done287, sorted(_kw287)))
+    finally:
+        _child287._set_dll_directory, _sp287.Popen = _real287r
+except Exception as _e287c:
+    check("the child-process checks ran to their end", False, repr(_e287c))
 
 
 section("RESULT")

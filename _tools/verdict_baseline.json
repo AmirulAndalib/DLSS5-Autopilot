@@ -711,6 +711,15 @@
   "route": "upstream",
   "verdict": "Add-ons loaded. Confirm in the 'NR Pre-Upscale' tab (neural-upstream) - this route does not log frames."
  },
+ "348": {
+  "findings": [
+   "bad: ReShade loaded no add-ons."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "Inconclusive - the feed did not get far enough to tell."
+ },
  "35": {
   "findings": [
    "ok: Motion vectors look alive (29% non-zero).",
@@ -720,6 +729,19 @@
   "ran": true,
   "route": "feeder",
   "verdict": "Driver 616.64+ faults with renodx-dlss5 4.6/4.7 - install again (the tool pins 4.55), or try the standalone route."
+ },
+ "352": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
+   "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
+   "ok: The add-on's own switch is on.",
+   "info: This route leaves no frame log of its own.",
+   "info: nvngx_dlssnr.dll was not loaded yet when the game was seen."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "bridge",
+  "verdict": "Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture."
  },
  "37": {
   "findings": [

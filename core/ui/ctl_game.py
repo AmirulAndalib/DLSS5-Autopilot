@@ -755,9 +755,9 @@ class GameControl:
             g.api, g.api_why = chosen, f"set by hand (detected {detected})"
         else:
             try:
-                g.api, g.api_why = pe.detect_api(g.exe)
+                g.api, g.api_why = games.emu_api(g, *pe.detect_api(g.exe))
             except Exception:
-                g.api, g.api_why = detected, "detected from the executable"
+                g.api, g.api_why = games.emu_api(g, detected, "detected from the executable")
         self.write(f"> graphics api: {g.api}" + ("" if chosen else " (auto)"))
         self.forget_row(g)
         self.root.after(1, self.remember_library)
@@ -917,7 +917,7 @@ class GameControl:
         g = self.game
         if key == "api":
             detected = getattr(g, "api_detected", "") or (g.api if g else "")
-            return _api_label(detected)
+            return _api_label(games.emu_api(g, detected, "")[0])
         if key == "reshade_proxy":
             return installer._proxy_name(g.api if g else "", "") if g else ""
         if key == "renodx":

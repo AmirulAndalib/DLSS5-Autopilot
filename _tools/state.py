@@ -50,13 +50,17 @@ CLASSES = (
     ("nothing we wrote ever loaded",
      ("not started since the install", "closed during start-up",
       "nothing this install wrote was loaded", "never loaded",
-      "is not in the game folder")),
+      "is not in the game folder",
+      # #328: the game took d3d9.dll from System32, ours was never reached
+      "ours is never reached")),
     ("upstream: the driver's NGX runtime faults",
      ("driver 616.64", "faults inside", "no dlss 5 entry point")),
     ("we cannot tell from the logs",
      ("inconclusive", "did not get far enough")),
     ("we ask the person to look in the overlay",
-     ("confirm in the", "check '", "switched on")),
+     # "...and the switch is on. This route logs no frames, so the panel is
+     # the only live picture" (#287, #352) is the same ask in other words
+     ("confirm in the", "check '", "switched on", "the switch is on")),
     # Two shapes that used to hide inside "nothing we wrote ever loaded",
     # because the replay put every file back and invented a finished install
     # record: the answer was measured against a folder nobody had. They are

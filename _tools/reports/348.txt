@@ -1,0 +1,59 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+Error!
+
+Can't find background image
+'materials/console/background01_widescreen.vtf'
+
+---
+- version: 2.0.2
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 616.92
+- game: Dark Messiah of Might & Magic Single Player
+- exe: mm.exe
+- arch/api: 32-bit / DX9 (set by hand (detected Unknown))
+- route: feeder
+
+**Diagnosis**: The add-on loaded but ReShade never gave it an effect runtime - check 'DLSS 5 Feed' is ticked in the overlay.
+- [ok] The add-on loaded - it wrote its own log in the session this report reads.
+- [warn] The add-on loaded, and ReShade never handed it an effect runtime.
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- bin/d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 20 Sep 02:31)
+- process: mm.exe
+- DLLs in the process: 138
+- ours, loaded: none
+- same name, loaded from elsewhere: C:\WINDOWS\SYSTEM32\d3d9.dll
+- ours, not loaded: dlss5-feed.addon32
+
+**ReShade.log**
+```
+02:30:22:784 [15644] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+...
+02:30:03.413  [feed] vkQueuePresentKHR hook installed (59F49760): counting presents against frames fed, to detect an external frame pacer (Smooth Motion is invisible to a module check on Vulkan)
+02:30:03.788  [feed] vkCreateDevice hook removed
+02:30:03.791  shut down cleanly.
+02:30:05.199  dlss5-feed32 1.16.0-beta.5 commit 89942bf (built Sep 19 2026 09:07:47) attached AGAIN in the same process (ReShade loaded the add-on a second time; the log above is the earlier attach).
+02:30:05.199    host game: F:\SteamLibrary\steamapps\common\Dark Messiah Might and Magic Single Player\mm.exe
+02:30:05.200  [feed32] config: enabled=1 mode=2 hdr=-1 depth_inverted=-1 flags=-1 reset_every=0 log_frames=3 host_window=1 host_gpu_priority=0 work_resolution=100% work_upscale=0 work_sharpness=0.30 a
+02:30:05.200  [feed32] Deep Fried Chicken: not present in host64\
+02:30:05.200  [feed32] OptiScaler: not present in host64\
+02:30:05.286  [feed] vkCreateDevice hook installed on vulkan-1!vkCreateDevice (59F4CCB0): the KHR external-interop extensions will be appended to every device this game creates
+02:30:05.373  [feed] vkQueuePresentKHR hook installed (59F49760): counting presents against frames fed, to detect an external frame pacer (Smooth Motion is invisible to a module check on Vulkan)
+02:30:05.632  [feed] vkCreateDevice hook removed
+02:30:05.633  shut down cleanly.
+```

@@ -31,12 +31,11 @@ as the window runs it, and the watching is `watch`, which only reads.
 from __future__ import annotations
 
 import os
-import subprocess
 import time
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from . import anticheat, community, installer, log, pe, watch
+from . import anticheat, child, community, installer, log, pe, watch
 
 # Three, and the first one is the route the tool recommended. A fourth try
 # has never rescued a game in the corpus, and every attempt costs a download,
@@ -216,7 +215,7 @@ def start(game) -> tuple[bool, str]:
         return False, why
     exe = Path(game.exe)
     try:
-        subprocess.Popen([str(exe)], cwd=str(exe.parent),
+        child.popen([str(exe)], cwd=str(exe.parent),
                          close_fds=True)
         return True, why
     except Exception as e:                      # a store stub, a permission

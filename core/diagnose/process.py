@@ -83,6 +83,16 @@ def _sighting_is_older_than_the_last_launch(install_dir: Path, at) -> bool:
     return _SAME_LAUNCH_S < gap < 3 * 3600
 
 
+# A file this tool writes -> what its add-on calls itself when ReShade
+# registers it. A file that is not here is never taken for registered.
+_REGISTERS_AS = (("bridge", ("dlss 5 bridge",)), ("feed", ("dlss 5 feed",)),
+                 ("renodx-dlss5.", ("dlss 5 neural rendering",)),
+                 ("renodx-dlss.", ("renodx dlss",)),
+                 ("nvngx.dll.addon", ("pre-upscale", "upstream")),
+                 ("standalone-dlssnr", ("standalone dlss-nr",)),
+                 ("rtx40mfg", ("mfg unlock",)))
+
+
 def _loaded_note(install_dir: Path, man: dict, rep: Report) -> None:
     """Say what the process really had in it, where the log cannot.
 
@@ -110,6 +120,19 @@ def _loaded_note(install_dir: Path, man: dict, rep: Report) -> None:
         return
     if _sighting_is_older_than_the_last_launch(install_dir, seen.get("at")):
         return
+    # The session's own log outranks an early look (#352): ReShade registered
+    # both add-ons and ran them for eleven minutes, and two lines under that
+    # the snapshot - taken as the process came up - said they were not loaded.
+    # File by file: the bridge registering says nothing about the feed, and an
+    # HDR mod or the MFG unlock registering says nothing about either.
+    reg = [f.title.lower() for f in rep.findings
+           if f.level == OK and f.title.startswith("ReShade loaded add-on")]
+
+    def registered(n: str) -> bool:
+        said = next((t for k, t in _REGISTERS_AS if k in n), ())
+        return any(s in t for s in said for t in reg)
+    need = [n for n in need if not (str(n).lower().endswith((".addon64", ".addon32"))
+                                    and registered(str(n).lower()))]
     later = [n for n in need if str(n).lower() in _LOADS_ON_CREATE]
     need = [n for n in need if n not in later]
     loaded = [n for n in (seen.get("ours") or [])]
