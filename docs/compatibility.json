@@ -23,6 +23,28 @@
     }
    }
   },
+  "acmirage.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 6.88,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "Assassin's Creed Mirage",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "acmirage_plus.exe": {
    "drivers": {
     "616.92": {
@@ -2101,6 +2123,6 @@
    }
   }
  },
- "generated": "2026-09-20T04:56:39Z",
- "reports": 175
+ "generated": "2026-09-20T05:38:50Z",
+ "reports": 176
 }
