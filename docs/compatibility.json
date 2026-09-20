@@ -825,6 +825,21 @@
     }
    }
   },
+  "evilwithin.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "The Evil Within",
+   "routes": {
+    "standalone": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "execpubg.exe": {
    "drivers": {
     "616.92": {
@@ -2344,6 +2359,6 @@
    }
   }
  },
- "generated": "2026-09-20T22:29:45Z",
- "reports": 197
+ "generated": "2026-09-20T22:39:37Z",
+ "reports": 198
 }
