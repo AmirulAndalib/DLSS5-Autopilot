@@ -522,21 +522,21 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 3
+     "worked": 4
     }
    },
    "measured": {
     "optiscaler": {
-     "ms": 6.62,
-     "n": 1,
-     "res": 75
+     "ms": 4.75,
+     "n": 2,
+     "res": 62
     }
    },
    "name": "The Blood of Dawnwalker",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 5
+     "worked": 6
     },
     "renodx": {
      "failed": 1,
@@ -2296,6 +2296,6 @@
    }
   }
  },
- "generated": "2026-09-20T21:37:15Z",
- "reports": 193
+ "generated": "2026-09-20T21:41:07Z",
+ "reports": 194
 }
