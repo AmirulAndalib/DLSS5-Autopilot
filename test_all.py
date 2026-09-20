@@ -1257,7 +1257,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.3", update.VERSION == "2.0.3", update.VERSION)
+check("version is 2.0.4", update.VERSION == "2.0.4", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -4987,6 +4987,58 @@ _w3 = optiscaler.install(_game2, proxy="dxgi.dll", dl=lambda url, name: _d / "w.
 check("an archive wrapped in one folder is unwrapped, so the proxy DLL still lands in the game folder",
       (_game2 / "dxgi.dll").is_file() and "dxgi.dll" in _w3, _w3)
 shutil.rmtree(net.cache_dir() / "unpacked" / "w", ignore_errors=True)
+
+# #364: on 2026-09-20 the fork published display-filter-v0.2.0-preview on the
+# same release page - display_filter.exe, a README and no OptiScaler.dll. It
+# was the newest release carrying an archive, so it was installed: no proxy
+# was written, its own files were left in the game folder, and the log said
+# "installed as dxgi.dll" anyway. Two guards, at both ends.
+(_d / "notopti").mkdir()
+(_d / "notopti" / "display_filter.exe").write_bytes(b"MZ-filter")
+(_d / "notopti" / "README.md").write_bytes(b"# display filter")
+_r = subprocess.run([str(optiscaler._tar_exe()), "-cf", str(_d / "df.7z"), "--format", "7zip",
+                     "-C", str(_d / "notopti"), "."], capture_output=True, text=True)
+check("...and tar.exe wrote the fixture for it", _r.returncode == 0, _r.stderr)
+_game3 = _d / "game3"
+_game3.mkdir()
+(_game3 / "dxgi.dll").write_bytes(
+    b"MZ" + b"\0" * (1 << 20) + "OptiScaler.dll".encode("utf-16-le"))
+_err = ""
+try:
+    optiscaler.install(_game3, proxy="winmm.dll", dl=lambda url, name: _d / "df.7z",
+                       release=("display-filter-v0.2.0-preview",
+                                "https://example/df.7z"))
+except RuntimeError as e:
+    _err = str(e)
+check("an archive with no OptiScaler.dll in it is refused, and says what it held",
+      "OptiScaler.dll" in _err and "display_filter.exe" in _err, _err or "it installed it")
+check("...and the install that was already there is left alone",
+      optiscaler.is_optiscaler(_game3 / "dxgi.dll")
+      and not (_game3 / "README.md").exists()
+      and not (_game3 / "winmm.dll").exists(),
+      sorted(p.name for p in _game3.iterdir()))
+shutil.rmtree(net.cache_dir() / "unpacked" / "df", ignore_errors=True)
+check("a release whose archives are all something else is skipped, not installed",
+      optiscaler._pick_archive(
+          [{"name": "display-filter-v0.2.0-preview.zip",
+            "browser_download_url": "https://x/display-filter-v0.2.0-preview.zip"}],
+          ("rtx40-mfg",)) is None)
+# Resolved into a list first: the failure this exists to catch - upstream
+# renaming the package - raises out of resolve(), and an exception inside a
+# check()'s own arguments ends the whole run instead of failing one line.
+_bnames, _berr = {}, {}
+for _b in optiscaler.BUILDS:
+    try:
+        _bnames[_b] = optiscaler.resolve(_b)[1].rsplit("/", 1)[-1]
+    except Exception as _e:
+        # The message goes in a second dict, not in _bnames: every error
+        # resolve() raises carries the word "OptiScaler" itself, so reading
+        # one as a package name would make this check pass on exactly the
+        # failure it exists to catch.
+        _bnames[_b], _berr[_b] = None, f"!! {type(_e).__name__}: {_e}"
+check("...and every build the tool offers still resolves to an OptiScaler package",
+      all(n and optiscaler.PACKAGE_WORD in n.lower() for n in _bnames.values()),
+      "; ".join(f"{b or 'default'}={_bnames[b] or _berr.get(b)}" for b in _bnames))
 check("a failed TLS verification is explained, whatever exception type carried it",
       net.untrusted("x", Exception("<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] ...>")) is not None
       and net.untrusted("x", Exception("timed out")) is None
@@ -7560,8 +7612,8 @@ check("the compatibility workflow does not filter on the label",
       "labels=result" not in _wf and "state=all" in _wf)
 
 # FEATURES: the version is the delivery mechanism for the library rescan.
-check("the version is 2.0.3 in the file the build reads too",
-      "2.0.3.0" in (Path(__file__).resolve().parent
+check("the version is 2.0.4 in the file the build reads too",
+      "2.0.4.0" in (Path(__file__).resolve().parent
                     / "version_info.txt").read_text(encoding="utf8"))
 check("...and the release notes the workflow publishes exist",
       (Path(__file__).resolve().parent / "docs" / "releases"
@@ -9312,6 +9364,43 @@ with patch.object(sources, "_page", lambda url, timeout=30: ""):
     check("a page that does not answer ends the walk instead of looping",
           sources.release_tags_html("x/y", pages=4) == []
           and sources.release_assets_html("x/y", "v1") == {})
+
+# #325 and #348: upstream publishes its betas with prerelease=false, so
+# GitHub's /latest - and everything that follows that flag - answered
+# 1.16.0-beta.x for "newest release". That beta is one of the two things
+# that changed where the crash stopped (#325), and the build that could not
+# compile DLSS5_Feed.fx (#348),
+# while the github.com fallback, which reads the tag's own name, answered
+# v0.15.1 all along. Two paths, one answer, and the betas stay one entry
+# away under "newest pre-release".
+_FEED_RELS = [
+    {"tag_name": "v1.16.0-beta.6", "prerelease": False, "draft": False,
+     "assets": [{"name": "DLSS5-Feeder-1.16.0-beta.6.zip",
+                 "browser_download_url": "https://x/b6.zip"}]},
+    {"tag_name": "v0.15.1", "prerelease": False, "draft": False,
+     "assets": [{"name": "DLSS5-Feeder-0.15.1.zip",
+                 "browser_download_url": "https://x/0151.zip"}]}]
+with patch.object(sources, "_json", lambda url: _FEED_RELS):
+    _f_stable = sources.resolve_feeder()[0]
+    _f_pre = sources.resolve_feeder(prerelease=True)[0]
+    _f_tag = sources.resolve_feeder(tag="v0.15.1")[0]
+check("'newest release' is the newest release, not a beta published as one",
+      _f_stable == "v0.15.1", _f_stable)
+check("...'newest pre-release' still takes the beta", _f_pre == "v1.16.0-beta.6", _f_pre)
+check("...and a pinned tag is still exactly that build", _f_tag == "v0.15.1", _f_tag)
+
+_ASSETS_0151 = ('<a href="/jlrouzies-fr/DLSS5-Feeder/releases/download/'
+                'v0.15.1/DLSS5-Feeder-0.15.1.zip" rel="nofollow">')
+def _feed_pages(url, timeout=30):
+    return _ASSETS_0151 if "expanded_assets" in url else _LIST_HTML
+def _api_down(url):
+    raise RuntimeError("rate limited")
+with patch.object(sources, "_json", _api_down), \
+        patch.object(sources, "_page", _feed_pages), \
+        patch.object(sources, "latest_tag", lambda repo: "v1.16.0-beta.1"):
+    _f_html = sources.resolve_feeder()[0]
+check("...and github.com's pages answer the same build the API does",
+      _f_html == "v0.15.1", _f_html)
 
 check("the feeder falls back to those pages when the API does not answer",
       "_feeder_html" in src_of(sources.resolve_feeder)
@@ -11642,6 +11731,48 @@ check("a fork install made before the fix is marked to install again",
      "components": {"optiscaler": "v0.8.4"}}), encoding="utf8")
 check("...and one made after it is left alone",
       not any(i.outdated for i in components.check(_cd)))
+
+# The two folders this release's fixes leave behind. Neither of them is
+# "behind" by any version number - a beta sorts ABOVE the release, and a
+# fork is never compared with the default build - so without a rule of
+# their own the game list stays silent for exactly the people who have to
+# install again, and only the two reporters who read the release note ever do.
+(_cd / installer.MANIFEST).write_text(json.dumps(
+    {"version": 1, "complete": True, "tool": "2.0.3", "proxy": "dxgi.dll",
+     "opti_build": optiscaler.PRESR,
+     "components": {"optiscaler": "display-filter-v0.2.0-preview"}}), encoding="utf8")
+_c364 = [i for i in components.check(_cd) if i.outdated and i.note]
+check("a folder whose proxy was never written is marked to install again (#364)",
+      bool(_c364) and "not in the folder" in (_c364[0].note or ""),
+      "; ".join(f"{i.installed} {i.outdated} {i.note}" for i in components.check(_cd)))
+(_cd / "dxgi.dll").write_bytes(b"MZ" + b"\0" * (1 << 20)
+                               + "OptiScaler.dll".encode("utf-16-le"))
+check("...and the same folder with the proxy in it is not",
+      not any("not in the folder" in (i.note or "") for i in components.check(_cd)),
+      "; ".join(f"{i.installed} {i.outdated} {i.note}" for i in components.check(_cd)))
+# The version on the record is not the evidence: one fork really does
+# publish working packages under the tag "nightly", and older builds of this
+# tool installed from it. Accusing it would put an amber mark on a folder
+# that is perfectly well set up.
+check("a fork's 'nightly' release is not called something other than OptiScaler",
+      optiscaler.is_package_tag("nightly") and optiscaler.is_package_tag("?")
+      and optiscaler.is_package_tag("v10.0.0-dev-fork-y4my4my4m-v4")
+      and not optiscaler.is_package_tag("display-filter-v0.2.0-preview"))
+(_cd / "dxgi.dll").unlink()
+(_cd / installer.MANIFEST).write_text(json.dumps(
+    {"version": 1, "complete": True, "tool": "2.0.3", "feeder_prerelease": False,
+     "components": {"feeder": "v1.16.0-beta.5"}}), encoding="utf8")
+_c325 = [i for i in components.check(_cd) if i.outdated and i.note]
+check("...and a 'newest release' that landed on a test build says so (#325, #348)",
+      bool(_c325) and "test build" in (_c325[0].note or ""),
+      "; ".join(f"{i.installed} {i.outdated} {i.note}" for i in components.check(_cd)))
+(_cd / installer.MANIFEST).write_text(json.dumps(
+    {"version": 1, "complete": True, "tool": "2.0.3", "feeder_prerelease": True,
+     "components": {"feeder": "v1.16.0-beta.5"}}), encoding="utf8")
+check("...but a beta somebody ASKED for is left alone",
+      not any(i.outdated and "test build" in (i.note or "")
+              for i in components.check(_cd)),
+      "; ".join(f"{i.installed} {i.outdated} {i.note}" for i in components.check(_cd)))
 shutil.rmtree(_cd, ignore_errors=True)
 
 
@@ -11789,12 +11920,13 @@ _ui_cleanup()
 check("the game-list badge for a part that is not current is still there",
       _st_g2.get("card") == "update (2)" and "update (2)" in _st_g2.get("library", []), _st_g2.get("card"))
 check("the library's count of games to install again is still there",
-      any(t.startswith("update all") and "1 with newer parts" in t for t in _st_g2.get("menu", [])),
+      any(t.startswith("update all") and "1 to install again" in t for t in _st_g2.get("menu", [])),
       [t for t in _st_g2.get("menu", []) if "update" in t])
 check("the game page's line about parts that are not current is still there",
-      any("have a newer build" in t for t in _st_g2.get("page", []))
+      any("need installing again" in t or "needs installing again" in t
+          for t in _st_g2.get("page", []))
       and "update (2)" in _st_g2.get("buttons", []),
-      ([t for t in _st_g2.get("page", []) if "newer" in t], _st_g2.get("buttons")))
+      ([t for t in _st_g2.get("page", []) if "install" in t], _st_g2.get("buttons")))
 check("the standalone note says what happens when F10 is BOTH keys",
       "one of the two will win" in src_of(installer))
 check("a record with no file list is not labelled 'only if the game asks'",
@@ -14833,6 +14965,117 @@ try:
         _child287._set_dll_directory, _sp287.Popen = _real287r
 except Exception as _e287c:
     check("the child-process checks ran to their end", False, repr(_e287c))
+
+
+section("2.0.4: a release page that carries something else, and a beta published as a release")
+# Both fixes end in a walk back to an older release, and neither path had a
+# test: they only run when upstream's newest is not usable, which is the
+# day nobody is watching.
+_o204 = {"assets": [{"name": "display-filter-v0.2.0-preview.zip",
+                     "browser_download_url": "https://x/df.zip"}],
+         "tag_name": "display-filter-v0.2.0-preview", "published_at": "2026-09-20T13:25:23Z"}
+_o204_old = {"assets": [{"name": "OptiScaler-DLSSNR-v0.2.0.zip",
+                         "browser_download_url": "https://x/opti.zip"}],
+             "tag_name": "v0.2.0-dlssnr", "published_at": "2026-09-01T00:00:00Z"}
+def _json204(url, **kw):
+    return [_o204, _o204_old] if "per_page" in url else _o204
+with patch.object(optiscaler.sources, "json_or_html", _json204):
+    _r204 = optiscaler.resolve()
+check("the default build walks back to the newest release that IS an OptiScaler package",
+      _r204 == ("v0.2.0-dlssnr", "https://x/opti.zip"), _r204)
+_raised204 = False
+with patch.object(optiscaler.sources, "json_or_html",
+                  lambda url, **kw: _o204 if "per_page" not in url else []):
+    try:
+        optiscaler.resolve()
+    except RuntimeError:
+        _raised204 = True
+check("...and with nothing else on the page it refuses, rather than installing what is there",
+      _raised204)
+
+_pre204 = [{"tag_name": f"v1.16.0-beta.{i}", "prerelease": False, "draft": False,
+            "assets": [{"name": f"DLSS5-Feeder-1.16.0-beta.{i}.zip",
+                        "browser_download_url": f"https://x/b{i}.zip"}]}
+           for i in range(15, 0, -1)]
+_pages204 = ('<a href="/jlrouzies-fr/DLSS5-Feeder/releases/tag/v1.16.0-beta.15">'
+             '<a href="/jlrouzies-fr/DLSS5-Feeder/releases/tag/v0.15.1">')
+_assets204 = ('<a href="/jlrouzies-fr/DLSS5-Feeder/releases/download/v0.15.1/'
+              'DLSS5-Feeder-0.15.1.zip" rel="nofollow">')
+with patch.object(sources, "_json", lambda url: _pre204), \
+        patch.object(sources, "_page",
+                     lambda url, timeout=30: _assets204 if "expanded_assets" in url
+                     else _pages204), \
+        patch.object(sources, "latest_tag", lambda repo: "v1.16.0-beta.15"):
+    _f204 = sources.resolve_feeder()
+check("a feeder page that is all test builds is walked further back, not answered with /latest",
+      _f204[0] == "v0.15.1" and "0.15.1" in "".join(_f204[1]), _f204)
+check("...and the install log says where that version came from",
+      "test builds" in (sources.last_fallback or ""), sources.last_fallback)
+sources.last_fallback = ""
+
+# The page walk is the other half of that fix, and it had the same hole one
+# level down: "no stable tag on two pages" fell through to the /latest
+# redirect, which follows the flag upstream does not set - so the walk
+# answered a beta while the log said a release had been found.
+_tags204 = [(f"v1.16.0-beta.{i}", True) for i in range(20, 0, -1)]
+with patch.object(sources, "release_tags_html", lambda repo, pages=1: _tags204), \
+        patch.object(sources, "latest_tag", lambda repo: "v1.16.0-beta.20"), \
+        patch.object(sources, "release_assets_html", lambda repo, tag: {"x.zip": "u"}):
+    _h204 = sources._feeder_html(False, "")
+check("a page walk that finds only test builds answers with none, not with /latest",
+      _h204 == ("", {}), _h204)
+with patch.object(sources, "release_tags_html", lambda repo, pages=1: []), \
+        patch.object(sources, "latest_tag", lambda repo: "v0.15.1"), \
+        patch.object(sources, "release_assets_html", lambda repo, tag: {"x.zip": "u"}):
+    _h204b = sources._feeder_html(False, "")
+check("...and a walk that could not read the pages at all still uses the redirect",
+      _h204b[0] == "v0.15.1", _h204b)
+
+# And when every source there is answers with a beta, the install says so
+# rather than letting the setting claim this is the release line.
+with patch.object(sources, "_json", lambda url: (_pre204 if "per_page" in url
+                                                 else _pre204[0])), \
+        patch.object(sources, "_page", lambda url, timeout=30: ""), \
+        patch.object(sources, "latest_tag", lambda repo: ""):
+    _last204 = sources.resolve_feeder()
+check("a feeder line with no release at all is installed, and named as a test build",
+      _last204[0].startswith("v1.16.0-beta.")
+      and "test build" in (sources.last_fallback or ""),
+      (_last204[0], sources.last_fallback))
+sources.last_fallback = ""
+
+# The diagnosis for a folder that took the package that was not OptiScaler:
+# the report body now carries the release it took, so a replay can reach it.
+_d204 = Path(tempfile.mkdtemp(prefix="diag204_"))
+def _verdict204(tag):
+    rep204 = diagnose.routes._analyse_optiscaler(
+        _d204, diagnose.model.Report(route="optiscaler"), 0.0,
+        {"proxy": "dxgi.dll", "opti_build": optiscaler.PRESR,
+         "components": {"optiscaler": tag}})
+    return rep204.verdict, " ".join(f.title + " " + f.detail
+                                    for f in rep204.findings)
+_v204, _f204t = _verdict204("display-filter-v0.2.0-preview")
+check("a folder whose release was not an OptiScaler build is told that, not told about antivirus",
+      "not an OptiScaler build" in _v204 and "antivirus" not in _f204t, (_v204, _f204t))
+_v204b, _f204b = _verdict204("v0.8.5")
+check("...and a real version still gets the answer it always got",
+      _v204b == "OptiScaler is not in the game folder - install again."
+      and "antivirus" in _f204b, (_v204b, _f204b))
+_v204c, _ = _verdict204("nightly")
+check("...and so does the fork's 'nightly', which really is one of ours",
+      _v204c == "OptiScaler is not in the game folder - install again.", _v204c)
+from core import verdicts as _vd204
+check("both verdicts are staged, so neither comes back 'unmapped'",
+      not _vd204.stage(_v204)[0].startswith("unmapped")
+      and not _vd204.stage(_v204b)[0].startswith("unmapped"),
+      (_vd204.stage(_v204)[0], _vd204.stage(_v204b)[0]))
+shutil.rmtree(_d204, ignore_errors=True)
+
+# A refusal is something to read, not a crash: the window shows a traceback
+# for anything that is not an InstallError, and offers to file a bug about it.
+check("the OptiScaler refusal reaches the person as an install error",
+      "except RuntimeError as e:" in src_of(installer.install)
+      and "raise InstallError(str(e)) from e" in src_of(installer.install))
 
 
 section("RESULT")

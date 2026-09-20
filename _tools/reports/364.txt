@@ -1,0 +1,36 @@
+**Did the game start?** it started and ran
+
+**What happened**
+Since updating to v2.0.3, OptiScaler no longer installs correctly on multiple games that were working fine before the update (Death Stranding 2, Spiderman 2, The Alters for example)
+
+---
+- version: 2.0.3
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 616.92
+- game: The Alters
+- exe: TheAlters-Win64-Shipping.exe
+- arch/api: 64-bit / DX12 (imports dxgi.dll (DX11/DX12; proxy is dxgi.dll either way))
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: OptiScaler is not in the game folder - install again.
+- [bad] No OptiScaler log, and no proxy in the folder.
+
+**Files in the folder**
+- dxgi.dll: MISSING
+- nvngx_dlssnr.dll: present
+- optiscaler build: wilsjo2
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+(none)
+```

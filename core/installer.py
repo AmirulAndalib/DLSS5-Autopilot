@@ -249,8 +249,9 @@ class Options:
     # OptiScaler route its calls become OptiScaler's input and DLSS runs in
     # their place, so the tool also puts a nvngx_dlss.dll in the folder.
     upscaler: str = ""
-    # The feeder's pre-releases are where support for the newer DLSS 5 add-on
-    # generations lives; the stable release only accepts renodx-dlss5 4.55.
+    # The feeder's pre-releases are where support for the newest DLSS 5
+    # add-on generations lands first. "newest release" means the release
+    # line (#325, #348); this asks for the beta line instead.
     feeder_prerelease: bool = False
     feeder_tag: str = ""                    # "" = stable or newest pre-release
     dxvk: bool = False                      # run a D3D11 game on Vulkan via DXVK
@@ -2895,8 +2896,14 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
             if oproxy != optiscaler.DEFAULT_PROXY and not opt.opti_proxy:
                 log(f"      {optiscaler.DEFAULT_PROXY} is already taken here, "
                     f"installing as {oproxy} instead")
-            orel = optiscaler.resolve(opt.opti_build)
-            rep.components["optiscaler"] = orel[0]
+            try:
+                orel = optiscaler.resolve(opt.opti_build)
+            except RuntimeError as e:
+                # A sentence written to be read, not a crash: without this
+                # it reaches the window as traceback.format_exc() and the
+                # tool offers to file a bug report about its own refusal,
+                # and the reason never reaches the manifest notes either.
+                raise InstallError(str(e)) from e
             if opt.opti_build == optiscaler.FORK:
                 log(f"      y4my4my4m's fork, {orel[0]}")
                 rep.notes.append("OptiScaler is y4my4my4m's fork of the DLSS-NR "
@@ -2914,10 +2921,22 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                                  "three passes (OptiScaler.ini: Passes=). Not "
                                  "run in a game here - if it misbehaves, "
                                  "install again with the DLSS-NR build.")
-            for f in optiscaler.install(root, proxy=oproxy, dl=dl, log=log,
-                                        backup=lambda p: _backup(p, rep, root),
-                                        release=orel):
-                rep.written.append(f)
+            try:
+                for f in optiscaler.install(root, proxy=oproxy, dl=dl, log=log,
+                                            backup=lambda p: _backup(p, rep, root),
+                                            release=orel):
+                    rep.written.append(f)
+            except RuntimeError as e:      # the archive carried no OptiScaler
+                raise InstallError(str(e)) from e
+            # After the files are down, not before: an install that is
+            # refused (#364 - the release carried no OptiScaler package)
+            # would otherwise leave a manifest naming a version this folder
+            # never had, and the diagnosis reads that manifest. The other
+            # components still record before their download, deliberately:
+            # only this one has a refusal of its own that leaves the folder
+            # untouched, and a manifest written complete=False already
+            # outranks them all in the diagnosis.
+            rep.components["optiscaler"] = orel[0]
             _, sm_ = gpu.detect()
             note = optiscaler.requirements_note(sm_)
             if note:
@@ -3240,8 +3259,9 @@ def install(g: games.Game, opt: Options, on_step=None, on_prog=None, on_log=None
                     rep.notes.append(f"renodx-dlss5 pinned to {want}: newer "
                                      f"builds stall on OpenGL")
                 if not want and opt.path == FEEDER:
-                    # The feeder's stable release only accepts 4.55; anything
-                    # newer overlaps it and the DLSS feature dies in CreateFeature.
+                    # Feeder builds below 0.8.0-beta.3 accept only 4.55;
+                    # anything newer overlaps them and the DLSS feature dies
+                    # in CreateFeature. Above that, nothing is pinned here.
                     want = sources.renodx_for_feeder(rep.components.get("feeder", ""))
                     if want:
                         log(f"      DLSS5-Feeder {rep.components.get('feeder')} accepts "

@@ -332,7 +332,8 @@ class LibraryPage(Page):
         # all leaves both alone
         todo, _skipped = a.update_targets()
         if todo:
-            items.append((f"update all  -  {len(todo)} with newer parts", a.update_all))
+            items.append((f"update all  -  {len(todo)} to install again",
+                          a.update_all))
         x1, y1, x2, y2 = self.c.bbox(self.scan_btn.tag)
         self.kit.menu(x2 - T.px(380), y2 + T.px(4), items, opener=self.scan_btn.tag, width=T.px(380))
 

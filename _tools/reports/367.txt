@@ -1,0 +1,49 @@
+**Did the game start?** it started and ran
+
+**What happened**
+still the same, no matter if feeder or bridge. The files are there.
+
+---
+- version: 2.0.3
+- gpu: NVIDIA GeForce RTX 5070 Ti (sm_120), driver 616.56
+- game: Indiana Jones and the Great Circle
+- exe: TheGreatCircle.exe
+- arch/api: 64-bit / Vulkan (imports vulkan-1.dll, no DXGI)
+- route: feeder
+
+**Diagnosis**: Loaded into TheGreatCircle.exe at 20 Sep 17:46, and no log was written - ReShade's Vulkan layer is not reaching the game.
+- [warn] At 20 Sep 17:46 our files WERE loaded in TheGreatCircle.exe, and ReShade's Vulkan layer wrote no log.
+
+**Files in the folder**
+- dlss5-feed.addon64: present
+- renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 64-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+- streamline\nvngx_dlssd.dll: present (swapped to 310.9.1 (NVIDIA SDK); the game's own is backed up)
+- streamline/nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.2.1 kept beside it)
+- streamline/nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.2.1 kept beside it)
+- streamline/nvngx_dlssd.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.2.1 kept beside it)
+
+**What ran, and what it loaded** (seen at 20 Sep 17:46)
+- process: TheGreatCircle.exe
+- DLLs in the process: 179
+- ours, loaded: nvngx_dlss.dll, nvngx_dlssd.dll
+- ours, not loaded: dlss5-feed.addon64, nvngx_dlssnr.dll, renodx-dlss5.addon64
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+
+
+<img width="740" height="879" alt="Image" src="https://github.com/user-attachments/assets/c17694e2-cc69-467b-850f-64bd2078d20a" />

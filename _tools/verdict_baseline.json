@@ -743,6 +743,24 @@
   "route": "bridge",
   "verdict": "Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture."
  },
+ "364": {
+  "findings": [
+   "bad: No OptiScaler log, and no proxy in the folder."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "optiscaler",
+  "verdict": "OptiScaler is not in the game folder - install again."
+ },
+ "367": {
+  "findings": [
+   "warn: At 20 Sep 17:46 our files WERE loaded in TheGreatCircle.exe, and ReShade's Vulkan layer wrote no log."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "Loaded into TheGreatCircle.exe at 20 Sep 17:46, and no log was written - ReShade's Vulkan layer is not reaching the game."
+ },
  "37": {
   "findings": [
    "bad: Every DLSS evaluate faults inside NVIDIA's NGX runtime (D3D12Core.dll <- nvngx_dlssnr.dll <- _nvngx.dll <- renodx-dlss5)."

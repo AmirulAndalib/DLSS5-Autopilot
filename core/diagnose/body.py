@@ -274,8 +274,13 @@ def _presence(install_dir: Path, man: dict, route: str, game_root=None) -> list[
     if route == "optiscaler":
         # Three builds can be installed here and their packages differ; a
         # report that does not say which one is unanswerable.
+        # ...and the release it took, which is the difference between an
+        # install that never wrote a proxy and one something emptied (#364).
+        _c = man.get("components")
+        _otag = str((_c.get("optiscaler") if isinstance(_c, dict) else "") or "")
         extra.append("- optiscaler build: "
-                     + (str(man.get("opti_build") or "") or "Dagherbou"))
+                     + (str(man.get("opti_build") or "") or "Dagherbou")
+                     + (f" ({_otag})" if _otag else ""))
     else:
         names.append("ReShade.ini")
     names += _dxvk_files(man)

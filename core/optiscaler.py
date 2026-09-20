@@ -53,6 +53,13 @@ from pathlib import Path
 from . import log, net, sources
 
 API = "https://api.github.com/repos/Dagherbou/OptiScaler_DLSSNR/releases/latest"
+# The same page as a list. The default build reads /latest, which has one
+# answer and no second chance: if that release carries something other than
+# an OptiScaler package - which is exactly what happened on the fork's page
+# (#364) - the whole route would refuse to install rather than take the
+# release before it, the way both forks already do.
+LIST_API = ("https://api.github.com/repos/Dagherbou/OptiScaler_DLSSNR/"
+            "releases?per_page=10")
 
 # y4my4my4m's fork of the same build: multi-frame generation on RTX 40
 # and its own neural-pass changes, published as development builds in .7z
@@ -77,8 +84,9 @@ PRESR = "wilsjo2"
 PRESR_BEFORE_SR = {"RunBeforeSR": True}
 
 # Every fork publishes on its own release page, in the same shape: pick the
-# newest release that carries an archive. The second item names archives to
-# pass over.
+# newest release that carries an OptiScaler PACKAGE (see PACKAGE_WORD - a
+# release page can carry a different program of its author's, #364). The
+# second item names archives to pass over.
 FORKS = {
     # "_with_DLSS" carries DLSS 310 and Streamline as well; the game's own
     # copies (or this tool's) stay.
@@ -93,7 +101,7 @@ FORKS = {
 
 # Key -> dropdown label. "" is the build the route installs by default.
 BUILDS = {
-    "": "Dagherbou's DLSS-NR build  -  the release page's latest",
+    "": "Dagherbou's DLSS-NR build  -  the newest package on its release page",
     FORK: "y4my4my4m's fork  -  multi-frame generation on RTX 40, development builds",
     PRESR: "wilsjo2's fork  -  neural rendering before the upscaler, "
            "1-3 passes; not run here",
@@ -136,6 +144,36 @@ SKIP_SUFFIXES = {".pdb", ".exp", ".lib"}
 # The setup scripts do by hand what this tool does itself.
 SKIP = {"setup_windows.bat", "setup_linux.sh"}
 
+# What an OptiScaler package's archive is called, on all three release pages:
+# OptiScaler-DLSSNR-v0.2.0.zip, OptiScaler-NR-v0.8.5.zip,
+# OptiScaler_v10.0.0-dev-fork-y4my4my4m-v4_20260905.7z. A fork's release page
+# is not only for this package - on 2026-09-20 wilsjo2 published
+# display-filter-v0.2.0-preview there, an unrelated 31 MB tool with no
+# OptiScaler.dll in it, and "the newest release that carries an archive"
+# installed that into people's game folders instead (#364). A release whose
+# archives are all something else is not this component's release; the one
+# before it is.
+PACKAGE_WORD = "optiscaler"
+
+
+def is_package_tag(tag: str) -> bool:
+    """Does a RECORDED version look like an OptiScaler release of ours?
+
+    A manifest records the release tag, never the archive name, and no tag
+    on any of the three pages carries the word "optiscaler": they are
+    v0.2.0-dlssnr, v0.8.5, v10.0.0-dev-fork-y4my4my4m-v4 - and "nightly",
+    which y4my4my4m really does publish real packages under, and which
+    older builds of this tool installed from. So: a version, or one of the
+    tags known to be ours, is not judged; neither is an unrecorded one.
+    display-filter-v0.2.0-preview is none of those, and it is the package a
+    folder should never have been set up with (#364).
+
+    This is a guess about a name, so it only ever ADDS a sentence to a
+    verdict that has already been decided from the folder itself.
+    """
+    t = str(tag or "").strip().lower()
+    return not t or t in ("nightly", "?") or bool(re.match(r"^v?\d", t))
+
 
 def _pick_archive(assets, skip) -> dict | None:
     """The one package to install out of a release's assets.
@@ -153,13 +191,23 @@ def _pick_archive(assets, skip) -> dict | None:
             if str(a.get("name", "")).lower().endswith((".7z", ".zip"))]
     if not arcs:
         return None
+    package = [a for a in arcs
+               if PACKAGE_WORD in str(a.get("name", "")).lower()]
+    if not package:
+        # Something else published on the same release page (#364). Say so,
+        # and let the caller move on to the release before this one.
+        log.write("OptiScaler: this release carries "
+                  + ", ".join(str(a.get("name", "")) for a in arcs)
+                  + " - no OptiScaler package among them, skipping it", "warn")
+        return None
+    arcs = package
     kept = [a for a in arcs
             if not any(x in a.get("name", "").lower() for x in skip or ())]
     if not kept:
         # Every archive matched the skip list - the names moved under us.
         # The shape rule still has an answer; refusing to install has none.
         log.write("OptiScaler: every archive in this release looks like a "
-                  "variant (" + ", ".join(a.get("name", "") for a in arcs)
+                  "variant (" + ", ".join(str(a.get("name", "")) for a in arcs)
                   + ") - the names upstream have changed", "warn")
         kept = list(arcs)
     if len(kept) > 1:
@@ -176,7 +224,7 @@ def _pick_archive(assets, skip) -> dict | None:
                         for a in order[1:]):
             kept = order
         log.write("OptiScaler: this release carries "
-                  + ", ".join(a.get("name", "") for a in arcs)
+                  + ", ".join(str(a.get("name", "")) for a in arcs)
                   + " - installing " + kept[0].get("name", ""))
     return kept[0]
 
@@ -201,8 +249,8 @@ def resolve(build: str = "") -> tuple[str, str]:
             a = _pick_archive(rel.get("assets", []), skip_names)
             if a:
                 return rel.get("tag_name", "?"), a["browser_download_url"]
-        raise RuntimeError(f"{build}'s OptiScaler fork has no release with "
-                           f"a .7z or .zip archive.")
+        raise RuntimeError(f"{build}'s OptiScaler fork has no release "
+                           f"carrying an OptiScaler package (.7z or .zip).")
     if build:
         raise ValueError(f"unknown OptiScaler build {build!r}")
     rel = sources.json_or_html(API)
@@ -211,7 +259,31 @@ def resolve(build: str = "") -> tuple[str, str]:
     a = _pick_archive(rel.get("assets", []), ())
     if a:
         return rel.get("tag_name", "?"), a["browser_download_url"]
-    raise RuntimeError("The OptiScaler DLSS-NR release has no .zip asset.")
+    for older in _older_releases():
+        if older.get("tag_name") == rel.get("tag_name"):
+            continue                    # the one /latest just answered with
+        a = _pick_archive(older.get("assets", []), ())
+        if a:
+            return older.get("tag_name", "?"), a["browser_download_url"]
+    raise RuntimeError("No release on the OptiScaler DLSS-NR page carries "
+                       "an OptiScaler package (.zip).")
+
+
+def _older_releases() -> list:
+    """The release page as a list, newest first, or [] - never raises.
+
+    Only reached when the newest release holds no package of ours: the
+    normal path is one /latest request, and this must not turn a working
+    install into an error of its own.
+    """
+    try:
+        rels = sources.json_or_html(LIST_API)
+    except Exception:
+        return []
+    rels = [r for r in (rels if isinstance(rels, list) else [])
+            if isinstance(r, dict) and not r.get("draft")]
+    rels.sort(key=lambda r: r.get("published_at") or "", reverse=True)
+    return rels
 
 
 def archive_name(build: str = "") -> str:
@@ -475,6 +547,33 @@ def install(exe_dir: Path, proxy: str = DEFAULT_PROXY, dl=None, log=None,
             except OSError:
                 pass
 
+    tag, url = release if release else resolve()
+    log(f"      OptiScaler DLSS-NR {tag}")
+    z = dl(url, _archive_name(tag, url))
+
+    src_root = _unpacked(z)
+    members = sorted(p for p in src_root.rglob("*") if p.is_file())
+    # The same test the copy loop below makes: only a root-level OptiScaler.dll
+    # is the one renamed to the proxy, so a copy in a subfolder is not it.
+    if not any(p.relative_to(src_root).as_posix() == MAIN_DLL for p in members):
+        # Nothing is moved aside and nothing is written unless the archive
+        # really is OptiScaler. Without this the fork's display-filter
+        # package unpacked into the game folder - display_filter.exe, a
+        # 42 MB runtime and four markdown files - and the log still said
+        # "installed as dxgi.dll" (#364). What it held goes into the
+        # message: that names the upstream change instead of describing it
+        # as a broken install.
+        # Programs first, then the rest: a sample that leads with four
+        # markdown files buries the one name that explains what this is.
+        names = sorted({p.name for p in members},
+                       key=lambda n: (Path(n).suffix.lower()
+                                      not in (".exe", ".dll"), n.lower()))
+        held = ", ".join(names[:6]) or "nothing"
+        raise RuntimeError(
+            f"The release {tag} carries no {MAIN_DLL} - it holds {held}, so "
+            f"it is not an OptiScaler build. Pick another 'optiscaler build' "
+            f"under settings, or try again later.")
+
     # A copy under a different name would load alongside this one. OptiScaler's
     # own setup only warns; since we can undo it, move it aside properly.
     for other in find_existing(exe_dir, ignore=proxy):
@@ -495,12 +594,7 @@ def install(exe_dir: Path, proxy: str = DEFAULT_PROXY, dl=None, log=None,
         except OSError:
             pass
 
-    tag, url = release if release else resolve()
-    log(f"      OptiScaler DLSS-NR {tag}")
-    z = dl(url, _archive_name(tag, url))
-
-    src_root = _unpacked(z)
-    for src in sorted(p for p in src_root.rglob("*") if p.is_file()):
+    for src in members:
         member = src.relative_to(src_root).as_posix()
         if src.name in SKIP or src.suffix.lower() in SKIP_SUFFIXES:
             continue

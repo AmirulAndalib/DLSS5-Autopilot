@@ -28,6 +28,17 @@ CHAIN = (
         "The drive was full",
         "Nothing is installed in this folder",
         "No install record here and no ReShade.log",
+        # #364: the manifest said OptiScaler was installed and no proxy was
+        # ever beside the executable - the package that was unpacked into
+        # the folder held no OptiScaler.dll at all. Ours, and stage 1.
+        # LIMIT: the first of these two is also printed when a proxy WAS
+        # written and something removed it afterwards, which is stage 2's
+        # shape (the person's antivirus). It is counted here because an
+        # install of ours that wrote nothing looks exactly the same from
+        # the folder, and blaming a virus scanner on a guess is the one
+        # answer this project does not give.
+        "OptiScaler is not in the game folder",
+        "The release installed here was not an OptiScaler build",
     )),
     ("2 a file went missing after it", "the person's antivirus", (
         "is missing from the folder - reinstall",      # ReShade's proxy, DXVK

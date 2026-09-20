@@ -155,6 +155,7 @@ def folder_state(text: str) -> dict | None:
     files: dict[str, bool] = {}
     named = False
     layer: bool | None = None
+    opti_tag = ""
     remix: dict = {"trex": False, "files": {}, "flavour": "", "key": "",
                    "key_set": False, "swapped": False}
     for line in m.group(1).splitlines():
@@ -203,8 +204,18 @@ def folder_state(text: str) -> dict | None:
         # Lines that describe a registration or a folder rather than a file
         # beside the game: they answer "is the install recorded", not "is
         # this file on disk", and there is nothing to create for them.
+        if name.lower() == "optiscaler build":
+            # "wilsjo2 (display-filter-v0.2.0-preview)": which build was
+            # asked for, and which release it actually took. The second half
+            # is what tells an install that wrote no proxy from a folder
+            # something emptied afterwards (#364), so a replay has to carry
+            # it or that verdict can never be reproduced from a report.
+            m_ = re.search(r"\(([^)]+)\)\s*$", state)
+            if m_:
+                opti_tag = m_.group(1).strip()
+            named = True
+            continue
         if name.lower().startswith(("reshade openxr", "reshade ",
-                                    "optiscaler build",
                                     "the game's own upscaler")):
             if "vulkan layer" in name.lower():
                 # "registered" / "NOT REGISTERED": the layer is a registry
@@ -231,6 +242,7 @@ def folder_state(text: str) -> dict | None:
         files.pop("(vulkan layer)", None)
     return {"files": files, "manifest": named, "proxy": proxy, "layer": layer,
             "remix": remix if (remix["trex"] or remix["key"]) else None,
+            "opti_tag": opti_tag,
             "addon_switch": files.pop("(addon switch)", None)}
 
 
@@ -273,6 +285,10 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
             comp = dict(man.get("components") or {})
             comp["remix_runtime"] = "swapped"
             man["components"] = comp
+    if (state or {}).get("opti_tag"):
+        comp = dict(man.get("components") or {})
+        comp["optiscaler"] = state["opti_tag"]
+        man["components"] = comp
     man.update(extra_manifest or {})
     if write_manifest:
         (d / "dlss5-autopilot.json").write_text(json.dumps(man), encoding="utf8")

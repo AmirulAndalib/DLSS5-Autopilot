@@ -155,13 +155,35 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
             # fault record for this game outranks it (#171).
             rep.never_ran = True
         else:
-            rep.add(BAD, "No OptiScaler log, and no proxy in the folder.",
-                    (f"The proxy this install wrote ({proxy}) is not beside "
-                     if proxy else "The proxy this install wrote is not beside ")
-                    + "the executable - check that it is next to the .exe the "
-                      "game actually launches, and that antivirus did not "
-                      "quarantine it.")
-            rep.verdict = "OptiScaler is not in the game folder - install again."
+            # What the manifest says was installed decides the answer before
+            # antivirus does (#364): the fork published a package that was
+            # not OptiScaler at all, and every folder that took it has no
+            # proxy for a reason that has nothing to do with this machine.
+            from .. import optiscaler
+            _comp_ = (man or {}).get("components")
+            otag = str((_comp_.get("optiscaler")
+                        if isinstance(_comp_, dict) else "") or "")
+            if not optiscaler.is_package_tag(otag):
+                rep.add(BAD, f"No proxy in the folder, and the release this "
+                             f"install took ({otag}) is not an OptiScaler "
+                             f"version.",
+                        "A release page can carry a different program of its "
+                        "author's, and one did: it holds no OptiScaler.dll, "
+                        "so no proxy was written here. Install again - a "
+                        "package with no OptiScaler.dll in it is refused "
+                        "now, and the newest real OptiScaler release is "
+                        "taken instead.")
+                rep.verdict = ("The release installed here was not an "
+                               "OptiScaler build - install again.")
+            else:
+                rep.add(BAD, "No OptiScaler log, and no proxy in the folder.",
+                        (f"The proxy this install wrote ({proxy}) is not beside "
+                         if proxy else "The proxy this install wrote is not beside ")
+                        + "the executable - check that it is next to the .exe the "
+                          "game actually launches, and that antivirus did not "
+                          "quarantine it.")
+                rep.verdict = ("OptiScaler is not in the game folder - "
+                               "install again.")
         return rep
     rep.ran = True
     try:

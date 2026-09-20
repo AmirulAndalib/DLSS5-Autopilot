@@ -107,7 +107,15 @@ def _resolves(path: str) -> bool:
                   SRC.parent, SRC.parent / ".claude" / "skills"):
         if (where / base).exists():
             return True
-    return any(p.name == base for p in SRC.rglob(base) if p.is_file())
+    if any(p.name == base for p in SRC.rglob(base) if p.is_file()):
+        return True
+    # The experiments that were deliberately kept out of the repository
+    # (_research/mirror, _research/retro). They are as real as anything in
+    # it - the memories that describe them say so - and calling their files
+    # gone every session trains the eye to skip this tool's output.
+    research = SRC.parent / "_research"
+    return research.is_dir() and any(p.name == base
+                                     for p in research.rglob(base) if p.is_file())
 
 
 def check(mem: Path, show_all: bool) -> int:

@@ -103,6 +103,13 @@ PHRASES = {
     ],
 }
 
+# A component the tool installs in more than one build: the phrase has to be
+# in ONE of them, and which one is worth printing. The feeder is both - the
+# dropdown's "newest release" is the stable build and "newest pre-release"
+# is the 1.16 beta line, and four host phrases (#252) exist only in the
+# betas. Reading the default build alone called them gone.
+ALSO = {"DLSS5-Feeder": "DLSS5-Feeder (pre-release)"}
+
 
 def _files(archive: Path):
     """Every binary inside an archive, as bytes."""
@@ -129,13 +136,19 @@ def _archives() -> dict:
                 tag, net.download(u, f"phrasecheck-aio-{tag}.zip"))
     except Exception as e:
         print(f"   !! standalone: {e}")
-    try:
-        tag, assets = sources.resolve_feeder()
-        u = next((v for k, v in assets.items() if k.lower().endswith(".zip")), "")
-        if u:
-            got["DLSS5-Feeder"] = (tag, net.download(u, f"phrasecheck-feeder-{tag}.zip"))
-    except Exception as e:
-        print(f"   !! feeder: {e}")
+    for name, pre in (("DLSS5-Feeder", False),
+                      ("DLSS5-Feeder (pre-release)", True)):
+        try:
+            tag, assets = sources.resolve_feeder(prerelease=pre)
+            # "feeder" in the name, the way the installer picks it: a
+            # release page can carry an archive that is a different program
+            # altogether, which is the whole lesson of #364.
+            u = next((v for k, v in assets.items()
+                      if k.lower().endswith(".zip") and "feeder" in k.lower()), "")
+            if u:
+                got[name] = (tag, net.download(u, f"phrasecheck-feeder-{tag}.zip"))
+        except Exception as e:
+            print(f"   !! feeder{' pre-release' if pre else ''}: {e}")
     try:
         cat = sources.rhi_catalog().get("renodx") or []
         if cat:
@@ -185,18 +198,32 @@ def main() -> int:
             continue
         tag, archive = got[comp]
         blob = _files(archive)
+        # The other build of the same component, when the tool offers one.
+        other = ALSO.get(comp)
+        otag, oblob = ("", b"")
+        if other and other in got:
+            otag, oarchive = got[other]
+            oblob = _files(oarchive)
         print()
-        print(f"  {comp}  {tag}  ({len(blob)} bytes of binary)")
+        print(f"  {comp}  {tag}  ({len(blob)} bytes of binary)"
+              + (f"  +  {otag} ({len(oblob)} bytes)" if otag else ""))
         for frag, phrase in phrases:
-            in_bin = (frag.encode() in blob
-                      or frag.encode("utf-16-le") in blob)
+            def _has(b: bytes) -> bool:
+                return frag.encode() in b or frag.encode("utf-16-le") in b
+            here, there = _has(blob), bool(oblob) and _has(oblob)
+            in_bin = here or there
             in_code = phrase in dtext
             if in_bin and in_code:
+                if not here and otag:
+                    # Not an error: the rule fires on the build that writes
+                    # it, and the person picked that build on purpose.
+                    print(f"     .. {frag!r} is in {otag} only, not in {tag}")
                 continue
             bad += 1
             why = []
             if not in_bin:
-                why.append(f"{frag!r} is GONE from the build")
+                why.append(f"{frag!r} is GONE from the build"
+                           + (f" and from {otag}" if otag else ""))
             if not in_code:
                 why.append(f"{phrase!r} is no longer read by diagnose.py")
             print(f"     !! {'; '.join(why)}")

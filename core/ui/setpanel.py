@@ -38,7 +38,7 @@ GROUPS = (
         ("nr_style", "style", "dd", ""),
         ("hdr", "hdr", "dd", ""),
         ("feeder", "feeder build", "dd", "pin a feeder build; the matching add-on is chosen for it"),
-        ("opti_build", "optiscaler build", "dd", "which OptiScaler build goes in"),
+        ("opti_build", "optiscaler build", "dd", "the default takes the newest package on Dagherbou's release page; the two forks are not run here"),
     )),
     ("extras", (
         ("keep_dlss", "keep the game's own nvngx_dlss", "toggle",
