@@ -217,6 +217,28 @@
     }
    }
   },
+  "banishers-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 4.38,
+     "n": 1,
+     "res": 67
+    }
+   },
+   "name": "Banishers: Ghosts of New Eden",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "bannerlord.exe": {
    "drivers": {
     "616.64": {
@@ -2296,6 +2318,6 @@
    }
   }
  },
- "generated": "2026-09-20T21:41:07Z",
- "reports": 194
+ "generated": "2026-09-20T21:41:51Z",
+ "reports": 195
 }
