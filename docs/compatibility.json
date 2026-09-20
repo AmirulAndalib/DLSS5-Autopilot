@@ -669,6 +669,10 @@
   },
   "dyinglightgame.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.64": {
      "failed": 1,
      "worked": 0
@@ -678,11 +682,18 @@
      "worked": 1
     }
    },
+   "measured": {
+    "feeder": {
+     "fps": 103.2,
+     "n": 1,
+     "res": 100
+    }
+   },
    "name": "Dying Light",
    "routes": {
     "feeder": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     },
     "renodx": {
      "failed": 1,
@@ -2247,6 +2258,6 @@
    }
   }
  },
- "generated": "2026-09-20T20:04:05Z",
- "reports": 189
+ "generated": "2026-09-20T20:10:22Z",
+ "reports": 190
 }
