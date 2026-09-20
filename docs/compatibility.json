@@ -365,16 +365,20 @@
   },
   "control_dx12.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.92": {
      "failed": 0,
      "worked": 1
     }
    },
-   "name": "Control Ultimate Edition",
+   "name": "Control",
    "routes": {
     "upstream": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -1659,21 +1663,6 @@
     }
    }
   },
-  "readyornotsteam-win64-shipping.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 0,
-     "worked": 1
-    }
-   },
-   "name": "Ready or Not",
-   "routes": {
-    "optiscaler": {
-     "failed": 0,
-     "worked": 1
-    }
-   }
-  },
   "realrtcw.x64.exe": {
    "drivers": {
     "616.56": {
@@ -2220,6 +2209,6 @@
    }
   }
  },
- "generated": "2026-09-20T15:59:32Z",
+ "generated": "2026-09-20T17:09:38Z",
  "reports": 186
 }
