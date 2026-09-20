@@ -209,6 +209,21 @@
     }
    }
   },
+  "bg3.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Baldur's Gate 3",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "bh6.exe": {
    "drivers": {
     "616.92": {
@@ -2190,6 +2205,6 @@
    }
   }
  },
- "generated": "2026-09-20T15:00:31Z",
- "reports": 184
+ "generated": "2026-09-20T15:13:52Z",
+ "reports": 185
 }
