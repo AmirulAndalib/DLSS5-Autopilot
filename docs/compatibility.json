@@ -164,6 +164,21 @@
     }
    }
   },
+  "aplaguetalerequiem_x64.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "A Plague Tale Requiem-InsaneRamZes",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "astronautsgame-win64-shipping.exe": {
    "drivers": {
     "616.64": {
@@ -2224,6 +2239,6 @@
    }
   }
  },
- "generated": "2026-09-20T19:06:33Z",
- "reports": 187
+ "generated": "2026-09-20T19:37:51Z",
+ "reports": 188
 }
