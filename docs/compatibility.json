@@ -75,6 +75,21 @@
     }
    }
   },
+  "acr.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Assetto Corsa Rally",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "acu.exe": {
    "drivers": {
     "616.56": {
@@ -2258,6 +2273,6 @@
    }
   }
  },
- "generated": "2026-09-20T20:39:51Z",
- "reports": 190
+ "generated": "2026-09-20T20:48:55Z",
+ "reports": 191
 }
