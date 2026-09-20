@@ -1023,6 +1023,16 @@
     }
    }
   },
+  "hellisus.exe": {
+   "drivers": {},
+   "name": "Hell is Us",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "hl2.exe": {
    "drivers": {
     "616.92": {
@@ -2091,6 +2101,6 @@
    }
   }
  },
- "generated": "2026-09-20T01:05:05Z",
- "reports": 172
+ "generated": "2026-09-20T02:33:23Z",
+ "reports": 173
 }
