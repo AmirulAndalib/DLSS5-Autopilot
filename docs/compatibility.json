@@ -446,10 +446,10 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 2
+     "worked": 3
     }
    },
-   "name": "The Blood of Dawnwalker",
+   "name": "The Blood of Dawnwalker - Eclipse Edition Content",
    "routes": {
     "optiscaler": {
      "failed": 0,
@@ -458,6 +458,10 @@
     "renodx": {
      "failed": 1,
      "worked": 0
+    },
+    "upstream": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -2145,6 +2149,6 @@
    }
   }
  },
- "generated": "2026-09-20T07:58:28Z",
- "reports": 179
+ "generated": "2026-09-20T08:43:12Z",
+ "reports": 180
 }
