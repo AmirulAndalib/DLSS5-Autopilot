@@ -1806,6 +1806,21 @@
     }
    }
   },
+  "re2.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "RESIDENT EVIL 2",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "re3.exe": {
    "drivers": {
     "616.92": {
@@ -2386,6 +2401,6 @@
    }
   }
  },
- "generated": "2026-09-21T05:46:05Z",
- "reports": 202
+ "generated": "2026-09-21T06:16:42Z",
+ "reports": 203
 }
