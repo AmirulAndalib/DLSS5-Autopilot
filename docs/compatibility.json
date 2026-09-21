@@ -1343,16 +1343,27 @@
   },
   "inzoi-win64-shipping.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.92": {
      "failed": 1,
      "worked": 0
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 3.95,
+     "n": 1,
+     "res": 75
     }
    },
    "name": "inZOI",
    "routes": {
     "optiscaler": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    }
   },
@@ -2409,6 +2420,6 @@
    }
   }
  },
- "generated": "2026-09-21T09:56:01Z",
- "reports": 205
+ "generated": "2026-09-21T11:51:58Z",
+ "reports": 206
 }
