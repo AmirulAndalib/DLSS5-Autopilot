@@ -1787,6 +1787,21 @@
     }
    }
   },
+  "postal2.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "POSTAL 2",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "prehistoric kingdom.exe": {
    "drivers": {
     "616.56": {
@@ -2480,6 +2495,6 @@
    }
   }
  },
- "generated": "2026-09-21T19:39:59Z",
- "reports": 211
+ "generated": "2026-09-21T19:42:40Z",
+ "reports": 212
 }
