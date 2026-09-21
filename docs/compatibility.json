@@ -494,14 +494,14 @@
    "drivers": {
     "616.92": {
      "failed": 1,
-     "worked": 1
+     "worked": 2
     }
    },
-   "name": "Cronos The New Dawn",
+   "name": "Cronos: The New Dawn",
    "routes": {
     "optiscaler": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     },
     "upstream": {
      "failed": 0,
@@ -2465,6 +2465,6 @@
    }
   }
  },
- "generated": "2026-09-21T17:37:00Z",
- "reports": 209
+ "generated": "2026-09-21T17:48:32Z",
+ "reports": 210
 }
