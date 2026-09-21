@@ -1777,12 +1777,16 @@
     "616.56": {
      "failed": 0,
      "worked": 1
+    },
+    "616.92": {
+     "failed": 1,
+     "worked": 0
     }
    },
    "name": "Red Dead Redemption 2",
    "routes": {
     "optiscaler": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    }
@@ -2367,6 +2371,6 @@
    }
   }
  },
- "generated": "2026-09-20T23:55:31Z",
- "reports": 200
+ "generated": "2026-09-21T01:55:23Z",
+ "reports": 201
 }
