@@ -2389,6 +2389,21 @@
     }
    }
   },
+  "witcher3.exe": {
+   "drivers": {
+    "610.74": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "TheWitcher3",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "wolfneworder_x64.exe": {
    "drivers": {
     "581.80": {
@@ -2450,6 +2465,6 @@
    }
   }
  },
- "generated": "2026-09-21T16:57:01Z",
- "reports": 208
+ "generated": "2026-09-21T17:37:00Z",
+ "reports": 209
 }
