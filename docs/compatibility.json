@@ -772,6 +772,21 @@
     }
    }
   },
+  "dyinglightgame_x64_rwdi.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Dying Light 2: Reloaded Edition",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "eden.exe": {
    "drivers": {
     "616.56": {
@@ -2371,6 +2386,6 @@
    }
   }
  },
- "generated": "2026-09-21T02:11:04Z",
- "reports": 201
+ "generated": "2026-09-21T05:46:05Z",
+ "reports": 202
 }
