@@ -396,6 +396,21 @@
     }
    }
   },
+  "blur.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Blur",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "bully.exe": {
    "drivers": {
     "616.92": {
@@ -2495,6 +2510,6 @@
    }
   }
  },
- "generated": "2026-09-21T19:43:05Z",
- "reports": 212
+ "generated": "2026-09-21T21:47:58Z",
+ "reports": 213
 }
