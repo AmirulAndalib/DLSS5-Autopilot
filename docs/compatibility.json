@@ -120,6 +120,21 @@
     }
    }
   },
+  "acshadows.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Assassin Creed Shadows",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "acu.exe": {
    "drivers": {
     "616.56": {
@@ -2465,6 +2480,6 @@
    }
   }
  },
- "generated": "2026-09-21T18:52:38Z",
- "reports": 210
+ "generated": "2026-09-21T19:39:59Z",
+ "reports": 211
 }
