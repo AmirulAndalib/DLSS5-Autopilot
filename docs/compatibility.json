@@ -2164,11 +2164,15 @@
    "drivers": {
     "616.92": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "name": "Starfield",
    "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    },
     "upstream": {
      "failed": 0,
      "worked": 1
@@ -2401,6 +2405,6 @@
    }
   }
  },
- "generated": "2026-09-21T06:16:42Z",
- "reports": 203
+ "generated": "2026-09-21T07:27:20Z",
+ "reports": 204
 }
