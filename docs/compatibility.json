@@ -2374,6 +2374,21 @@
     }
    }
   },
+  "warframe.x64.exe": {
+   "drivers": {
+    "610.88": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Warframe",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "wolfneworder_x64.exe": {
    "drivers": {
     "581.80": {
@@ -2435,6 +2450,6 @@
    }
   }
  },
- "generated": "2026-09-21T15:21:17Z",
- "reports": 207
+ "generated": "2026-09-21T16:57:01Z",
+ "reports": 208
 }
