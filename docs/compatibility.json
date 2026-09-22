@@ -430,6 +430,28 @@
     }
    }
   },
+  "cities2.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 7.32,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Cities: Skylines II",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "cod2mp_s.exe": {
    "drivers": {
     "616.56": {
@@ -2504,6 +2526,6 @@
    }
   }
  },
- "generated": "2026-09-22T20:50:45Z",
- "reports": 209
+ "generated": "2026-09-22T21:00:09Z",
+ "reports": 210
 }
