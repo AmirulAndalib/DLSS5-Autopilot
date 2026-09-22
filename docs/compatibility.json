@@ -844,12 +844,16 @@
     "616.56": {
      "failed": 2,
      "worked": 0
+    },
+    "616.92": {
+     "failed": 1,
+     "worked": 0
     }
    },
-   "name": "switch",
+   "name": "yuzu / suyu / Eden / Citron (Switch)",
    "routes": {
     "feeder": {
-     "failed": 2,
+     "failed": 3,
      "worked": 0
     }
    }
@@ -2538,6 +2542,6 @@
    }
   }
  },
- "generated": "2026-09-22T23:22:09Z",
- "reports": 212
+ "generated": "2026-09-22T23:37:19Z",
+ "reports": 213
 }
