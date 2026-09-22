@@ -309,12 +309,16 @@
   "bf6.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "Battlefield 6",
    "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    },
     "renodx": {
      "failed": 1,
      "worked": 0
@@ -2548,6 +2552,6 @@
    }
   }
  },
- "generated": "2026-09-22T07:16:02Z",
- "reports": 219
+ "generated": "2026-09-22T08:11:20Z",
+ "reports": 220
 }
