@@ -1153,7 +1153,7 @@
    "drivers": {
     "616.56": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     },
     "616.92": {
      "failed": 2,
@@ -1172,6 +1172,10 @@
     "optiscaler": {
      "failed": 2,
      "worked": 4
+    },
+    "renodx": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -2661,6 +2665,6 @@
    }
   }
  },
- "generated": "2026-09-22T17:02:07Z",
- "reports": 230
+ "generated": "2026-09-22T18:15:50Z",
+ "reports": 231
 }
