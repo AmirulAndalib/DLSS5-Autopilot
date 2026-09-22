@@ -551,21 +551,21 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 3
+     "worked": 4
     }
    },
    "measured": {
     "optiscaler": {
-     "ms": 5.16,
-     "n": 1,
-     "res": 50
+     "ms": 5.56,
+     "n": 2,
+     "res": 55
     }
    },
    "name": "Cyberpunk 2077",
    "routes": {
     "optiscaler": {
      "failed": 2,
-     "worked": 2
+     "worked": 3
     },
     "upstream": {
      "failed": 0,
@@ -2510,6 +2510,6 @@
    }
   }
  },
- "generated": "2026-09-21T21:47:58Z",
- "reports": 213
+ "generated": "2026-09-22T02:18:04Z",
+ "reports": 214
 }
