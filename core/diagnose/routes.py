@@ -12,7 +12,7 @@ import os
 import re
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from . import model
@@ -92,6 +92,27 @@ def _one_frame(line: str) -> bool:
     stopped after it started" (#311). A skip that names no single frame ("it
     already failed this session", "a resource was missing") is a failure."""
     return "did not run" in line and "this frame" in line
+
+
+# When wilsjo2's page had display-filter as its newest release (#364): from
+# its publication to 2.0.4, which refuses a package with no OptiScaler.dll.
+_DISPLAY_FILTER_FROM = datetime(2026, 9, 20, 13, 25,
+                                tzinfo=timezone.utc).timestamp()
+
+
+def _display_filter_window(man: dict, install_dir: Path) -> bool:
+    """Could this install have taken the release that was not OptiScaler?
+
+    Evidence, not a name: a wilsjo2 build, installed after that release
+    went up. An install older than it could not have, whatever else is
+    missing.
+    """
+    from .. import optiscaler
+    build = str(man.get("opti_build") or "")
+    if build not in (optiscaler.PRESR, getattr(optiscaler, "PRESR_MFG", "")) \
+            or not build:
+        return False
+    return _installed_at(install_dir) >= _DISPLAY_FILTER_FROM
 
 
 def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
@@ -175,6 +196,22 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
                         "taken instead.")
                 rep.verdict = ("The release installed here was not an "
                                "OptiScaler build - install again.")
+            elif not otag and _display_filter_window(man or {}, install_dir):
+                # The same shape with the release unrecorded - a record from
+                # before 2.0.4 kept the build, not the tag (#385, Farming
+                # Simulator 25 on 2.0.3, nine hours after the release that
+                # was not OptiScaler went up). Antivirus is the wrong first
+                # answer when the build that took it is named in the record.
+                rep.add(BAD, "No OptiScaler log, and no proxy in the folder.",
+                        "This install took wilsjo2's build after 20 September "
+                        "13:25 UTC, when the newest release on that page was "
+                        "display-filter - a different program with no "
+                        "OptiScaler.dll in it - and tool versions before 2.0.4 "
+                        "installed it without a proxy. Install again: this "
+                        "version refuses a package with no OptiScaler.dll and "
+                        "takes the newest real OptiScaler release.")
+                rep.verdict = ("OptiScaler is not in the game folder - "
+                               "install again.")
             else:
                 rep.add(BAD, "No OptiScaler log, and no proxy in the folder.",
                         (f"The proxy this install wrote ({proxy}) is not beside "
@@ -284,6 +321,46 @@ def _analyse_optiscaler(install_dir: Path, rep: "Report", since: float,
         rep.verdict = ("The game refused OptiScaler's swapchain - try another "
                        "name in 'loads as', or the feeder route.")
         return rep
+    # Streamline's crash handler writing a dump: the game hit an exception
+    # it could not recover from, and it is the last thing that session did.
+    # Both reports that carry it are the same game on this route (#20 in
+    # 1.6.1, #420 in 2.0.4), and neither was told the game crashed - #20
+    # got "the model refused" off a scaling-ratio note, #420 "open the
+    # overlay" for a game that never got to a window. Not in any working
+    # session in the corpus. After a dispatch that kept going it is only a
+    # warning: the model ran, and something later died.
+    dump = [(i, ln) for i, ln in enumerate(lines)
+            if "[writeMiniDump] Exception detected" in ln]
+    if dump:
+        when = re.search(r"\]\[(\d+)s:", dump[-1][1])
+        after = f" {when.group(1)} s into the session" if when else ""
+        crash_detail = (
+            "Streamline - NVIDIA's DLSS, Reflex and frame-generation "
+            "framework, which this game ships - writes this from its crash "
+            "handler: the game hit an exception it could not recover from"
+            f"{after}, and Streamline caught it. The line does not name the "
+            "module; Windows' own record does, if it wrote one. One at a "
+            "time: take out any other DLSS tool named below, turn frame "
+            "generation and Reflex off in the game, try the next name in "
+            "'loads as', then another entry in 'optiscaler build'. If it "
+            "closes the same way every time, the feeder route leaves the "
+            "game's upscaler alone.")
+        # Streamline catches exceptions inside its own calls and the game
+        # can go on (gate 2.0.5): only a dump the session ENDED on is a
+        # crash. After it, a few lines of teardown; not a session's worth.
+        tail_after = [ln for ln in lines[dump[-1][0] + 1:] if ln.strip()]
+        if (running and running[-1][0] > dump[-1][0]) or len(tail_after) > 40:
+            rep.add(WARN, "Streamline recorded an exception earlier in the "
+                          "session.", dump[-1][1].strip()[-160:])
+        else:
+            if running:
+                rep.add(OK, "Neural rendering started.",
+                        running[-1][1].strip()[-160:])
+            rep.add(BAD, "The game crashed - Streamline wrote a crash dump.",
+                    crash_detail)
+            rep.verdict = ("The game crashed with OptiScaler loaded - "
+                           "Streamline caught the exception.")
+            return rep
     # A failure logged AFTER the last "running at" is what the person saw
     # last: the model started and then stopped. Taking "running" first said
     # "Working." about a session that ended in a failure.
@@ -695,12 +772,32 @@ def _analyse_upstream(rep: Report, rtext: str) -> Report:
                 "This route rewrites the game's own DLSS; with no hook on it "
                 "there is nothing to rewrite. Either the game does not ship "
                 "DLSS, or it loads it after the add-on looked. The optiscaler "
-                "route brings its own upscaler and does not need the game's.")
+                "route also works on DirectX 11, with DLSS - or FSR 2/3 or "
+                "XeSS - still switched on in the game.")
         rep.verdict = "The game's DLSS call was never hooked - nothing to run on."
         return rep
 
     if hb or (diag and int(diag.group(1)) > 0):
         rep.verdict = "Working."
+        return rep
+
+    # Switched on, hooked, and still nothing: the add-on answers the game's
+    # own DLSS call and the game never made one. Sending this person to the
+    # overlay to "check it is switched on" asked them to confirm what the
+    # log already says (#390: enabled=1, four hooks OK, no frame).
+    if on and on.group(1) == "1":
+        rep.add(BAD, "Switched on and hooked, but the game never called DLSS.",
+                "The add-on's own log says enabled=1 and that it hooked the "
+                "game's D3D12 DLSS call, and nothing came through it: the "
+                "game never ran DLSS. Turn DLSS (DLAA, or any DLSS quality "
+                "mode) on in the game's own graphics settings and play a "
+                "minute in the game itself - a main menu often runs no DLSS "
+                "at all. If DLSS is already on, the game may draw with "
+                "DirectX 11, where these D3D12 hooks are never reached: "
+                "switch the route to optiscaler, which also works on "
+                "DirectX 11 (DLSS still has to be on in the game).")
+        rep.verdict = ("The game never called DLSS - turn it on in the game's "
+                       "own settings, or use the optiscaler route.")
         return rep
 
     rep.add(INFO, "The add-on loaded and set itself up, but never ran.",

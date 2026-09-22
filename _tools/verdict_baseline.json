@@ -80,6 +80,7 @@
  },
  "134": {
   "findings": [
+   "bad: You said the game closed itself.",
    "warn: The install record is gone from this folder.",
    "ok: Frames are being processed (3 logged, last was frame 3).",
    "info: 600 frames at 20.5 fps, 0.33 ms/frame spent on the feed."
@@ -87,7 +88,7 @@
   "never_ran": false,
   "ran": true,
   "route": "feeder",
-  "verdict": "Working."
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
  },
  "140": {
   "findings": [
@@ -109,6 +110,7 @@
  },
  "142": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: ReShade loaded add-on: DLSS 5 Feed 0.15.1 0.15.1.0",
    "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
    "warn: The game closed while ReShade was still compiling the effects."
@@ -116,7 +118,7 @@
   "never_ran": false,
   "ran": true,
   "route": "feeder",
-  "verdict": "Inconclusive - the feed did not get far enough to tell."
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
  },
  "145": {
   "findings": [
@@ -139,14 +141,14 @@
  },
  "154": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: ReShade loaded add-on: DLSS5 NR Pre-Upscale 0.0.0.0",
-   "ok: The add-on hooked the game's DLSS call (1 entry point).",
-   "info: The add-on loaded and set itself up, but never ran."
+   "ok: The add-on hooked the game's DLSS call (1 entry point)."
   ],
   "never_ran": false,
   "ran": true,
   "route": "upstream",
-  "verdict": "Loaded and set up; no neural frame yet."
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
  },
  "155": {
   "findings": [
@@ -204,12 +206,13 @@
  },
  "168": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: Neural rendering is running."
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "Working."
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
  },
  "17": {
   "findings": [
@@ -329,13 +332,12 @@
  },
  "20": {
   "findings": [
-   "bad: Neural rendering did not start.",
-   "info: OptiScaler needs driver 616.56 or newer, and a nvngx_dlssnr build for your card (the tool picks one). If it keeps refusing, the native or renodx-dlss route is one click away."
+   "bad: The game crashed - Streamline wrote a crash dump."
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "OptiScaler loaded, but the model refused or failed."
+  "verdict": "The game crashed with OptiScaler loaded - Streamline caught the exception."
  },
  "203": {
   "findings": [
@@ -579,21 +581,23 @@
  },
  "294": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: Neural rendering is running."
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "Working."
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
  },
  "295": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: Neural rendering is running."
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "Working."
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
  },
  "296": {
   "findings": [
@@ -637,13 +641,14 @@
  },
  "309": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0",
    "warn: The add-on attached but never reached a contract."
   ],
   "never_ran": false,
   "ran": true,
   "route": "standalone",
-  "verdict": "Inconclusive - the add-on attached but built nothing."
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
  },
  "31": {
   "findings": [
@@ -665,13 +670,14 @@
  },
  "322": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 1.16.0-beta.5 0.0.0.0",
    "bad: The game closed before it drew a single frame."
   ],
   "never_ran": false,
   "ran": true,
   "route": "feeder",
-  "verdict": "Inconclusive - the feed did not get far enough to tell."
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
  },
  "325": {
   "findings": [
@@ -713,12 +719,13 @@
  },
  "348": {
   "findings": [
+   "bad: You said the game closed itself.",
    "bad: ReShade loaded no add-ons."
   ],
   "never_ran": false,
   "ran": true,
   "route": "feeder",
-  "verdict": "Inconclusive - the feed did not get far enough to tell."
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
  },
  "35": {
   "findings": [
@@ -772,12 +779,13 @@
  },
  "377": {
   "findings": [
+   "bad: You said the game never started.",
    "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 1.16.0-beta.6 0.0.0.0"
   ],
   "never_ran": false,
   "ran": true,
   "route": "feeder",
-  "verdict": "Inconclusive - the feed did not get far enough to tell."
+  "verdict": "The game never started with this install in - see below for what to take out first."
  },
  "38": {
   "findings": [
@@ -787,6 +795,15 @@
   "ran": false,
   "route": "feeder",
   "verdict": "The install never finished - install again."
+ },
+ "385": {
+  "findings": [
+   "bad: No OptiScaler log, and no proxy in the folder."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "optiscaler",
+  "verdict": "OptiScaler is not in the game folder - install again."
  },
  "39": {
   "findings": [
@@ -799,6 +816,17 @@
   "route": "upstream",
   "verdict": "Add-ons loaded. Confirm in the 'NR Pre-Upscale' tab (neural-upstream) - this route does not log frames."
  },
+ "390": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS5 NR Pre-Upscale 0.0.0.0",
+   "ok: The add-on hooked the game's DLSS call (4 entry points).",
+   "bad: Switched on and hooked, but the game never called DLSS."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "upstream",
+  "verdict": "The game never called DLSS - turn it on in the game's own settings, or use the optiscaler route."
+ },
  "40": {
   "findings": [
    "warn: The game has not been started since the install.",
@@ -809,6 +837,24 @@
   "ran": false,
   "route": "-",
   "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "400": {
+  "findings": [
+   "bad: DXVK ran, and ReShade did not."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "DXVK ran and ReShade did not - if anything starts the game as administrator, start it normally."
+ },
+ "403": {
+  "findings": [
+   "bad: Postal2.exe ran at 22 Sep 00:39 with none of this folder's files loaded."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "Postal2.exe ran at 22 Sep 00:39 and loaded nothing from this folder - try another proxy name."
  },
  "41": {
   "findings": [
@@ -824,14 +870,37 @@
   "route": "optiscaler",
   "verdict": "OptiScaler loaded; neural rendering not switched on."
  },
+ "412": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "ok: The add-on's own switch is on.",
+   "ok: When it last ran (22 Sep 05:28), the process had dlss5-bridge.addon64, nvngx_dlssnr.dll, renodx-dlss5.addon64 loaded."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "bridge",
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
+ },
  "42": {
   "findings": [
+   "bad: You said the game closed itself.",
    "ok: Neural rendering is running."
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "Working."
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
+ },
+ "420": {
+  "findings": [
+   "bad: The game crashed - Streamline wrote a crash dump.",
+   "bad: Another DLSS tool's add-on was loaded beside OptiScaler: DLSS 5 Swapper Overlay",
+   "bad: A ReShade with renodx-dlss5 is still loading in this game: DLSS 5 Neural Rendering"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "The game crashed with OptiScaler loaded - Streamline caught the exception. A ReShade with renodx-dlss5 is loading as well - take that ReShade out, then install again. Another DLSS hook was loaded beside ours too (DLSS 5 Swapper Overlay) - test without it."
  },
  "43": {
   "findings": [
@@ -1206,12 +1275,13 @@
    "info: nvngx_dlssnr.dll: present.",
    "info: nvngx.dll_dlssnr.dll: not in this folder (this build may not use one).",
    "info: the game's own upscaler, recorded at install: none recorded - the game was expected to use DLSS. It has to be running for the model to have anything to attach to.",
-   "info: driver 616.92: new enough"
+   "info: driver 616.92: new enough",
+   "bad: A ReShade with renodx-dlss5 is still loading in this game: DLSS 5 Neural Rendering"
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "OptiScaler loaded; neural rendering not switched on."
+  "verdict": "OptiScaler loaded; neural rendering not switched on. A ReShade with renodx-dlss5 is loading as well - take that ReShade out, then install again."
  },
  "95": {
   "findings": [
@@ -1246,11 +1316,12 @@
  },
  "98": {
   "findings": [
+   "bad: You said the game closed itself.",
    "warn: OptiScaler mentions neural rendering but never reports it running."
   ],
   "never_ran": false,
   "ran": true,
   "route": "optiscaler",
-  "verdict": "Inconclusive - open the overlay (Insert) and read the status under the Neural Rendering checkbox."
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
  }
 }

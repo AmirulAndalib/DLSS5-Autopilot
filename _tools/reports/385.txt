@@ -1,0 +1,36 @@
+**Did the game start?** it never started
+
+**What happened**
+Optiscaler wont install in game folder
+
+---
+- version: 2.0.3
+- gpu: NVIDIA GeForce RTX 5090 (sm_120), driver 616.56
+- game: Farming Simulator 25
+- exe: FarmingSimulator2025.exe
+- arch/api: 64-bit / Unknown (graphics DLL loaded at runtime; assuming DX11/DX12 via dxgi.dll)
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: OptiScaler is not in the game folder - install again.
+- [bad] No OptiScaler log, and no proxy in the folder.
+
+**Files in the folder**
+- dxgi.dll: MISSING
+- nvngx_dlssnr.dll: present
+- optiscaler build: wilsjo2
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+(none)
+```

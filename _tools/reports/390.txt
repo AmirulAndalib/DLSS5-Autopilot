@@ -1,0 +1,47 @@
+**Did the game start?** it started and ran
+
+**What happened**
+No changes despite having selected the avialble options. My hardware is good and I folowed the instructions
+
+---
+- version: 2.0.4
+- gpu: NVIDIA GeForce RTX 5090 (sm_120), driver 616.92
+- game: The Elder Scrolls Online- Tamriel Unlimited
+- exe: eso64.exe
+- arch/api: 64-bit / DX12 (loads d3d12.dll at run time (d3d12SDKLayers.dll beside the exe imports it); no static graphics import)
+- route: upstream
+
+**Diagnosis**: Loaded and set up; no neural frame yet.
+- [ok] ReShade loaded add-on: DLSS5 NR Pre-Upscale 0.0.0.0
+- [ok] The add-on hooked the game's DLSS call (4 entry points).
+- [info] The add-on loaded and set itself up, but never ran.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx.dll.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- d3dcompiler_47.dll: renamed aside
+
+**What ran, and what it loaded** (seen at 20 Sep 21:27)
+- process: eso64.exe
+- DLLs in the process: 190
+- ours, loaded: dxgi.dll, nvngx.dll.addon64, nvngx_dlssnr.dll
+
+**ReShade.log**
+```
+21:27:00:641 [23104] | INFO  | Registered add-on "DLSS5 NR Pre-Upscale" v0.0.0.0 using ReShade API version 18.
+21:27:01:035 [23104] | INFO  | Registered add-on "DLSS5 NR Pre-Upscale" v0.0.0.0 using ReShade API version 18.
+21:27:02:819 [23104] | INFO  | Redirecting IDXGIFactory::CreateSwapChain(this = 000001D3821BD530, pDevice = 000001D330BC6F50, pDesc = 000000C2B1A0ED70, ppSwapChain = 000001D32EDE1538) ...
+21:27:04:257 [23104] | INFO  | [DLSS5 NR Pre-Upscale] [NRPRE] settings loaded: enabled=1 cadence=1 codec=1 pw=1.000 knee=0.75
+21:27:04:530 [ 2612] | INFO  | [DLSS5 NR Pre-Upscale] [NRPRE] hook 0 on NVSDK_NGX_D3D12_EvaluateFeature: OK  C:\WINDOWS\System32\DriverStore\FileRepository\nv_dispi.inf_amd64_b20cc8aeaed64fc2\_nvngx.d
+21:27:04:576 [ 2612] | INFO  | [DLSS5 NR Pre-Upscale] [NRPRE] hook 1 on NVSDK_NGX_D3D12_EvaluateFeature: OK  C:\WINDOWS\System32\DriverStore\FileRepository\nv_dispi.inf_amd64_b20cc8aeaed64fc2\nvngx.dl
+21:27:04:624 [ 2612] | INFO  | [DLSS5 NR Pre-Upscale] [NRPRE] hook 2 on NVSDK_NGX_D3D12_EvaluateFeature: OK  C:\ProgramData\NVIDIA\NGX\models\dlss\versions\20318464\files\160_E658700.bin
+21:27:04:669 [ 2612] | INFO  | [DLSS5 NR Pre-Upscale] [NRPRE] hook 3 on NVSDK_NGX_D3D12_EvaluateFeature: OK  C:\Program Files\WindowsApps\BethesdaSoftworks.R-G-TESOTU-CORE_1.44.3.0_x64__3275kfvn8vcwc\
+21:27:04:714 [ 2612] | INFO  | [DLSS5 NR Pre-Upscale] [NRPRE] hook on NVSDK_NGX_D3D12_CreateFeature: OK (module 0)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

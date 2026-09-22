@@ -2,10 +2,10 @@ r"""Does the 2.0 window still work on somebody else's display?
 
 The owner's monitor is 1920x1080 at 100%, so every display bug in this tool
 has arrived as a bug report with a photograph attached (issue #40, twice).
-This builds the REAL window (core.ui) at ten display cases from 100% to 350%
+This builds the REAL window (core.ui) at eleven display cases from 100% to 350%
 and measures what a person needs, not proxies for it.
 
-    python _tools\gui_scale_check.py                  the ten cases
+    python _tools\gui_scale_check.py                  the eleven cases
     python _tools\gui_scale_check.py 2.5              one scaling, in this screen
     python _tools\gui_scale_check.py --out shots      and a PrintWindow capture of
                                                       each case's library and game
@@ -28,6 +28,10 @@ Per case (theme.set_scale(96 * k) before the window is built):
   scroll     a page taller than the view scrolls with the wheel and shows a
              thumb; a page that fits does neither
   log        the log drawer, opened, shows at least three lines
+  rail       every sidebar item (logo, pages, watch, help) is whole inside the
+             sidebar, no two overlap, and a click on an item's centre lands on
+             that item - at the window's height AND at its minimum height, with
+             no page and with all three hideable pages off the sidebar (#293)
 
 READ THIS BEFORE TRUSTING A NUMBER: a window cannot be larger than the
 screen this runs on, so a 2560-wide display is drawn in this machine's width
@@ -54,6 +58,7 @@ CASES = (
     (1.25, 2560, 1440, "2560x1440 at 125%"),
     (1.5, 1920, 1080, "1920x1080 at 150%"),
     (1.5, 3840, 2160, "3840x2160 at 150%"),
+    (1.75, 1920, 1080, "1920x1080 laptop at 175%"),
     (2.0, 3840, 2160, "3840x2160 at 200%"),
     (2.0, 2560, 1600, "2560x1600 laptop at 200%"),
     (2.5, 5120, 2880, "5120x2880 at 250%"),
@@ -80,6 +85,75 @@ def _label_fits(c, kit) -> list[str]:
                     bad.append(f"'{label}' ({int(x2 - x1)} px, text {b[2] - b[0]} px)")
                     break
     return bad
+
+
+def rail_problems(shell) -> list[str]:
+    """What is wrong with the sidebar as drawn: an item outside it, two items
+    on top of each other, or an item whose centre belongs to something else.
+
+    At 250% in a 1000 px window the pages ran down into "watch" and "help"
+    and a right-click on video opened nothing - the click landed on watch.
+    """
+    c = shell.rail_c
+    c.update_idletasks()
+    w, h = c.winfo_width(), c.winfo_height()
+    hidden = shell.rail_hidden()
+    tags = (["logo"] + [f"nav_{p}" for p, _g, _l in shell.RAIL_ITEMS if p not in hidden]
+            + ["nav_more", "nav_watch", "nav_help"])
+    more = bool(c.find_withtag("nav_more"))
+    boxes, bad = {}, []
+    for t in tags:
+        b = c.bbox(t)
+        if not b:
+            # the logo is the one item a short rail may drop, and pages that
+            # do not fit go behind "more"
+            if t not in ("logo", "nav_more") and not (more and t.startswith("nav_")
+                                                     and t not in ("nav_watch", "nav_help")):
+                bad.append(f"{t} not drawn")
+            continue
+        boxes[t] = b
+        if b[0] < -1 or b[1] < -1 or b[2] > w + 1 or b[3] > h + 1:
+            bad.append(f"{t} outside the sidebar ({b[1]}..{b[3]} of {h})")
+    names = list(boxes)
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            A, B = boxes[a], boxes[b]
+            if A[0] < B[2] - 1 and B[0] < A[2] - 1 and A[1] < B[3] - 1 and B[1] < A[3] - 1:
+                bad.append(f"{a} overlaps {b}")
+    for t in boxes:
+        # an item's icon and its word, apart (the word's box already holds
+        # the font's line spacing, so touching is fine and overlap is not)
+        parts = [c.bbox(i) for i in c.find_withtag(t) if c.type(i) == "text"]
+        for i, a in enumerate(parts):
+            for b in parts[i + 1:]:
+                if a and b and min(a[3], b[3]) - max(a[1], b[1]) > 1 \
+                        and min(a[2], b[2]) - max(a[0], b[0]) > 1:
+                    bad.append(f"{t}'s icon and word overlap")
+    for t, b in boxes.items():
+        cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+        top = c.find_overlapping(cx, cy, cx, cy)
+        if not top or t not in c.gettags(top[-1]):
+            bad.append(f"a click on {t}'s centre lands on "
+                       + (",".join(c.gettags(top[-1])) if top else "nothing"))
+    return bad
+
+
+def rail_case(sb: Sandbox, shell, root, width: int, heights: list) -> list:
+    """The sidebar at each height, with no page hidden and with all three off."""
+    out = []
+    for hh in heights:
+        root.geometry(f"{width}x{hh}+0+0")
+        for hide in (False, True):
+            for p in shell.HIDEABLE:
+                shell.set_rail_hidden(p, hide)
+            sb.pump(root, 0.15)
+            shell.draw_rail()
+            sb.pump(root, 0.05)
+            out.append((f"{shell.rail_c.winfo_height()} px, "
+                        f"{'3 pages hidden' if hide else 'all pages'}", rail_problems(shell)))
+    for p in shell.HIDEABLE:
+        shell.set_rail_hidden(p, False)
+    return out
 
 
 def check(sb: Sandbox, scale: float, dw: int, dh: int, what: str, out: Path | None,
@@ -237,6 +311,15 @@ def check(sb: Sandbox, scale: float, dw: int, dh: int, what: str, out: Path | No
             say("buttons", f"dlss/{state}: " + (", ".join(cut) if cut else "all labels fit"), not cut)
             scrolls(f"dlss/{state}")
             shot(f"dlss-{state.replace(' ', '-')}")
+        # the sidebar, at the window's height and at the smallest height the
+        # window lets a person drag it to (its minimum, in this screen's room)
+        shell.show("library", remember=False)
+        low = max(int(mh * f), 200) if mh else wh
+        for where, probs in rail_case(sb, shell, root, ww, sorted({wh, low}, reverse=True)):
+            say("rail", f"{where}: " + ("; ".join(probs) if probs else "every item whole, apart, hittable"),
+                not probs)
+        root.geometry(f"{ww}x{wh}+0+0")
+        sb.pump(root, 0.2)
         for e in sb.errors:
             bad.append(f"{pct}: a Tk callback raised: {e.strip().splitlines()[-1]}")
         sb.errors.clear()
@@ -271,7 +354,7 @@ def main() -> int:
             print("  -", b)
         return 1
     print("every case: on the screen, a row of covers, the search box, whole buttons, the install "
-          "button in view, scrolling and the log")
+          "button in view, scrolling, the log and the sidebar")
     return 0
 
 

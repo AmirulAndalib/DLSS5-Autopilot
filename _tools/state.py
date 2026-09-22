@@ -55,6 +55,11 @@ CLASSES = (
       "ours is never reached")),
     ("upstream: the driver's NGX runtime faults",
      ("driver 616.64", "faults inside", "no dlss 5 entry point")),
+    # The person said the game closed itself or never started, and the
+    # logs could not say why: the answer is what to take out first (#412).
+    # Before "cannot tell" and the overlay ask, which it replaces.
+    ("they say it closed or never started - we name what to take out",
+     ("closed itself", "never started with this install")),
     ("we cannot tell from the logs",
      ("inconclusive", "did not get far enough")),
     ("we ask the person to look in the overlay",

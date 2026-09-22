@@ -18,7 +18,7 @@ The library shows every game it found - Steam, Epic, GOG, EA, Ubisoft,
 Battle.net, Rockstar, Xbox, folders and 19 emulators - with its cover and
 one line: installed, working, needs a look, update, anti-cheat. Open a
 game and press **install**: the tool has already read the executable and
-the folder, and picked one of eight routes for DirectX 9 through 12,
+the folder, and picked one of eight routes for DirectX 8 through 12,
 Vulkan, OpenGL, 32-bit, emulators and RTX Remix mods. **settings** shows
 only what that route reads, and **uninstall** puts back every file it
 replaced.
@@ -165,9 +165,9 @@ OpenGL); the choice is remembered for that folder.
 |---|---|---|---|
 | **native** | Krish's `renodx-dlss5` add-on hooks the DLSS calls the game already makes | 64-bit D3D12 games with DLSS; on an RTX card optiscaler is recommended first, native is one click away | the game's DLSS mode |
 | **neural-upstream** | matiasLombo's add-on runs the network at render resolution, *before* the game's DLSS upscales | 64-bit D3D12 games with DLSS | cadence (every 1st/2nd/3rd frame) |
-| **optiscaler** | Dagherbou's OptiScaler fork (or y4my4my4m's, or wilsjo2's - which is installed with its neural pass before the upscaler, the placement it exists for; neither of those two is tested) replaces the upscaler and runs the model over its output; no ReShade | 64-bit D3D11/12 with DLSS, or with FSR 2/3 / XeSS redirected into DLSS | **model resolution 25-100 %** - cost falls with the square; optional **frame generation** (FSR 3.1, any card, D3D12) |
+| **optiscaler** | Dagherbou's OptiScaler fork (or y4my4my4m's, or wilsjo2's - which is installed with its neural pass before the upscaler, the placement it exists for - or wilsjo2's RTX 40 multi-frame generation package, on RTX 40 cards only; none of those three is tested) replaces the upscaler and runs the model over its output; no ReShade | 64-bit D3D11/12 with DLSS, or with FSR 2/3 / XeSS redirected into DLSS | **model resolution 25-100 %** - cost falls with the square; optional **frame generation** (FSR 3.1, any card, D3D12) |
 | **bridge** | NIGos' `dlss5-bridge` mirrors the game's DLSS contract onto a private D3D12 session | D3D11 and Vulkan games with DLSS; offered without one too, from the driver's optical flow | the game's DLSS mode |
-| **feeder** | jlrouzies-fr's `DLSS5-Feeder` builds a DLAA contract from ReShade's depth buffer and shader motion vectors | games with **no** DLSS: D3D10/11/12, Vulkan, OpenGL, 32-bit (host64 helper, DirectX 9 through DXVK) | work area 50-100 % (64-bit D3D11) |
+| **feeder** | jlrouzies-fr's `DLSS5-Feeder` builds a DLAA contract from ReShade's depth buffer and shader motion vectors | games with **no** DLSS: D3D10/11/12, Vulkan, OpenGL, 32-bit (host64 helper, DirectX 8 and 9 through DXVK) | work area 50-100 % (64-bit D3D11) |
 | **standalone-dlssnr** | kibblerz's add-on: own feed, DLAA or DLSS Super Resolution, frame generation, shown through its own window | 64-bit D3D11/12, with or without DLSS; experimental | run the game below native |
 | **renodx-dlss** | ShortFuse's add-on hooks D3D9/11/12 in-process; no bridge, no shaders | 64-bit DirectX 9 (nothing else reaches it); reported failing in many other games | the game's DLSS mode |
 | **remix** | the game has an **RTX Remix** mod; DLSS 5 runs inside the Remix runtime, after its upscaler. Nothing injected | any game with a `.trex` folder beside it | Remix's Neural Uplift sliders |
@@ -373,6 +373,9 @@ matters.
   again. **rescan** asks the launchers what is installed and reads only the
   games it has not seen; **full rescan** walks everything, emulators
   included.
+- **sidebar pages** (the library's **view** menu): video, remix and vr
+  can come off the sidebar and go back on; a right-click on one of them in
+  the sidebar hides it too.
 - **aim for _ fps** (optiscaler, and the feeder's 64-bit D3D11 path - the
   same places the work-area slider applies): put in the frame rate you want
   and the tool works out the work area to reach it, from what the last runs
@@ -642,7 +645,8 @@ diagnosis reached, and - where the session was measured - the work area it
 ran at, the milliseconds a frame spent on what grows with that area, and
 the frame rate. On OptiScaler that is the model's own cost; on the feeder
 it is the model and the feed together. No paths, no user name, nothing
-else. Those results
+else. Where the logs cannot show whether DLSS 5 ran - a route that logs no
+frames - it asks you, and the result says the answer was yours. Those results
 are added up into one file the tool reads before an install; once a game has
 five results, the next person with it is told which route worked most often,
 and whether the one they picked did worse. The issue is closed as soon as it
@@ -660,6 +664,7 @@ dlss5-autopilot.exe "D:\Games\Game" --dxvk          run the game on Vulkan throu
 dlss5-autopilot.exe "D:\Games\Game" --vr            register ReShade's OpenXR layer as well (VR, OpenXR games; unverified with a headset)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build y4my4my4m   another OptiScaler build than Dagherbou's (untested)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2     ...the neural pass before the upscaler, 1-3 passes (untested)
+dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2-mfg   ...the same with RTX 40 multi-frame generation (RTX 40 only, untested)
 dlss5-autopilot.exe --video ["D:\DLSS5 Player"]     set up the video player
 ```
 

@@ -129,7 +129,7 @@ class LibraryPage(Page):
             x += wid + T.px(30)
         # view menu: architecture, hidden games, sort, scan at start
         k.link(width - pad, y, "view", self.view_menu, glyph="more", anchor="e", tags=tags,
-               tip="sort, 32/64-bit, hidden games")
+               tip="sort, 32/64-bit, hidden games, sidebar pages")
         right = width - pad - T.px(90)
         if a.arch != "all" or a.show_hidden or a.sort:
             bits = [dict(ARCH)[a.arch]] if a.arch != "all" else []
@@ -370,8 +370,22 @@ class LibraryPage(Page):
         online = _covers.online()
         items.append((("\u2022 " if online else "  ") + "look up covers online (sends game names)",
                       lambda: a.set_online_art(not online)))
+        hidden = self.shell.rail_hidden()
+        shown = [p for p in self.shell.HIDEABLE if p not in hidden]
+        items.append(("sidebar pages  -  " + (", ".join(shown) if shown else "all hidden"),
+                      lambda: self.shell.root.after(1, self.sidebar_menu)))
         vx2 = self.c.canvasx(self.c.winfo_width())
         self.kit.menu(vx2 - T.px(44) - T.px(400), T.px(144), items, width=T.px(400), max_rows=16)
+
+    def sidebar_menu(self):
+        """Which of video, remix and vr the rail shows (#293)."""
+        sh = self.shell
+        hidden = sh.rail_hidden()
+        items = [(("\u2022 " if p not in hidden else "  ") + f"{p} in the sidebar",
+                  lambda p=p: sh.set_rail_hidden(p, p not in hidden))
+                 for p in sh.HIDEABLE]
+        vx2 = self.c.canvasx(self.c.winfo_width())
+        self.kit.menu(vx2 - T.px(44) - T.px(400), T.px(144), items, width=T.px(400))
 
     def _toggle_hidden(self):
         self.app.show_hidden = not self.app.show_hidden

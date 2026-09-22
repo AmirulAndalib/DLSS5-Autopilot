@@ -46,7 +46,7 @@ from core import diagnose                  # noqa: E402
 REPORTS = HERE / "reports"
 BASELINE = HERE / "verdict_baseline.json"
 
-API_RE = re.compile(r"(DX9|DX10|DX11|DX12|Vulkan|OpenGL)")
+API_RE = re.compile(r"(DX8|DX9|DX10|DX11|DX12|Vulkan|OpenGL)")
 
 
 # Both of these live in replay_report now: the tool a person replays a
@@ -87,9 +87,10 @@ def _answer(path: Path) -> dict:
         # path, the Vulkan layer registry, the driver version - comes out of
         # the report instead, so the answer is the same on any PC. The
         # patching lives in replay_report so a report replayed by hand there
-        # gets the same verdict this measures (it did not: #212).
-        with replay_report.machine(text, d):
-            rep = diagnose.analyse(d, replay_report.last_error(text))
+        # gets the same verdict this measures (it did not: #212). The
+        # person's own "did the game start?" answer is applied the way the
+        # report body applies it (#412), so this is what the report says.
+        rep = replay_report.analyse(d, text)
         return {
             "route": rep.route or "",
             "ran": bool(rep.ran),

@@ -86,7 +86,8 @@ def _header(text: str) -> dict:
     """
     out = {}
     for k in ("version", "gpu", "game", "exe", "arch/api", "route",
-              "work area"):
+              "work area", "starts as administrator", "compatibility flags",
+              "this tool"):
         m = re.search(r"^- " + re.escape(k) + r":\s*(.+)$", text, re.M)
         if m:
             out[k] = m.group(1).strip()
@@ -128,6 +129,35 @@ def finished(text: str) -> dict:
     return {"complete": not crashed}
 
 
+def started(text: str) -> str:
+    """The person's own answer to "did the game start?", as posted."""
+    m = re.search(r"\*\*Did the game start\?\*\*[ \t]*(.*)", text)
+    return m.group(1).strip() if m else ""
+
+
+def presence(text: str) -> list[str]:
+    """The report's "Files in the folder" lines, as printed."""
+    m = re.search(r"\*\*Files in the folder\*\*\s*\n(.*?)(?:\n\*\*|\Z)", text, re.S)
+    return [ln.strip() for ln in m.group(1).splitlines()
+            if ln.strip().startswith("- ")] if m else []
+
+
+def analyse(d: Path, text: str):
+    """What the report would print today: the diagnosis, then the person's
+    answer applied to it the way the report body applies it."""
+    with machine(text, d):
+        rep = diagnose.analyse(d, last_error(text))
+    # A report does not print the install's kind; the video player's exe
+    # does (core/video.PLAYER_EXE), hand-edited headers included (#325).
+    from core import video as _video
+    kind = "video" if _video.PLAYER_EXE.lower() in \
+        _header(text).get("exe", "").lower() else "game"
+    return diagnose.answered(rep, started(text), presence(text), kind)
+
+
+_DXVK_LOG = re.compile(r"_(d3d8|d3d9|d3d10|d3d11|dxgi)\.log$", re.I)
+
+
 def folder_state(text: str) -> dict | None:
     """What the report says was in the folder, from its own file list.
 
@@ -153,9 +183,11 @@ def folder_state(text: str) -> dict | None:
     if not m:
         return None
     files: dict[str, bool] = {}
+    dxvk_logs: dict[str, bool] = {}
     named = False
     layer: bool | None = None
     opti_tag = ""
+    opti_build = ""
     remix: dict = {"trex": False, "files": {}, "flavour": "", "key": "",
                    "key_set": False, "swapped": False}
     for line in m.group(1).splitlines():
@@ -213,7 +245,20 @@ def folder_state(text: str) -> dict | None:
             m_ = re.search(r"\(([^)]+)\)\s*$", state)
             if m_:
                 opti_tag = m_.group(1).strip()
+            # ...and the build itself, which the record keeps even where it
+            # kept no tag (#385: a 2.0.3 report). "Dagherbou" is how the
+            # default build is printed; the record stores it as "".
+            opti_build = state.split(" (", 1)[0].strip()
+            if opti_build.lower() == "dagherbou":
+                opti_build = ""
             named = True
+            continue
+        if _DXVK_LOG.search(name):
+            # DXVK's own log, the proof the game ran through it: a file on
+            # disk, but not one the install wrote, so it stays out of the
+            # record's file list. "from before the install" is a log that
+            # proves nothing about this install, and is dated that way.
+            dxvk_logs[name] = "before the install" not in state
             continue
         if name.lower().startswith(("reshade openxr", "reshade ",
                                     "the game's own upscaler")):
@@ -240,9 +285,21 @@ def folder_state(text: str) -> dict | None:
         if layer is None:
             layer = files.get("(vulkan layer)", False)
         files.pop("(vulkan layer)", None)
+    # A report from before the list carried DXVK's log (2.0.4 and older)
+    # still proves one was there when it printed "DXVK ran and ReShade did
+    # not": that verdict is reached only with a fresh one beside the exe.
+    # Named after the report's own exe and api - the same name the tool
+    # looked for - rather than invented (#400).
+    if not dxvk_logs and printed_verdict(text).startswith("DXVK ran and ReShade did not"):
+        head = _header(text)
+        stem = Path(head.get("exe", "") or "Game.exe").stem
+        api = head.get("arch/api", "")
+        kind = "d3d9" if "DX9" in api else "d3d8" if "DX8" in api else "d3d11"
+        dxvk_logs[f"{stem}_{kind}.log"] = True
     return {"files": files, "manifest": named, "proxy": proxy, "layer": layer,
+            "dxvk_logs": dxvk_logs,
             "remix": remix if (remix["trex"] or remix["key"]) else None,
-            "opti_tag": opti_tag,
+            "opti_tag": opti_tag, "opti_build": opti_build,
             "addon_switch": files.pop("(addon switch)", None)}
 
 
@@ -285,6 +342,8 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
             comp = dict(man.get("components") or {})
             comp["remix_runtime"] = "swapped"
             man["components"] = comp
+    if (state or {}).get("opti_build"):
+        man["opti_build"] = state["opti_build"]
     if (state or {}).get("opti_tag"):
         comp = dict(man.get("components") or {})
         comp["optiscaler"] = state["opti_tag"]
@@ -296,6 +355,11 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
         p = d / n
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_bytes(b"MZ")
+    for n, fresh in ((state or {}).get("dxvk_logs") or {}).items():
+        p = d / n
+        p.write_text("info:  DXVK\n", encoding="utf8")
+        if not fresh:
+            os.utime(p, (978307200, 978307200))      # 2001: before any install
     sh = d / "reshade-shaders" / "Shaders"
     sh.mkdir(parents=True, exist_ok=True)
     # The add-on's own switch, as the report recorded it: the diagnosis
@@ -421,7 +485,16 @@ def machine(text: str, d: Path):
     rec_file.write_text(json.dumps(
         {os.path.normcase(str(d)): seen} if seen else {}),
         encoding="utf8")
+    # How Windows started the game, as the report recorded it - never this
+    # PC's registry, which knows nothing about their exe. A report from
+    # before 2.0.5 carries neither line, which reads as "not elevated".
+    from core import wincrash as _wc
+    head = _header(text)
+    flags = head.get("starts as administrator") or head.get("compatibility flags") or ""
+    tool_admin = "administrator" in head.get("this tool", "")
     with patch.object(diagnose.model, "STANDALONE_LOG", sa), \
+            patch.object(_wc, "start_flags", lambda _exe: flags), \
+            patch.object(_wc, "elevated", lambda: tool_admin), \
             patch.object(diagnose.model, "_layer_state", lambda man: reg), \
             patch.object(_watch, "RECORD", rec_file), \
             patch.object(_watch, "inspect", lambda *a, **k: []), \
@@ -480,8 +553,7 @@ def sighting(text: str) -> dict:
 
 def show(d: Path, label: str, text: str = "") -> None:
     if text:
-        with machine(text, d):
-            rep = diagnose.analyse(d, last_error(text))
+        rep = analyse(d, text)
     else:
         rep = diagnose.analyse(d)
     print("=" * 78)
@@ -516,7 +588,7 @@ def main() -> int:
         route = head.get("route", route)
         exe = head.get("exe", exe)
         if "arch/api" in head:
-            m = re.search(r"(DX9|DX10|DX11|DX12|Vulkan|OpenGL)", head["arch/api"])
+            m = re.search(r"(DX8|DX9|DX10|DX11|DX12|Vulkan|OpenGL)", head["arch/api"])
             if m:
                 api = m.group(1)
             if "32-bit" in head["arch/api"]:

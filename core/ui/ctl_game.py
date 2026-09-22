@@ -644,7 +644,7 @@ class GameControl:
             "opti_proxy": lambda: opti,
             "provider": lambda: feeder,
             "reshade_proxy": lambda: reshade_routes and api != "Vulkan"
-            and not (api == "DX9" or bool(self.settings.get("dxvk"))),
+            and not (api in ("DX9", "DX8") or bool(self.settings.get("dxvk"))),
             "renodx": lambda: r in (dlss.NATIVE, dlss.BRIDGE, dlss.FEEDER, dlss.RENODX),
             "dlssnr": lambda: True,
             # With 'keep the game's own' on and the game's file beside the
@@ -1994,7 +1994,29 @@ class GameControl:
         if rep is None or g is None:
             return
         route = self.route or ""
-        worked = str(getattr(rep, "verdict", "")).startswith("Working") and self._last_crash is None
+        from .. import verdicts
+        seen = verdicts.outcome(str(getattr(rep, "verdict", "")))
+        said_by = ""
+        if self._last_crash is not None:
+            # Windows recorded the game faulting: an answer, on any route -
+            # and marked, or a "confirm in the tab" verdict beside it would
+            # leave the failure out of the list as an unseen outcome.
+            worked, said_by = False, "crash"
+        elif seen is None:
+            # The logs cannot tell (a route that logs no frames, a second
+            # hook beside ours): the person watched the game, so they answer.
+            # Before 2.0.5 this wrote "failed" - #414's "WORKED FINE" went
+            # into the list as a failure, and renodx/native/bridge could
+            # never share a success. The next question repeats the answer
+            # before anything opens, so a stray Esc here is seen and undone.
+            worked = self.shell.ask(
+                "share the result",
+                "The tool cannot see from the logs whether DLSS 5 ran here - you watched the game. "
+                "Did the DLSS 5 picture show in the game?",
+                "it showed", "it did not")
+            said_by = "person"
+        else:
+            worked = seen == "worked"
         try:
             name, sm = gpu.detect()
         except Exception:
@@ -2007,7 +2029,7 @@ class GameControl:
             g, route or str(man.get("path") or ""), "worked" if worked else "failed",
             api=str(man.get("api") or getattr(g, "api", "") or ""), build=str(man.get("opti_build") or ""),
             gpu_sm=sm, gpu_name=name or "", driver=gpu.driver_version() or "", version=update.VERSION,
-            measured=self.measured_for(route))
+            measured=self.measured_for(route), said_by=said_by)
         carried = "your card and driver, this tool's version, whether it worked, and the one-line verdict"
         if rec.get("res"):
             carried = ("your card and driver, this tool's version, whether it worked, the one-line verdict, and "
@@ -2016,6 +2038,10 @@ class GameControl:
                            if (rec.get("route") or route) == dlss.FEEDER else f", {rec['ms']} ms of model a frame")
                           if rec.get("ms") else "")
                        + (f", {rec['fps']} fps" if rec.get("fps") else "") + ")")
+        if said_by:
+            carried = carried.replace("whether it worked", "that it " + ("worked" if worked else "did not work")
+                                      + (" (Windows recorded a crash)" if said_by == "crash"
+                                         else " (your answer)"))
         if not self.shell.ask("share the result",
                               "A browser window opens with the result in it - nothing is sent unless you post "
                               f"it. It carries the game's name and executable, the route and build, the graphics "
@@ -2137,7 +2163,7 @@ class GameControl:
 
 
 def _api_label(api: str) -> str:
-    return {"DX9": "DirectX 9", "DX10": "DirectX 10", "DX11": "DirectX 11", "DX12": "DirectX 12"}.get(api, api)
+    return {"DX8": "DirectX 8", "DX9": "DirectX 9", "DX10": "DirectX 10", "DX11": "DirectX 11", "DX12": "DirectX 12"}.get(api, api)
 
 
 def _route_rows(entry) -> list[tuple[str, int, int]] | None:

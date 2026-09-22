@@ -77,6 +77,11 @@ FORK = "y4my4my4m"
 PRESR_API = ("https://api.github.com/repos/wilsjo2/"
              "OptiScaler-DLSSNR-PreSR-Multipass/releases?per_page=10")
 PRESR = "wilsjo2"
+# The same fork's other package: every release since v0.8.3 carries an
+# OptiScaler-NR-v<x>-rtx40-mfg.zip beside the standard one - the pre-SR pass
+# AND RTX 40 multi-frame generation (#286). Its own entry, never a default:
+# #196 and #231 were that zip landing on cards that had not asked for it.
+PRESR_MFG = "wilsjo2-mfg"
 # The key that fork's "before the upscaler" placement lives behind. It is
 # off by default there, so choosing the build is not the same as choosing
 # the behaviour it is chosen for (#81). Named here rather than written in
@@ -97,7 +102,17 @@ FORKS = {
     # The fork's own notes: "Choose the standard ZIP unless you need the
     # optional RTX 40 MFG unlock."
     PRESR: (PRESR_API, ("rtx40-mfg",)),
+    PRESR_MFG: (PRESR_API, ()),
 }
+
+# The inverse of a skip list: a build that exists FOR one variant takes only
+# an archive carrying one of these words. A release without it is passed
+# over rather than answered with the standard zip under the variant's name.
+WANT = {PRESR_MFG: ("rtx40-mfg",)}
+
+# The one card the MFG variant is for. Ada is sm_89; the unlock on anything
+# else is what broke frame generation in #196 and #231.
+MFG_SM = 89
 
 # Key -> dropdown label. "" is the build the route installs by default.
 BUILDS = {
@@ -105,7 +120,30 @@ BUILDS = {
     FORK: "y4my4my4m's fork  -  multi-frame generation on RTX 40, development builds",
     PRESR: "wilsjo2's fork  -  neural rendering before the upscaler, "
            "1-3 passes; not run here",
+    PRESR_MFG: "wilsjo2's fork + RTX 40 MFG  -  the same pass with "
+               "multi-frame generation, RTX 40 cards only; not run here",
 }
+
+
+def is_presr(build: str) -> bool:
+    """Either of wilsjo2's packages: both run the pass before the upscaler."""
+    return build in (PRESR, PRESR_MFG)
+
+
+def card_refusal(build: str, sm: int | None) -> str:
+    """Why this build must not go onto this card, or "".
+
+    Only the MFG variant has a card: the unlock is for RTX 40 and on an
+    RTX 50 it broke frame generation (#196, #231). An unknown card is not
+    refused - there is nothing to say it is the wrong one.
+    """
+    if build != PRESR_MFG or sm is None or sm == MFG_SM:
+        return ""
+    return ("The RTX 40 MFG package unlocks multi-frame generation on RTX 40 "
+            "cards only. On an RTX 50 it broke frame generation (#196, #231); "
+            "on other cards it has not been tried. "
+            "Choose \"wilsjo2's fork\" in 'optiscaler build' for the same "
+            "neural pass without it.")
 
 # Insert opens OptiScaler's own overlay (0x2D / VK_INSERT).
 OVERLAY_KEY = "Insert"
@@ -175,7 +213,7 @@ def is_package_tag(tag: str) -> bool:
     return not t or t in ("nightly", "?") or bool(re.match(r"^v?\d", t))
 
 
-def _pick_archive(assets, skip) -> dict | None:
+def _pick_archive(assets, skip, want=()) -> dict | None:
     """The one package to install out of a release's assets.
 
     A release that carries a single archive is not a choice. When it
@@ -201,6 +239,25 @@ def _pick_archive(assets, skip) -> dict | None:
                   + " - no OptiScaler package among them, skipping it", "warn")
         return None
     arcs = package
+    if want:
+        # A build that exists for one variant: that archive or nothing. The
+        # skip list's "names moved, take them all" fallback below would put
+        # the standard zip in under the variant's name.
+        wanted = sorted((a for a in arcs
+                         if any(w in str(a.get("name", "")).lower()
+                                for w in want)),
+                        key=lambda a: (len(a.get("name", "")),
+                                       a.get("name", "")))
+        if not wanted:
+            log.write("OptiScaler: this release carries "
+                      + ", ".join(str(a.get("name", "")) for a in arcs)
+                      + " - none of them is the " + "/".join(want)
+                      + " package, skipping it", "warn")
+            return None
+        log.write("OptiScaler: this release carries "
+                  + ", ".join(str(a.get("name", "")) for a in arcs)
+                  + " - installing " + wanted[0].get("name", ""))
+        return wanted[0]
     kept = [a for a in arcs
             if not any(x in a.get("name", "").lower() for x in skip or ())]
     if not kept:
@@ -238,6 +295,7 @@ def resolve(build: str = "") -> tuple[str, str]:
     """
     if build in FORKS:
         api, skip_names = FORKS[build]
+        want = WANT.get(build, ())
         rels = sources.json_or_html(api)
         rels = [r for r in (rels if isinstance(rels, list) else [])
                 if not r.get("draft") and r.get("tag_name") != "nightly"]
@@ -246,9 +304,15 @@ def resolve(build: str = "") -> tuple[str, str]:
         # under that name and never refreshed.
         rels.sort(key=lambda r: r.get("published_at") or "", reverse=True)
         for rel in rels:
-            a = _pick_archive(rel.get("assets", []), skip_names)
+            a = _pick_archive(rel.get("assets", []), skip_names, want)
             if a:
                 return rel.get("tag_name", "?"), a["browser_download_url"]
+        if want:
+            raise RuntimeError(
+                "No release on wilsjo2's page carries the "
+                + "/".join(want) + " package any more. Choose \""
+                + BUILDS[PRESR].split("  -  ")[0]
+                + "\" in 'optiscaler build' for the standard one.")
         raise RuntimeError(f"{build}'s OptiScaler fork has no release "
                            f"carrying an OptiScaler package (.7z or .zip).")
     if build:
@@ -300,10 +364,11 @@ def archive_name(build: str = "") -> str:
             and r.get("tag_name") != "nightly"]
     rels.sort(key=lambda r: r.get("published_at") or "", reverse=True)
     skip = FORKS[build][1] if build in FORKS else ()
+    want = WANT.get(build, ())
     for rel in rels:
         # The same choice resolve() makes, so the preview names the package
         # the install will actually fetch.
-        a = _pick_archive(rel.get("assets", []), skip)
+        a = _pick_archive(rel.get("assets", []), skip, want)
         if a:
             # The name it is cached under: the tag and the asset's own
             # name together, as the download saves it.
@@ -798,6 +863,29 @@ def set_overlay_key(exe_dir: Path, vk: int, log=None) -> None:
         log(f"      OptiScaler.ini: [Menu] ShortcutKey=0x{int(vk):02X}")
     except OSError:
         log("      could not write the overlay key into OptiScaler.ini")
+
+
+# wilsjo2's RTX 40 MFG package carries the unlock, and its OptiScaler.ini
+# ships it switched off ("[DLSSG] AdaMfgUnlock=false"; docs/RTX40-MFG.md:
+# "The runtime toggle still defaults off"). Choosing the package is choosing
+# the unlock (#286), the same way choosing the pre-SR build is choosing its
+# placement (#81).
+MFG_SECTION, MFG_VALUES = "DLSSG", {"AdaMfgUnlock": "true"}
+
+
+def enable_mfg_unlock(exe_dir: Path, log=None) -> bool:
+    """Switch the RTX 40 MFG unlock on in OptiScaler.ini. False when unwritable."""
+    log = log or (lambda *_: None)
+    p = exe_dir / INI
+    try:
+        text = p.read_text(encoding="utf8", errors="replace") if p.is_file() else ""
+        p.write_text(_ini_set(text, MFG_SECTION, MFG_VALUES), encoding="utf8")
+        log(f"      OptiScaler.ini: [{MFG_SECTION}] AdaMfgUnlock=true - the RTX 40 "
+            f"multi-frame generation unlock, read when the game starts")
+        return True
+    except OSError:
+        log("      could not write OptiScaler.ini")
+        return False
 
 
 def enable_fg(exe_dir: Path, log=None) -> bool:

@@ -1,0 +1,36 @@
+**Did the game start?** it started and ran
+
+**What happened**
+not open HOME panel, no DLSS5
+
+---
+- version: 2.0.4
+- gpu: NVIDIA GeForce RTX 5070 (sm_120), driver 616.92
+- game: Grand Theft Auto San Andreas
+- exe: gta_sa.exe
+- arch/api: 32-bit / DX9 (loads d3d9.dll at run time (named in the exe); no static graphics import)
+- route: feeder
+
+**Diagnosis**: DXVK ran and ReShade did not - install again to rewrite the 32-bit Vulkan layer.
+- [bad] DXVK ran, and ReShade did not.
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

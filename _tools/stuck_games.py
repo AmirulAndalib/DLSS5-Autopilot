@@ -54,7 +54,7 @@ def header(text: str) -> dict:
     out["verdict"] = m.group(1).strip() if m else ""
     m = re.search(r"driver\s+([\d.]+)", out.get("gpu", ""))
     out["driver"] = m.group(1) if m else "?"
-    api = re.search(r"(DX9|DX10|DX11|DX12|Vulkan|OpenGL)", out.get("arch/api", ""))
+    api = re.search(r"(DX8|DX9|DX10|DX11|DX12|Vulkan|OpenGL)", out.get("arch/api", ""))
     out["api"] = api.group(1) if api else "?"
     out["bits"] = "32" if "32-bit" in out.get("arch/api", "") else "64"
     return out

@@ -959,7 +959,11 @@ def _ticked_names() -> set[str]:
 # Names in someone else's window (Remix's developer menu, ReShade's overlay).
 _FOREIGN_TICKS = {"Enable Neural Uplift (DLSS-NR)",
                   # ReShade's own Generic Depth tab
-                  "Copy depth buffer before clear operations"}
+                  "Copy depth buffer before clear operations",
+                  # Windows' own Compatibility tab and context menu (#400):
+                  # the elevated start that keeps per-user Vulkan layers out
+                  "Run this program as an administrator",
+                  "Run as administrator"}
 
 # The window, read while it is up: every toggle its settings draw on every
 # route, every button on its pages, and the one button the autopilot checks
@@ -1257,7 +1261,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.4", update.VERSION == "2.0.4", update.VERSION)
+check("version is 2.0.5", update.VERSION == "2.0.5", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -4119,7 +4123,7 @@ check("an nvngx_dlss.dll our own manifest lists as written is NOT evidence (64-b
 check("our own nvngx_dlssnr.dll is NOT evidence (it would re-label every DX9 game after one install)",
       pe._ships_dlss(_d) == "")
 check("the d3d9 branch of detect_api consults it",
-      "_ships_dlss(path.parent" in src_of(pe.detect_api))
+      "_ships_dlss(path.parent" in src_of(pe._detect_api))
 shutil.rmtree(_d, ignore_errors=True)
 
 section("35. a scan cannot get stuck in a folder with no executables")
@@ -5748,7 +5752,7 @@ shutil.rmtree(_d, ignore_errors=True)
 # the neural pass before super resolution instead of after it. Every fork
 # publishes the same way, so the branch that only knew y4my4my4m's is a
 # table now.
-check("the dropdown offers three builds, and the default is still the plain one",
+check("the dropdown offers every build, and the default is still the plain one",
       list(optiscaler.BUILDS)[0] == ""
       and optiscaler.PRESR in optiscaler.BUILDS
       and optiscaler.FORK in optiscaler.BUILDS, list(optiscaler.BUILDS))
@@ -5799,23 +5803,29 @@ check("...and two archives of one release never share a cache entry",
       optiscaler._archive_name("v0.8.4", "https://x/OptiScaler-NR-v0.8.4.zip")
       != optiscaler._archive_name("v0.8.4",
                                   "https://x/OptiScaler-NR-v0.8.4-rtx40-mfg.zip"))
-check("all three builds resolve against the real release pages",
+check("every build resolves against the real release pages",
       all(optiscaler.resolve(b)[1].startswith("https://")
           for b in optiscaler.BUILDS))
 
 
 def _fork_candidates(build):
-    """Archives the pick could still choose on a fork's newest release."""
+    """Archives the pick could still choose on a fork's newest release that
+    carries a package of ours. Newest with ANY archive was display-filter
+    from #364 on, and "exactly one" then passed on a zip that is not
+    OptiScaler at all."""
     api, skip = optiscaler.FORKS[build]
+    want = optiscaler.WANT.get(build, ())
+
+    def ours(a):
+        n = a["name"].lower()
+        return (n.endswith((".7z", ".zip")) and optiscaler.PACKAGE_WORD in n
+                and (any(w in n for w in want) if want else not any(x in n for x in skip)))
     rels = [r for r in (sources.json_or_html(api) or [])
             if isinstance(r, dict) and not r.get("draft")
             and r.get("tag_name") != "nightly"
-            and any(a["name"].lower().endswith((".7z", ".zip"))
-                    for a in r.get("assets", []))]
+            and any(ours(a) for a in r.get("assets", []))]
     rels.sort(key=lambda r: r.get("published_at") or "", reverse=True)
-    return [a["name"] for a in (rels[0]["assets"] if rels else [])
-            if a["name"].lower().endswith((".7z", ".zip"))
-            and not any(x in a["name"].lower() for x in skip)]
+    return [a["name"] for a in (rels[0]["assets"] if rels else []) if ours(a)]
 
 
 # A second archive on the same release is how the MFG unlock reached every
@@ -6119,8 +6129,12 @@ check("with nothing in the folder it is still 'not started since the install'",
       "Not started since the install" in _r.verdict, _r.verdict)
 (_d / "CoJGunslinger_d3d9.log").write_text("info:  DXVK: v2.4", encoding="utf8")
 _r = diagnose.analyse(_d)
+# The verdict says what to do (start it normally - gate 2.0.5 took "install
+# again" out, it rewrote a registration that was never the problem); the
+# layer's bitness is in the finding.
 check("DXVK's own log proves the game ran, so the layer is what is missing",
-      "DXVK ran" in _r.verdict and "32-bit" in _r.verdict, _r.verdict)
+      "DXVK ran" in _r.verdict and "install again" not in _r.verdict
+      and any("32-bit layer" in f.detail for f in _r.findings), _r.verdict)
 # ...but only a log written SINCE the install. One left by a run before it,
 # or by a game the person had already put DXVK into, says nothing.
 import os as _os
@@ -7612,9 +7626,14 @@ check("the compatibility workflow does not filter on the label",
       "labels=result" not in _wf and "state=all" in _wf)
 
 # FEATURES: the version is the delivery mechanism for the library rescan.
-check("the version is 2.0.4 in the file the build reads too",
-      "2.0.4.0" in (Path(__file__).resolve().parent
-                    / "version_info.txt").read_text(encoding="utf8"))
+# All four places, read from update.VERSION: 2.0.4 shipped with filevers and
+# prodvers still at 2.0.3, because this check looked for one string of four.
+_vi = (Path(__file__).resolve().parent / "version_info.txt").read_text(encoding="utf8")
+_vt = tuple(int(x) for x in update.VERSION.split(".")) + (0,)
+check("the version is update.VERSION in all four places the build reads",
+      _vi.count(f"'{update.VERSION}.0'") == 2
+      and f"filevers={_vt}" in _vi and f"prodvers={_vt}" in _vi,
+      re.findall(r"(?:filevers|prodvers)=\([^)]*\)|'\d+\.\d+\.\d+\.\d+'", _vi))
 check("...and the release notes the workflow publishes exist",
       (Path(__file__).resolve().parent / "docs" / "releases"
        / f"v{update.VERSION}.md").is_file())
@@ -10398,9 +10417,13 @@ check("the replay reads the traceback out of the report it is replaying",
       _rr.last_error("**Last error**\n```\n" + _DNS_TB + "\n```\n") == _DNS_TB)
 check("...and a report without one hands over nothing",
       _rr.last_error("**ReShade.log**\n```\n(none)\n```") == "")
+# Both now go through one function, which also applies the person's own
+# "did the game start?" answer the way the report does (2.0.5, #412).
 check("...and a report replayed by hand gets what the corpus check measures",
-      "replay_report.machine(" in src_of(_vc._answer)
-      and "replay_report.last_error(" in src_of(_vc._answer))
+      "replay_report.analyse(" in src_of(_vc._answer)
+      and "rep = analyse(d, text)" in src_of(_rr.show)
+      and "machine(text, d)" in src_of(_rr.analyse)
+      and "last_error(text)" in src_of(_rr.analyse))
 from core import log as _log190b  # noqa: E402
 _handed190: list = []
 with _ui_isolated(), _ui_threads(run=True):
@@ -11064,8 +11087,19 @@ from core import diagnose as _dpkg  # noqa: E402
 # list from an earlier launch read out as the last one). It reads what the
 # process had against the log's clock, which is this part's subject, and the
 # cap is what is on disk.
-_parts = {"model": 414, "layer": 104, "evidence": 1026, "process": 223,
-          "helper": 150, "routes": 900, "body": 500, "chain": 1400}
+#
+# 2.0.5 grew four parts, each by what it answers. body: the report's own
+# correction from the person's "did the game start?" answer (answered(),
+# #412), how Windows starts the exe (_start_lines) and DXVK's log in the
+# file list (#400) - all about what a report prints. chain: the elevated /
+# run-as-admin branches of "DXVK ran and ReShade did not" and the ReShade a
+# no-ReShade route finds (#420). evidence: the engine that a DXGI proxy never
+# reaches (#403). routes: Streamline's crash dump, the upstream route's
+# "never called DLSS" (#390) and the display-filter window (#385).
+# process: +1, the "Working." downgrade now covers another tool's add-on
+# finding too (gate 2.0.5).
+_parts = {"model": 414, "layer": 104, "evidence": 1087, "process": 224,  # evidence +3: its own words for a renderer no route reaches
+          "helper": 150, "routes": 958, "body": 660, "chain": 1462}  # routes +5: a dump the session went on after (gate 2.0.5)
 _sizes = {n: sum(1 for _ in open(SRC_DIR / "core" / "diagnose" / f"{n}.py",
                                  encoding="utf8"))
           for n in _parts}
@@ -11226,8 +11260,8 @@ check("a 64-bit runtime beside a 32-bit exe is not evidence it is DX12",
 check("...and still is for the 64-bit exe beside it",
       pe._has_d3d12_agility_sdk(_sn, 64) and pe._ships_dlss(_sn, 64))
 check("every promotion in detect_api is told the exe's bitness",
-      src_of(pe.detect_api).count("_has_d3d12_agility_sdk(path.parent, bits)") == 3
-      and src_of(pe.detect_api).count("_ships_dlss(path.parent, bits)") == 2)
+      src_of(pe._detect_api).count("_has_d3d12_agility_sdk(path.parent, bits)") == 3
+      and src_of(pe._detect_api).count("_ships_dlss(path.parent, bits)") == 2)
 _solo = Path(tempfile.mkdtemp(prefix="sn190c_")) / "Game"
 _solo.mkdir()
 (_solo / "Game32.exe").write_bytes(_pe_stub(0x14C))
@@ -15089,6 +15123,754 @@ shutil.rmtree(_d204, ignore_errors=True)
 check("the OptiScaler refusal reaches the person as an install error",
       "except RuntimeError as e:" in src_of(installer.install)
       and "raise InstallError(str(e)) from e" in src_of(installer.install))
+
+
+section("2.0.5: pages off the sidebar (#293), wilsjo2's RTX 40 MFG package (#286)")
+
+# #286: "the full-feature package, pre-SR and MFG together, picked for an
+# RTX 40 without a toggle" - its own entry in 'optiscaler build', never the
+# default, and never the standard zip under its name.
+check("the RTX 40 MFG package is its own build, and the default is still the plain one",
+      optiscaler.PRESR_MFG in optiscaler.BUILDS and list(optiscaler.BUILDS)[0] == ""
+      and "RTX 40" in optiscaler.BUILDS[optiscaler.PRESR_MFG].split("  -  ")[0],
+      list(optiscaler.BUILDS))
+_m205_rels = [
+    {"tag_name": "display-filter-v0.4.0-preview", "published_at": "2026-09-22T05:40:52Z",
+     "assets": [{"name": "display-filter-v0.4.0-preview.zip",
+                 "browser_download_url": "https://x/df.zip"}]},
+    {"tag_name": "v0.8.8", "published_at": "2026-09-22T05:13:18Z", "assets": [
+        {"name": "OptiScaler-NR-v0.8.8-rtx40-mfg.zip",
+         "browser_download_url": "https://x/OptiScaler-NR-v0.8.8-rtx40-mfg.zip"},
+        {"name": "OptiScaler-NR-v0.8.8-SHA256SUMS.txt", "browser_download_url": "https://x/s.txt"},
+        {"name": "OptiScaler-NR-v0.8.8.zip",
+         "browser_download_url": "https://x/OptiScaler-NR-v0.8.8.zip"}]},
+]
+with patch.object(sources, "_json", lambda url: _m205_rels):
+    _m205a = optiscaler.resolve(optiscaler.PRESR_MFG)
+    _m205b = optiscaler.resolve(optiscaler.PRESR)
+check("wilsjo2's page as it is on 2026-09-22: the MFG build takes the rtx40-mfg zip, past display-filter",
+      _m205a == ("v0.8.8", "https://x/OptiScaler-NR-v0.8.8-rtx40-mfg.zip"), _m205a)
+check("...and the plain wilsjo2 build still takes the standard zip (#196, #231)",
+      _m205b == ("v0.8.8", "https://x/OptiScaler-NR-v0.8.8.zip"), _m205b)
+_m205_walk = [
+    {"tag_name": "v0.9.0", "published_at": "2026-09-23T00:00:00Z", "assets": [
+        {"name": "OptiScaler-NR-v0.9.0.zip", "browser_download_url": "https://x/std090.zip"}]},
+] + _m205_rels
+with patch.object(sources, "_json", lambda url: _m205_walk):
+    _m205c = optiscaler.resolve(optiscaler.PRESR_MFG)
+check("a release without the MFG zip is passed over, not answered with the standard one",
+      _m205c == ("v0.8.8", "https://x/OptiScaler-NR-v0.8.8-rtx40-mfg.zip"), _m205c)
+_m205_none = [_m205_walk[0], _m205_rels[0]]
+_m205_err = ""
+with patch.object(sources, "_json", lambda url: _m205_none):
+    try:
+        optiscaler.resolve(optiscaler.PRESR_MFG)
+    except RuntimeError as _e:
+        _m205_err = str(_e)
+check("...and a page with no MFG package left refuses in words, naming the build to pick instead",
+      "'optiscaler build'" in _m205_err
+      and optiscaler.BUILDS[optiscaler.PRESR].split("  -  ")[0] in _m205_err, _m205_err)
+with patch.object(sources, "cached_json", lambda url: _m205_walk):
+    _m205n = optiscaler.archive_name(optiscaler.PRESR_MFG)
+check("the preview names the same archive the install fetches",
+      _m205n.endswith("OptiScaler-NR-v0.8.8-rtx40-mfg.zip"), _m205n)
+check("the MFG package is refused on an RTX 50 and a 30, allowed on a 40 and an unread card",
+      optiscaler.card_refusal(optiscaler.PRESR_MFG, 120) and optiscaler.card_refusal(optiscaler.PRESR_MFG, 86)
+      and not optiscaler.card_refusal(optiscaler.PRESR_MFG, 89)
+      and not optiscaler.card_refusal(optiscaler.PRESR_MFG, None)
+      and not optiscaler.card_refusal(optiscaler.PRESR, 120)
+      and not optiscaler.card_refusal("", 120))
+check("...and the refusal names a build the dropdown really offers",
+      "\"" + optiscaler.BUILDS[optiscaler.PRESR].split("  -  ")[0] + "\""
+      in optiscaler.card_refusal(optiscaler.PRESR_MFG, 120))
+_m205_src = src_of(installer.install)
+check("the card is refused before the package is fetched, as an install error",
+      "card_refusal(opt.opti_build" in _m205_src
+      and _m205_src.index("card_refusal(opt.opti_build") < _m205_src.index("optiscaler.resolve(opt.opti_build)")
+      and "raise InstallError(why_card)" in _m205_src)
+check("...and it gets the pass before the upscaler, like the plain wilsjo2 build",
+      "optiscaler.is_presr(opt.opti_build)" in _m205_src and optiscaler.is_presr(optiscaler.PRESR_MFG))
+try:
+    _m205live = optiscaler.resolve(optiscaler.PRESR_MFG)
+    check("the MFG build resolves against wilsjo2's real release page, to an rtx40-mfg zip",
+          _m205live[1].lower().endswith("-rtx40-mfg.zip"), _m205live)
+except Exception as _e:
+    check("wilsjo2's release page could be read", False, _e)
+
+# #293: "the option to hide or remove video, Remix and VR from the sidebar,
+# to make the tool cleaner" - with real clicks, on the real window.
+_m205ui = _UiLive()
+try:
+    if not _m205ui.ok:
+        check("2.0.5 window: the window opened", False, _m205ui.error)
+        raise RuntimeError
+    _m205sh = _m205ui.app.shell
+    _m205rail = _m205sh.rail_c
+
+    def _m205y(tag):
+        b = _m205rail.bbox(tag)
+        return b[1] if b else None
+    _m205_video_y = _m205y("nav_video")
+    _m205ui.click("nav_video", button=3, canvas=_m205rail)
+    _m205top = _m205ui.kit.top()
+    check("a right-click on 'video' in the sidebar opens a menu",
+          _m205top is not None and str(_m205top.tag).startswith("menu"))
+    _m205ui.pick("hide video from the sidebar")
+    _m205ui.settle(150)
+    check("...whose row takes video off the sidebar, and remix moves up into its place",
+          not _m205rail.find_withtag("nav_video") and _m205y("nav_remix") == _m205_video_y
+          and prefs.get("rail_hidden") == ["video"],
+          (_m205rail.find_withtag("nav_video"), _m205y("nav_remix"), _m205_video_y, prefs.get("rail_hidden")))
+    for _ in range(3):
+        _m205sh.draw_rail()
+    _m205n_cmd = len(_m205rail._tclCommands or [])
+    for _ in range(5):
+        _m205sh.draw_rail()
+    check("...and redrawing that rail five times leaks no handler",
+          len(_m205rail._tclCommands or []) == _m205n_cmd, (_m205n_cmd, len(_m205rail._tclCommands or [])))
+
+    _m205ui.click("nav_remix", canvas=_m205rail)
+    _m205ui.until(lambda: _m205sh.page.name == "remix", 3)
+    _m205ui.click("nav_remix", button=3, canvas=_m205rail)
+    _m205ui.pick("hide remix from the sidebar")
+    _m205ui.settle(150)
+    check("hiding the page on screen goes home instead of leaving a page the sidebar no longer has",
+          _m205sh.page.name == "library" and "remix" not in _m205sh.history,
+          (_m205sh.page.name, _m205sh.history))
+    _m205_hist = list(_m205sh.history)
+    _m205sh.history.append("remix")          # an entry recorded before it was hidden
+    _m205sh.back()
+    check("...and back never lands on a hidden page", _m205sh.page.name != "remix", _m205sh.page.name)
+    _m205sh.show("library", remember=False)
+    _m205ui.settle(100)
+    try:
+        _m205ui.app.refresh("remix")
+        _m205ui.app.refresh("remix", soft=True)
+        _m205sh.pages["remix"].draw(800)        # its object is still there for workers to land on
+        _m205ok = True
+    except Exception as _e:
+        _m205ok = repr(_e)
+    check("...while its page object stays, so a worker finishing for it lands without an error",
+          _m205ok is True, _m205ok)
+
+    _m205ui.press("view", "link")
+    _m205ui.settle(100)
+    check("games > view has a 'sidebar pages' row saying what is shown",
+          any(t.startswith("sidebar pages  -  vr") for t in _m205ui.texts()), [t for t in _m205ui.texts() if "sidebar" in t])
+    _m205ui.pick("sidebar pages")
+    _m205ui.until(lambda: any("video in the sidebar" in t for t in _m205ui.texts()), 2)
+    check("...which opens the three switches, video and remix off, vr on",
+          any(t == "  video in the sidebar" for t in _m205ui.texts())
+          and any(t == "  remix in the sidebar" for t in _m205ui.texts())
+          and any(t == "• vr in the sidebar" for t in _m205ui.texts()),
+          [t for t in _m205ui.texts() if "in the sidebar" in t])
+    _m205ui.pick("  video in the sidebar")
+    _m205ui.settle(150)
+    check("...and one click puts video back on the sidebar, where a click opens it",
+          bool(_m205rail.find_withtag("nav_video")) and prefs.get("rail_hidden") == ["remix"],
+          prefs.get("rail_hidden"))
+    _m205ui.click("nav_video", canvas=_m205rail)
+    _m205ui.until(lambda: _m205sh.page.name == "video", 3)
+    check("...and it opens", _m205sh.page.name == "video", _m205sh.page.name)
+    check("games and dlss have no hide menu: one is home, the other every game's DLSS files",
+          not _m205rail.tag_bind("nav_library", "<Button-3>") and not _m205rail.tag_bind("nav_dlss", "<Button-3>"))
+
+    # settings.json is a file people edit: a string, a list of junk, or the
+    # home page itself hides nothing.
+    for _m205bad in ("video", ["library", "dlss", 3, None], {"video": 1}):
+        prefs.set_("rail_hidden", _m205bad)
+        try:
+            _m205sh.draw_rail()
+            _m205got = _m205sh.rail_hidden()
+        except Exception as _e:
+            _m205got = repr(_e)
+        check(f"a hand-edited rail_hidden of {_m205bad!r} hides nothing and draws",
+              _m205got == set() and bool(_m205rail.find_withtag("nav_library"))
+              and bool(_m205rail.find_withtag("nav_video")), _m205got)
+    prefs.set_("rail_hidden", [])
+finally:
+    _m205ui.close()
+
+
+section("2.0.5: Unreal Engine 1/2 and Direct3D 8 are read, and DX8 goes through DXVK (#403)")
+# #403's header: "POSTAL 2 ... 32-bit / Unknown (graphics DLL loaded at
+# runtime; assuming DX11/DX12 via dxgi.dll)", a dxgi.dll the game never
+# loaded. Unreal 2 keeps its exe in System\ beside Core.dll and Engine.dll,
+# imports no graphics DLL, and loads the renderer its ini names; D3DDrv.dll
+# imports d3d8.dll, which the run-time table did not know.
+_ue_root = Path(tempfile.mkdtemp(prefix="ue2_"))
+_ue = _ue_root / "POSTAL2" / "System"
+_ue.mkdir(parents=True)
+_uexe = _ue / "Postal2.exe"
+shutil.copyfile(r"C:\Windows\SysWOW64\where.exe", _uexe)
+_ue_saved = pe.pe_imports
+_ue_table = {"d3ddrv.dll": ["d3d8.dll", "kernel32.dll"],
+             "d3d9drv.dll": ["d3d9.dll", "kernel32.dll"],
+             "opengldrv.dll": ["opengl32.dll"]}
+
+
+def _ue_imports(path, delay=False):
+    n = Path(path).name.lower()
+    if n in _ue_table:
+        return [] if delay else list(_ue_table[n])
+    return _ue_saved(path, delay=delay)
+
+
+pe.pe_imports = _ue_imports
+try:
+    for _n in ("Core.dll", "Engine.dll", "D3DDrv.dll", "D3D9Drv.dll"):
+        (_ue / _n).write_bytes(b"MZ")
+    _api, _why = pe.detect_api(_uexe)
+    check("no ini, D3D9Drv.dll and D3DDrv.dll beside the exe: Direct3D 9, "
+          "and the reason names the Unreal layout",
+          _api == "DX9" and "Unreal Engine 1/2" in _why and "D3D9Drv" in _why,
+          f"{_api}: {_why}")
+    (_ue / "D3D9Drv.dll").unlink()
+    _api, _why = pe.detect_api(_uexe)
+    check("only D3DDrv.dll, which imports d3d8.dll: Direct3D 8 (#403)",
+          _api == "DX8" and "d3d8.dll" in _why, f"{_api}: {_why}")
+    (_ue / "D3D9Drv.dll").write_bytes(b"MZ")
+    (_ue / "Postal2.ini").write_bytes(
+        b"[URL]\r\nPort=7777\r\n\r\n[Engine.Engine]\r\n"
+        b"RenderDevice = D3DDrv.D3DRenderDevice ; set by the game\r\n")
+    _api, _why = pe.detect_api(_uexe)
+    check("the game's own ini decides over which modules are present",
+          _api == "DX8" and "Postal2.ini" in _why, f"{_api}: {_why}")
+    (_ue / "Postal2.ini").write_bytes(
+        "[Engine.Engine]\r\nRenderDevice=\"OpenGLDrv.OpenGLRenderDevice\"\r\n"
+        .encode("utf-16"))
+    _api, _why = pe.detect_api(_uexe)
+    check("...read in UTF-16 with a BOM and a quoted value: OpenGL by name "
+          "when the module is not there",
+          _api == "OpenGL" and "OpenGLDrv" in _why, f"{_api}: {_why}")
+    (_ue / "Postal2.ini").unlink()
+    (_ue / "Default.ini").write_bytes(
+        b"\xef\xbb\xbf[engine.engine]\nRenderDevice=D3D9Drv.D3D9RenderDevice\n")
+    _api, _why = pe.detect_api(_uexe)
+    check("Default.ini stands in when the game has not written its own yet",
+          _api == "DX9" and "Default.ini" in _why, f"{_api}: {_why}")
+    (_ue / "Default.ini").unlink()
+    # Unreal 1: D3DDrv.dll is Direct3D 7 there, and the ini key is
+    # GameRenderDevice. Nothing here reaches D3D7, so it says so rather
+    # than naming an API it will not work on.
+    _ue_table["d3ddrv.dll"] = ["ddraw.dll", "kernel32.dll"]
+    (_ue / "D3D9Drv.dll").unlink()
+    (_ue / "Postal2.ini").write_bytes(
+        b"[Engine.Engine]\r\nGameRenderDevice=D3DDrv.D3DRenderDevice\r\n"
+        b"RenderDevice=GlideDrv.GlideRenderDevice\r\n")
+    _api, _why = pe.detect_api(_uexe)
+    check("an Unreal 1 Direct3D 7 renderer stays Unknown and the reason says "
+          "which renderer to switch to",
+          _api == "Unknown" and "Direct3D 7" in _why and "OpenGL" in _why,
+          f"{_api}: {_why}")
+    _ue_table["d3ddrv.dll"] = ["d3d8.dll", "kernel32.dll"]
+    (_ue / "Postal2.ini").unlink()
+    _g403 = games.manual(_ue)
+    check("...so the game is 32-bit / DX8, not Unknown on dxgi.dll",
+          _g403.bitness == 32 and _g403.api == "DX8", (_g403.bitness, _g403.api))
+    # Not the layout: the rule must not fire on any folder called System.
+    (_ue / "Core.dll").unlink()
+    check("without Core.dll and Engine.dll it is not read as Unreal",
+          "Unreal" not in pe.detect_api(_uexe)[1], pe.detect_api(_uexe))
+    (_ue / "Core.dll").write_bytes(b"MZ")
+    # Outside Unreal: a sibling importing d3d8.dll is Direct3D 8 evidence
+    # too, now that the run-time table knows the name.
+    _d8 = Path(tempfile.mkdtemp(prefix="d3d8sib_"))
+    shutil.copyfile(r"C:\Windows\SysWOW64\where.exe", _d8 / "Game.exe")
+    (_d8 / "d3ddrv.dll").write_bytes(b"MZ")
+    _api, _why = pe.detect_api(_d8 / "Game.exe")
+    check("a DLL beside the exe that imports d3d8.dll: Direct3D 8",
+          _api == "DX8" and "d3ddrv.dll" in _why.lower(), f"{_api}: {_why}")
+    (_d8 / "d3d9drv.dll").write_bytes(b"MZ")
+    check("...and a d3d9.dll import beside it still outranks it",
+          pe.detect_api(_d8 / "Game.exe")[0] == "DX9", pe.detect_api(_d8 / "Game.exe"))
+    shutil.rmtree(_d8, ignore_errors=True)
+finally:
+    pe.pe_imports = _ue_saved
+
+check("a static d3d8.dll import is Direct3D 8",
+      "if has(\"d3d8.dll\"):" in src_of(pe._detect_api)
+      and pe._RUNTIME_API.get("d3d8.dll") == "DX8"
+      and list(pe._RUNTIME_API).index("d3d8.dll") > list(pe._RUNTIME_API).index("d3d9.dll"))
+check("DX8 is a graphics api the settings offer and remember",
+      "DX8" in games.APIS and pe.API_PROXY.get("DX8", "x") is None)
+
+# Where DX8 goes: DXVK's d3d8.dll on its own d3d9.dll, then the 32-bit
+# Vulkan-layer path a DX9 game takes. Untested on the owner's rig, so it is
+# EXPERIMENTAL and asks for a shared result.
+check("DXVK puts d3d8.dll and its own d3d9.dll beside a DX8 game, and its "
+      "d3d8 log is read",
+      dxvk.files_for("DX8") == ("d3d8.dll", "d3d9.dll")
+      and "Postal2_d3d8.log" in dxvk.logs_for(_uexe)
+      and "d3d8.dll" in dxvk.ALL_FILES)
+_g8 = games.Game(name="p2", folder=_ue, exe=_uexe, bitness=32, api="DX8")
+_s8 = installer.plan(_g8, installer.Options(path=dlss.FEEDER))
+check("dx8 takes DXVK with the box unticked, then the Vulkan layer and the helper",
+      _s8[0] == "DXVK (DX8 -> Vulkan)" and _s8[1] == "ReShade (Vulkan layer)"
+      and "host64 helper process" in _s8
+      and installer.uses_dxvk(_g8, installer.Options(path=dlss.FEEDER)), str(_s8))
+_lvl, _rel = installer.reliability(_g8, dlss.FEEDER)
+check("dx8 is experimental and asks for a shared result",
+      _lvl == installer.EXPERIMENTAL and "share the result" in _rel, (_lvl, _rel))
+_sup8 = dlss.detect(_ue, _ue, "DX8", 32)
+check("a 32-bit DX8 game is offered the feeder and told DXVK comes first",
+      _sup8.recommended == dlss.FEEDER and "DirectX 8" in _sup8.reason, _sup8.reason)
+
+# The real thing, through the real installer and DXVK from the cache, under
+# a name no running game has.
+_ux = _ue / "ue2test.exe"
+shutil.copyfile(r"C:\Windows\SysWOW64\where.exe", _ux)
+_uexe.unlink()
+_g8 = games.manual(_ue)
+_g8.exe = _ux
+_g8.api = "DX8"
+try:
+    installer.install(_g8, installer.Options(path=dlss.FEEDER), on_log=lambda t: None)
+    _idir = _g8.install_dir
+    check("a DX8 install writes DXVK's d3d8.dll and d3d9.dll, both DXVK",
+          dxvk.is_dxvk(_idir / "d3d8.dll") and dxvk.is_dxvk(_idir / "d3d9.dll"))
+    _man8 = json.loads((_idir / installer.MANIFEST).read_text(encoding="utf8"))
+    check("...and the manifest records DXVK and the Vulkan layer",
+          _man8.get("dxvk") and _man8["api"] == "Vulkan"
+          and "d3d8.dll" in _man8.get("files", []), str((_man8.get("dxvk"), _man8["api"])))
+    (_idir / "ue2test_d3d8.log").write_text("x")
+    (_idir / "ue2test_d3d9.log").write_text("x")
+    installer.uninstall(_g8, on_log=lambda t: None)
+    _left8 = sorted(p_.name for p_ in _idir.rglob("*") if p_.is_file())
+    check("uninstall takes DXVK's d3d8.dll, d3d9.dll and both logs back out",
+          _left8 == ["Core.dll", "D3DDrv.dll", "Engine.dll", "ue2test.exe"],
+          _left8)
+except Exception as e:
+    check("a DX8 game installs through DXVK", False, f"{type(e).__name__}: {e}")
+shutil.rmtree(_ue_root, ignore_errors=True)
+
+
+section("2.0.5: the report hears the person, and five reports read right (#412 #420 #390 #400 #385 #403)")
+# Every check below replays a real report from _tools/reports, or builds its
+# folder out of that report's own lines - the only real inputs there are.
+sys.path.insert(0, str(SRC_DIR / "_tools"))
+import replay_report as _rr205  # noqa: E402
+from core import wincrash as _wc205, autopilot as _ap205, verdicts as _vd205  # noqa: E402
+
+
+def _replay205(n: str, extra_head: str = ""):
+    """The verdict and findings a saved report gets today, as verdict_check
+    measures it; `extra_head` adds lines to its header first."""
+    t = (SRC_DIR / "_tools" / "reports" / f"{n}.txt").read_text(
+        encoding="utf8", errors="replace").replace("\r\n", "\n")
+    if extra_head:
+        t = t.replace("\n- route:", "\n" + extra_head.rstrip("\n") + "\n- route:", 1)
+    h = _rr205._header(t)
+    m = re.search(r"(DX8|DX9|DX10|DX11|DX12|Vulkan|OpenGL)", h.get("arch/api", ""))
+    d = _rr205.build(h.get("route", "feeder"), m.group(1) if m else "DX12",
+                     h.get("exe", "Game.exe"), _rr205._blocks(t),
+                     32 if "32-bit" in h.get("arch/api", "") else 64,
+                     state=_rr205.folder_state(t),
+                     extra_manifest=_rr205.finished(t))
+    try:
+        r = _rr205.analyse(d, t)
+        return r.verdict, [(f.level, f.title, f.detail) for f in r.findings]
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+import re  # noqa: E402
+
+# #412, No Man's Sky: "it started, then closed itself", and the report sent
+# them to the overlay of a game that was no longer running.
+_v412, _f412 = _replay205("412")
+check("#412: a game that closed itself is not sent to the overlay",
+      "closed itself" in _v412 and "panel" not in _v412 and "overlay" not in _v412,
+      _v412)
+check("...the first finding says what they said, and names the dlss page's swap first",
+      _f412 and _f412[0][1] == "You said the game closed itself."
+      and "restore original" in _f412[0][2]
+      and "Binaries/nvngx_dlss.dll" in _f412[0][2], _f412[:1])
+check("...and the finding that asked for the overlay went with the verdict",
+      not any("Open the ReShade overlay" in f[2] for f in _f412 if f[0] == "info"),
+      [f[1] for f in _f412])
+check("...and it is staged, as something we cannot see (not 'unmapped')",
+      _vd205.stage(_v412)[0] == "7 loaded, and we cannot see", _vd205.stage(_v412))
+_r205 = diagnose.Report(route="bridge")
+_r205.verdict = "Add-ons loaded and the switch is on. This route logs no frames."
+for _ans205 in ("it started and ran", "yes / no / it closed itself", ""):
+    check(f"...an answer of {_ans205!r} leaves the verdict alone",
+          diagnose.answered(_r205, _ans205).verdict == _r205.verdict)
+check("...and so does a video player, which has no game page or routes",
+      diagnose.answered(_r205, "it started, then closed itself", (), "video").verdict
+      == _r205.verdict)
+_r205b = diagnose.Report(route="feeder")
+_r205b.verdict = "DXVK ran and ReShade did not - install again to rewrite the 32-bit Vulkan layer."
+check("...and a verdict that names what the logs show is kept, whatever the answer",
+      diagnose.answered(_r205b, "it started, then closed itself").verdict == _r205b.verdict)
+
+# The report body applies the same correction, to a copy: the window keeps
+# its own diagnosis object.
+_d205 = Path(tempfile.mkdtemp(prefix="body205_"))
+_r205c = diagnose.Report(route="bridge")
+_r205c.verdict = "Add-ons loaded and the switch is on. This route logs no frames."
+_body205 = diagnose.issue_body("2.0.5", "RTX", 89, "616.56", None, "bridge", _r205c,
+                               "", "log", _d205,
+                               answers={"started": "it started, then closed itself",
+                                        "happened": "crash the game"})
+check("the report body prints the corrected verdict when the game closed itself",
+      "**Diagnosis**: The game closed itself" in _body205, _body205[:400])
+check("...and leaves the window's own diagnosis as it was",
+      _r205c.verdict.startswith("Add-ons loaded"), _r205c.verdict)
+shutil.rmtree(_d205, ignore_errors=True)
+
+# #420 and #20, the same game on this route: Streamline's crash handler, and
+# a ReShade nobody installed for this route loading two DLSS add-ons.
+_v420, _f420 = _replay205("420")
+check("#420: Streamline's crash dump is read as the game crashing",
+      _v420.startswith("The game crashed with OptiScaler loaded"), _v420)
+check("...the Swapper's overlay is named as another tool's",
+      any(f[1].startswith("Another DLSS tool's add-on") and "DLSS 5 Swapper Overlay" in f[1]
+          for f in _f420), [f[1] for f in _f420])
+# Named for what it is, not claimed as ours: other tools ship renodx-dlss5
+# too, and #420 had it beside the Swapper (gate 2.0.5).
+check("...and renodx-dlss5 by its name, not as another tool's and not claimed as this tool's",
+      any(f[1].startswith("A ReShade with renodx-dlss5") and "DLSS 5 Neural Rendering" in f[1]
+          for f in _f420)
+      and not any("this tool's own add-on" in f[1] for f in _f420)
+      and not any(f[1].startswith("Another DLSS tool's add-on")
+                  and "DLSS 5 Neural Rendering" in f[1] for f in _f420),
+      [f[1] for f in _f420])
+_v20, _f20 = _replay205("020")
+check("#20: 'UltraPerformance=refused' before a crash dump is a crash, not a refusal",
+      _v20.startswith("The game crashed with OptiScaler loaded")
+      and not any(f[1] == "Neural rendering did not start." for f in _f20), _v20)
+_d420 = Path(tempfile.mkdtemp(prefix="opti420_"))
+(_d420 / "winmm.dll").write_bytes(b"MZ")
+(_d420 / diagnose.MANIFEST).write_text(json.dumps(
+    {"path": "optiscaler", "proxy": "winmm.dll", "exe": "ACBlackFlag.exe",
+     "files": ["winmm.dll"], "complete": True}), encoding="utf8")
+(_d420 / "OptiScaler.log").write_text(
+    "[18:21:01.000000] [I] DlssNr_Dx12::Dispatch DLSS-NR elapsed: 6.72 ms total, 6.60 ms model\n"
+    "[18:21:04.136046] [E] StreamlineHooks::streamlineLogCallback [18-21-04][streamline][error]"
+    "[tid:23696][9s:967ms:236us]exception.cpp:75[writeMiniDump] Exception detected - "
+    "thread 23696 - creating mini-dump\n"
+    "[18:21:05.000000] [I] DlssNr_Dx12::Dispatch DLSS-NR elapsed: 6.70 ms total, 6.58 ms model\n",
+    encoding="utf8")
+_rep420 = diagnose.analyse(_d420)
+check("...while a dump followed by frames still drawing stays Working, with a warning",
+      _rep420.verdict == "Working."
+      and any(f.level == "warn" and "Streamline" in f.title for f in _rep420.findings),
+      (_rep420.verdict, [f.title for f in _rep420.findings]))
+# Streamline catches exceptions inside its own calls and the game can go on
+# (gate 2.0.5): a base build logs "running at" once, so a dump an hour
+# later with the session carrying on after it is not the crash it ended on.
+(_d420 / "OptiScaler.log").write_text(
+    "[18:21:01.000000] [I] DlssNr_Dx12::Dispatch DLSS-NR elapsed: 6.72 ms total, 6.60 ms model\n"
+    "[19:21:04.136046] [E] StreamlineHooks::streamlineLogCallback [19-21-04][streamline][error]"
+    "[tid:23696][3609s:967ms:236us]exception.cpp:75[writeMiniDump] Exception detected - "
+    "thread 23696 - creating mini-dump\n"
+    + "".join(f"[19:{22 + i // 60:02d}:{i % 60:02d}.000000] [I] FeatureProvider_Dx12::EvaluateFeature "
+              f"frame {i}\n" for i in range(60)),
+    encoding="utf8")
+_rep420b = diagnose.analyse(_d420)
+check("...and a dump the session carried on well past is a warning, not 'the game crashed'",
+      not _rep420b.verdict.startswith("The game crashed")
+      and any(f.level == "warn" and "Streamline" in f.title for f in _rep420b.findings),
+      (_rep420b.verdict, [f.title for f in _rep420b.findings]))
+(_d420 / "ReShade.log").write_text(
+    'Registered add-on "DLSS 5 Swapper Overlay" v0.0.0.0 using ReShade API version 20.\n',
+    encoding="utf8")
+_old420 = time.time() - 7200
+os.utime(_d420 / "ReShade.log", (_old420, _old420))
+check("...and a ReShade.log from before this install names nobody",
+      not any("Swapper" in f.title for f in diagnose.analyse(_d420).findings))
+shutil.rmtree(_d420, ignore_errors=True)
+
+# #390, ESO on the upstream route: switched on, four hooks, no frame.
+_v390, _f390 = _replay205("390")
+check("#390: switched on and hooked with no frame is 'the game never called DLSS'",
+      _v390.startswith("The game never called DLSS")
+      and not any("check it is switched on" in f[2] for f in _f390), _v390)
+
+# #400, GTA San Andreas: DXVK's log is the evidence, and elevation the cause.
+_v400, _ = _replay205("400")
+check("#400 replays as the machine printed it (DXVK's log is carried), not 'not started'",
+      _v400.startswith("DXVK ran and ReShade did not"), _v400)
+_v400a, _ = _replay205("400", "- starts as administrator: RUNASADMIN (per user)")
+check("...with the exe set to run as administrator, that is the answer",
+      "runs as administrator, so ReShade's Vulkan layer is skipped" in _v400a
+      and not _vd205.route_failed(_v400a), _v400a)
+_v400b, _f400b = _replay205("400", "- this tool: running as administrator")
+# The tool's state NOW is not how the game was started (gate 2.0.5): it is
+# named as one possibility, never as the verdict's cause.
+check("...and with this tool elevated it is named as a possibility, not the verdict",
+      _v400b == _v400 and "if anything starts the game as administrator, start it normally" in _v400b
+      and any("this tool is running as administrator right now" in f[2] for f in _f400b)
+      and not any("this tool is running as administrator right now" in f[2]
+                  for f in _replay205("400")[1]), (_v400b, _f400b))
+_st400 = _rr205.folder_state(
+    "**Files in the folder**\n- d3d9.dll: present\n"
+    "- gta_sa_d3d9.log: present (written since the install)\n"
+    "- old_d3d9.log: present (from before the install)\n\n**ReShade.log**\n")
+check("the replay reads DXVK's log out of the file list, dated, and out of the record",
+      _st400 and _st400["dxvk_logs"] == {"gta_sa_d3d9.log": True, "old_d3d9.log": False}
+      and "gta_sa_d3d9.log" not in _st400["files"], _st400)
+
+# The report lists DXVK's log now, which is what made #400 unreproducible.
+_d400 = Path(tempfile.mkdtemp(prefix="dxvk400_"))
+(_d400 / diagnose.MANIFEST).write_text(json.dumps(
+    {"path": "feeder", "proxy": diagnose.VULKAN_LAYER, "dxvk": True, "exe": "gta_sa.exe",
+     "bitness": 32, "files": ["d3d9.dll"], "complete": True}), encoding="utf8")
+_old400 = time.time() - 3600
+os.utime(_d400 / diagnose.MANIFEST, (_old400, _old400))
+(_d400 / "gta_sa_d3d9.log").write_text("info:  DXVK\n", encoding="utf8")
+_pr400 = diagnose._presence(_d400, diagnose._manifest(_d400), "feeder")
+check("the report's file list carries DXVK's log, dated against the install",
+      "- gta_sa_d3d9.log: present (written since the install)" in _pr400, _pr400)
+
+# Windows' own record of how an exe starts, read back from a real value.
+_fake205 = str(_d400 / "gta_sa.exe")
+import winreg as _wr205  # noqa: E402
+with _wr205.CreateKeyEx(_wr205.HKEY_CURRENT_USER, _wc205.COMPAT_LAYERS, 0,
+                        _wr205.KEY_SET_VALUE) as _k205:
+    _wr205.SetValueEx(_k205, _fake205, 0, _wr205.REG_SZ, "~ RUNASADMIN WIN7RTM")
+try:
+    _fl205 = _wc205.start_flags(_fake205)
+    check("the exe's compatibility flags are read from the registry, run-as-admin seen",
+          _fl205 == "RUNASADMIN WIN7RTM (per user)" and _wc205.runs_as_admin(_fl205), _fl205)
+finally:
+    with _wr205.OpenKey(_wr205.HKEY_CURRENT_USER, _wc205.COMPAT_LAYERS, 0,
+                        _wr205.KEY_SET_VALUE) as _k205:
+        _wr205.DeleteValue(_k205, _fake205)
+check("...and an exe with none set reads as nothing",
+      _wc205.start_flags(_fake205) == "" and not _wc205.runs_as_admin(""))
+
+# Autopilot and play start the game with this tool's token.
+from types import SimpleNamespace as _NS205  # noqa: E402
+(_d400 / "gta_sa.exe").write_bytes(b"MZ")
+_g205 = _NS205(exe=_d400 / "gta_sa.exe", install_dir=_d400, folder=_d400, source="Manual")
+with patch.object(_wc205, "elevated", lambda: True), \
+        patch.object(pe, "launcher_like", lambda p: False):
+    _ok205, _why205 = _ap205.may_start(_g205)
+check("an elevated tool does not start a game that reaches ReShade through the Vulkan layer",
+      not _ok205 and "administrator" in _why205, (_ok205, _why205))
+with patch.object(_wc205, "elevated", lambda: False), \
+        patch.object(pe, "launcher_like", lambda p: False):
+    _ok205b, _ = _ap205.may_start(_g205)
+check("...and starts it when it is not elevated", _ok205b)
+_m205 = json.loads((_d400 / diagnose.MANIFEST).read_text(encoding="utf8"))
+_m205["proxy"] = "dxgi.dll"
+(_d400 / diagnose.MANIFEST).write_text(json.dumps(_m205), encoding="utf8")
+with patch.object(_wc205, "elevated", lambda: True), \
+        patch.object(pe, "launcher_like", lambda p: False):
+    _ok205c, _ = _ap205.may_start(_g205)
+check("...nor refuses a proxy-DLL install, which elevation does not touch", _ok205c)
+shutil.rmtree(_d400, ignore_errors=True)
+
+# #385, Farming Simulator 25 on 2.0.3: wilsjo2's build, no proxy, no tag in
+# the report - the release that was not OptiScaler, not antivirus.
+_v385, _f385 = _replay205("385")
+check("#385: a wilsjo2 folder with no proxy names the display-filter release, not antivirus",
+      _v385 == "OptiScaler is not in the game folder - install again."
+      and "display-filter" in _f385[0][2] and "antivirus" not in _f385[0][2], _f385[:1])
+
+# #403's shape on disk: an Unreal Engine 2 game given a DXGI proxy. No name
+# in 'reshade loads as' would ever have loaded, so none is suggested.
+_d403 = Path(tempfile.mkdtemp(prefix="ue403_"))
+(_d403 / diagnose.MANIFEST).write_text(json.dumps(
+    {"path": "feeder", "proxy": "dxgi.dll", "exe": "Postal2.exe", "bitness": 32,
+     "files": ["dxgi.dll", "dlss5-feed.addon32"], "complete": True}), encoding="utf8")
+_rep403 = diagnose.Report(route="feeder")
+with patch.object(pe, "_engine_default",
+                  lambda exe, names=None: ("DX8", "an Unreal Engine 1/2 game (D3DDrv)")), \
+        patch.object(watch, "settle", lambda seen, files: seen):
+    diagnose._remembered_evidence(_d403, diagnose._manifest(_d403), _rep403,
+                                  {"at": time.time(), "name": "Postal2.exe",
+                                   "ours": [], "missing": ["dxgi.dll"], "elsewhere": []})
+check("#403: a DXGI proxy in an engine that draws with Direct3D 8 is 'full rescan', "
+      "not 'another proxy name'",
+      "draws with DX8, not DXGI" in _rep403.verdict
+      and "proxy name" not in _rep403.verdict
+      and not _vd205.route_failed(_rep403.verdict), _rep403.verdict)
+_rep403b = diagnose.Report(route="feeder")
+with patch.object(pe, "_engine_default", lambda exe, names=None: None), \
+        patch.object(watch, "settle", lambda seen, files: seen):
+    diagnose._remembered_evidence(_d403, diagnose._manifest(_d403), _rep403b,
+                                  {"at": time.time(), "name": "Postal2.exe",
+                                   "ours": [], "missing": ["dxgi.dll"], "elsewhere": []})
+check("...and a game no engine rule knows still gets 'try another proxy name'",
+      "try another proxy name" in _rep403b.verdict, _rep403b.verdict)
+shutil.rmtree(_d403, ignore_errors=True)
+
+# The report's correction has to reach the screen and the card too: left in
+# the report alone, the window kept "Working." and the card kept a tick while
+# the issue said the game closed itself (memory: a rewritten verdict is
+# reprinted everywhere it was printed).
+
+
+def _report205(verdict: str, started: str):
+    """Press 'report a bug' on an installed game whose diagnosis said `verdict`:
+    (what the screen shows, what the card records, what the report says)."""
+    sent: list = []
+    with _ui_isolated(), _ui_threads(run=False):
+        c = _ui_ctl()
+        c.game = _ui_game(name="Answered", installed=True)
+        c.shell.page = _types60.SimpleNamespace(name="game")
+        c._last_diag = diagnose.Report(route="feeder", verdict=verdict)
+        c._last_diag.ran = True
+        with patch.object(_reportui, "ask", lambda root, name: {"started": started,
+                                                               "what": "it went to desktop"}), \
+                patch.object(_uiapp60.webbrowser, "open", lambda url: sent.append(url)), \
+                patch.object(gpu, "detect", lambda: ("RTX", 89)), \
+                patch.object(gpu, "driver_version", lambda: "616.92"):
+            _uiapp60.App.report_bug(c, "notwork")
+        card = dict(c.verdicts.get(str(c.game.install_dir)) or {})
+        shown = c.text()
+    _ui_cleanup()
+    from urllib.parse import unquote as _uq205
+    return shown, card, _uq205(sent[0]) if sent else ""
+
+
+_s205, _c205, _b205 = _report205("Working.", "it started, then closed itself")
+check("#412: a 'Working.' the person says closed itself is corrected on the screen, not only in the report",
+      "=== with what you said ===" in _s205 and "closed itself" in _s205.split("=== with what you said ===")[-1]
+      and "**Diagnosis**: Working." not in _b205, _s205[-300:])
+check("...and the game's card stops saying it worked",
+      _c205.get("ok") is False and "Working" not in str(_c205.get("said")), _c205)
+_s205, _c205, _b205 = _report205("Working.", "it started and ran")
+check("...while a game that ran leaves the screen and the card as they were",
+      "=== with what you said ===" not in _s205 and not _c205, (_s205[-200:], _c205))
+
+# A shared result whose outcome the logs cannot see is the person's to
+# answer. Before 2.0.5 it was written "failed" whatever the game did: #414
+# said "WORKED FINE" and went into the list as a renodx failure, and the
+# routes that log no frames (renodx, native, bridge) could never share a
+# success - 40 of the first 228 shared results were such an unknown.
+_UNSEEN205 = "Add-ons loaded. Confirm in the RenoDX DLSS tab - this route does not log frames."
+check("an 'add-ons loaded, confirm in the tab' verdict is not an outcome, 'Working.' and a crash are",
+      _vd205.outcome(_UNSEEN205) is None and _vd205.outcome("Working.") == "worked"
+      and _vd205.outcome("The game crashed with OptiScaler loaded - Streamline caught the exception.") == "failed")
+
+
+def _share205(verdict: str, answers: list):
+    """Press 'share the result' after `verdict`: (what was asked, the record, the body)."""
+    opened: list = []
+    recs: list = []
+    real_record = _comm.record
+    with _ui_isolated(), _ui_threads(run=False):
+        c = _ui_ctl(_ui_game(name="Shared"), _ui_support([dlss.FEEDER, dlss.OPTI], dlss.FEEDER))
+        c.route = "renodx"
+        c._last_diag = diagnose.Report(route="renodx", verdict=verdict)
+        c._measured, c._measured_rows = None, []
+        c.shell.answers = list(answers)
+        with patch.object(_comm, "record", lambda *a, **k: (recs.append(real_record(*a, **k)), recs[-1])[1]), \
+                patch.object(_uig60.webbrowser, "open", lambda u: opened.append(u)), \
+                patch.object(gpu, "detect", lambda: ("RTX 4070", 89)), \
+                patch.object(gpu, "driver_version", lambda: "616.92"), \
+                patch.object(_tune, "history", lambda *_a: []):
+            c.share_result()
+    _ui_cleanup()
+    return (list(c.shell.asked), recs[-1] if recs else None,
+            urllib.parse.unquote(opened[0]) if opened else "")
+
+
+_q205, _r205, _u205 = _share205(_UNSEEN205, [True, True])
+check("#414: on a route the logs cannot see, 'share the result' asks the person first",
+      len(_q205) == 2 and "Did the DLSS 5 picture show" in _q205[0][1], _q205)
+check("...and their 'it showed' is what the record says, marked as theirs",
+      _r205 and _r205["result"] == "worked" and _r205.get("by") == "person", _r205)
+check("...and the confirmation repeats the answer before the browser opens",
+      "that it worked (your answer)" in _q205[1][1]
+      and "the person who played it said so" in _u205, (_q205[1][1][-200:], _u205[-300:]))
+_q205, _r205, _u205 = _share205(_UNSEEN205, [False, True])
+check("...an 'it did not' is a failure the person reported",
+      _r205 and _r205["result"] == "failed" and _r205.get("by") == "person"
+      and "that it did not work (your answer)" in _q205[1][1], (_r205, _q205[-1:]))
+check("...the person's own 'it closed itself' from the report is an answer, not asked again",
+      _vd205.outcome("The game closed itself and nothing here recorded why - see below for what to "
+                     "take out first.") == "failed"
+      and _vd205.outcome("Neural rendering ran, then the game closed itself.") == "failed")
+check("...and a crash Windows recorded beside an unseen verdict is kept in the list as a failure",
+      _comm.counts(_comm.record(_types60.SimpleNamespace(name="X", exe=Path("x.exe")),
+                               "renodx", "failed", said_by="crash"),
+          "**X** did not work on the `renodx` route.\n\n" + _UNSEEN205 + "\n\n- api: DX11\n"))
+_q205, _r205, _u205 = _share205("Working.", [True])
+check("...while a verdict the logs decided asks nothing extra and is not marked as the person's",
+      len(_q205) == 1 and _r205["result"] == "worked" and "by" not in _r205, (_q205, _r205))
+
+# The list: an old record on an unseen verdict is left out, not counted as
+# a failure; the person's answer and a decided verdict both count.
+_G205 = _types60.SimpleNamespace(name="Red Dead Redemption 2", exe=Path("RDR2.exe"))
+_b205 = [
+    {"number": 1, "body": urllib.parse.unquote(_comm.issue_url(
+        _comm.record(_G205, "renodx", "failed"), _UNSEEN205)).split("&body=", 1)[1]},
+    {"number": 2, "body": urllib.parse.unquote(_comm.issue_url(
+        _comm.record(_G205, "renodx", "worked", said_by="person"), _UNSEEN205)).split("&body=", 1)[1]},
+    {"number": 3, "body": urllib.parse.unquote(_comm.issue_url(
+        _comm.record(_G205, "renodx", "failed"),
+        "Not started since the install - run the game once, then check again.")).split("&body=", 1)[1]},
+    {"number": 414, "body": urllib.parse.unquote(_comm.issue_url(
+        _comm.record(_G205, "renodx", "failed"), _UNSEEN205)).split("&body=", 1)[1]},
+]
+with tempfile.TemporaryDirectory() as _td205:
+    _agg.issues = lambda repo, token: _b205
+    _agg.OUT = Path(_td205) / "compatibility.json"
+    _agg.main()
+    _built205 = json.loads(_agg.OUT.read_text(encoding="utf8"))
+_row205 = _built205["games"]["rdr2.exe"]["routes"].get("renodx")
+check("the list leaves out an old 'failed' the tool could not see, and counts the person's word",
+      _row205 == {"worked": 2, "failed": 1} and _built205["reports"] == 3, (_row205, _built205["reports"]))
+check("...but a verdict nobody mapped, or a body its reporter rewrote, still counts (#193 was a 'worked')",
+      _comm.counts({"result": "worked"}, "**X** worked on the `feeder` route.\n\n"
+                   "It ran, and then the game crashed - Windows recorded the fault.\n\n- api: DX11\n")
+      and _comm.counts({"result": "worked"}, "**X** worked on the `feeder` route.\n\n"
+                       "I played two hours, looked great\n\n- api: DX11\n"))
+# Workstation cards name their architecture; their numbers are not GeForce
+# series ("RTX 5000 Ada" is no RTX 50) - the MFG refusal and every nvngx
+# build choice read this (gate 2.0.5).
+check("workstation cards map to their own architecture",
+      [gpu.sm_for_name(n) for n in ("NVIDIA RTX 2000 Ada Generation", "NVIDIA RTX 5000 Ada Generation",
+                                    "NVIDIA RTX A4000", "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+                                    "NVIDIA GeForce RTX 4060 Ti", "NVIDIA GeForce RTX 5090")]
+      == [89, 89, 86, 120, 89, 120])
+check("...and Quadro RTX and TITAN RTX are Turing, not the GeForce series their numbers look like",
+      [gpu.sm_for_name(n) for n in ("Quadro RTX 4000", "Quadro RTX 5000", "NVIDIA TITAN RTX")]
+      == [75, 75, 75])
+# There is no 64-bit Direct3D 8: a 64-bit exe that names d3d8.dll does not
+# draw with it, and a hand-set DX8 on one is refused before anything is
+# written (gate 2.0.5, pass 2).
+with patch.object(pe, "_detect_api", lambda p: ("DX8", "names d3d8.dll")), \
+        patch.object(pe, "exe_bitness", lambda p: 64):
+    _a64 = pe.detect_api(Path("C:/x/Game.exe"))
+with patch.object(pe, "_detect_api", lambda p: ("DX8", "names d3d8.dll")), \
+        patch.object(pe, "exe_bitness", lambda p: 32):
+    _a32 = pe.detect_api(Path("C:/x/Game.exe"))
+check("a 64-bit exe is never read as DX8, a 32-bit one is",
+      _a64[0] == "Unknown" and "32-bit only" in _a64[1] and _a32[0] == "DX8", (_a64, _a32))
+_g64 = _types60.SimpleNamespace(exe=Path("C:/x/Game.exe"), error="", exe_warning="",
+                                bitness=64, api="DX8")
+check("...and DX8 set by hand on a 64-bit game is refused in words",
+      installer.check_supported(_g64)[0] is False
+      and "32-bit only" in installer.check_supported(_g64)[1])
+_isrc = src_of(installer.install)
+check("the MFG card refusal comes before the previous route is taken out",
+      0 <= _isrc.find("optiscaler.card_refusal(") < _isrc.find("previous = _previous_route(root)")
+      and _isrc.count("optiscaler.card_refusal(") == 1)
+# #286: choosing the RTX 40 MFG package is choosing the unlock, and the
+# package's own OptiScaler.ini ships "[DLSSG] AdaMfgUnlock=false".
+with tempfile.TemporaryDirectory() as _td286:
+    (Path(_td286) / "OptiScaler.ini").write_text(
+        "[DLSSG]\nAdaMfgUnlock=false\n; Needs AdaMfgUnlock=true. Save Settings and restart\n"
+        "[Menu]\nShortcutKey=0x2D\n", encoding="utf8")
+    from core import optiscaler as _opt286
+    _ok286 = _opt286.enable_mfg_unlock(Path(_td286))
+    _ini286 = (Path(_td286) / "OptiScaler.ini").read_text(encoding="utf8")
+check("#286: the MFG package's unlock is switched on in the ini it ships switched off",
+      _ok286 and "AdaMfgUnlock=true" in _ini286 and "AdaMfgUnlock=false" not in _ini286
+      and "ShortcutKey=0x2D" in _ini286, _ini286)
+check("...and only the MFG build turns it on",
+      "enable_mfg_unlock" in src_of(installer.install)
+      and "opt.opti_build == optiscaler.PRESR_MFG:\n                # The package ships its unlock"
+      in src_of(installer.install))
+check("...the verdict is read back out of the body the tool wrote",
+      _comm.said_verdict(_b205[0]["body"]) == _UNSEEN205
+      and _comm.said_verdict(_comm.block(_comm.record(_G205, "feeder", "worked"))) == "")
 
 
 section("RESULT")

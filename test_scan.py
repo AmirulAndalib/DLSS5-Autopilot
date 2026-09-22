@@ -553,6 +553,11 @@ class ProtectedXboxTests(unittest.TestCase):
         # no click, double-click or key gets past the disabled button
         tag, _b = button("install")
         click(tag)
+        # A redraw after the click (the support read finishing) draws the
+        # button again under a new tag - found when the old one had gone and
+        # bbox() answered None (gate 2.0.5, only when run after other suites).
+        pump(0.2)
+        tag, _b = button("install")
         box = c.bbox(tag)
         x, y = int((box[0] + box[2]) / 2 - c.canvasx(0)), int((box[1] + box[3]) / 2 - c.canvasy(0))
         for _ in range(2):          # a double click is two presses in a row

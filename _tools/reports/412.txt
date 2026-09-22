@@ -1,0 +1,55 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+crash the game
+
+---
+- version: 2.0.4
+- gpu: NVIDIA GeForce RTX 4060 (sm_89), driver 616.56
+- game: No Man's Sky
+- exe: NMS.exe
+- arch/api: 64-bit / Vulkan (imports vulkan-1.dll, no DXGI)
+- route: bridge
+
+**Diagnosis**: Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture.
+- [ok] ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0
+- [ok] ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.917.1432
+- [warn] The add-on flagged your nvngx_dlssnr as an untested build.
+- [ok] The add-on's own switch is on.
+- [info] This route leaves no frame log of its own.
+- [ok] When it last ran (22 Sep 05:28), the process had dlss5-bridge.addon64, nvngx_dlssnr.dll, renodx-dlss5.addon64 loaded.
+
+**Files in the folder**
+- dlss5-bridge.addon64: present
+- renodx-dlss5.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- ReShade 64-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+- Binaries/nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.7.0 kept beside it)
+- Binaries/nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.7.0 kept beside it)
+
+**What ran, and what it loaded** (seen at 22 Sep 05:28)
+- process: NMS.exe
+- DLLs in the process: 166
+- ours, loaded: dlss5-bridge.addon64, nvngx_dlssnr.dll, renodx-dlss5.addon64
+
+**ReShade.log**
+```
+05:28:42:132 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(Export not present: NVSDK_NGX_D3D12_EvaluateFeature_C)
+05:28:42:132 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff8e482fad0 ) (0x00007ff92ebcf2d8))
+05:28:42:132 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(Export not present: NVSDK_NGX_D3D12_EvaluateFeature_C)
+05:28:42:183 [22948] | INFO  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature unhooked successfully)
+05:28:42:183 [22948] | WARN  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature_C not hooked, skipping)
+05:28:42:183 [22948] | INFO  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature unhooked successfully)
+05:28:42:183 [22948] | WARN  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature_C not hooked, skipping)
+05:28:42:346 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff92ec481e0 ) (0x00007ff92ebcf2b8))
+05:28:42:346 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(Export not present: NVSDK_NGX_D3D12_EvaluateFeature_C)
+05:28:42:347 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff8e482fad0 ) (0x00007ff92ebcf2d8))
+05:28:42:347 [22948] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(Export not present: NVSDK_NGX_D3D12_EvaluateFeature_C)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

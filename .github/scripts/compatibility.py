@@ -40,6 +40,21 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from core.community import parse            # noqa: E402  the one parser
+from core.community import counts           # noqa: E402  and what it cannot see
+
+# Results written before 2.0.5 on a verdict that could not see the outcome
+# were filed as "failed" whatever the game did, and are left out as unknown
+# (community.counts). These people rewrote the issue's title to say it
+# worked while the block said failed; the person who played it outranks the
+# tool's reading of it, whichever verdict that was.
+SAID_IN_WORDS = {
+    414: "worked",      # "It Did Work." / "WORKED FINE" - Arkham Knight, renodx
+    388: "worked",      # "God of War -working" - bridge
+    307: "worked",      # "work, set to 100% only" - Venus Vacation PRISM, renodx
+    257: "worked",      # "It Did Work" - DragonSword, native
+    242: "worked",      # "did work but charges me to update" - No Man's Sky, bridge
+    222: "worked",      # "inZOI - worked perfectly" - optiscaler
+}
 
 
 def median(xs: list[float]) -> float:
@@ -114,10 +129,16 @@ def main() -> int:
     token = os.environ.get("GH_TOKEN") or ""
     games: dict[str, dict] = {}
     seen_ms: dict[str, dict[str, list]] = {}
-    seen = 0
+    seen = unseen = 0
     for issue in issues(repo, token):
         rec = parse(issue.get("body") or "")
         if not rec:
+            continue
+        said = SAID_IN_WORDS.get(issue.get("number"))
+        if said is not None:
+            rec = dict(rec, result=said)
+        elif not counts(rec, issue.get("body") or ""):
+            unseen += 1
             continue
         # Every string is capped and type-checked here, not where it was
         # written: the writing side is this tool, the reading side is
@@ -174,7 +195,8 @@ def main() -> int:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n",
                    encoding="utf8")
-    print(f"{seen} results across {len(games)} games -> {OUT}")
+    print(f"{seen} results across {len(games)} games -> {OUT}"
+          f" ({unseen} left out: the tool could not see their outcome)")
     return 0
 
 

@@ -1,0 +1,42 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+yj dfh tyhjk
+
+---
+- version: 2.0.4
+- gpu: NVIDIA GeForce RTX 3080 Ti (sm_86), driver 616.92
+- game: POSTAL 2
+- exe: Postal2.exe
+- arch/api: 32-bit / Unknown (graphics DLL loaded at runtime; assuming DX11/DX12 via dxgi.dll)
+- route: feeder
+
+**Diagnosis**: Postal2.exe ran at 22 Sep 00:39 and loaded nothing from this folder - try another proxy name.
+- [bad] Something in the game's own files changed after the install.
+- [bad] Postal2.exe ran at 22 Sep 00:39 with none of this folder's files loaded.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 22 Sep 00:39)
+- process: Postal2.exe
+- DLLs in the process: 114
+- ours, loaded: none
+- ours, not loaded: dlss5-feed.addon32, dxgi.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

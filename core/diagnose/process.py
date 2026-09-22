@@ -210,7 +210,8 @@ def _name_foreign_hooks(rep: Report, foreign) -> Report:
     if rep.verdict.startswith("Working"):
         # Frames came through with it loaded; it did not stop the pass.
         for f in rep.findings:
-            if f.level == BAD and f.title.startswith("Another DLSS hook was loaded"):
+            if f.level == BAD and f.title.startswith(("Another DLSS hook was loaded",
+                                                      "Another DLSS tool's add-on")):
                 f.level = WARN
         return rep
     if rep.verdict.startswith(_CANNOT_SEE):

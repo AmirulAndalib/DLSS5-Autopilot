@@ -735,7 +735,7 @@ def _prefer_real_exe(g: Game) -> None:
         g.exe = top
 
 
-APIS = ("DX9", "DX10", "DX11", "DX12", "Vulkan", "OpenGL")
+APIS = ("DX8", "DX9", "DX10", "DX11", "DX12", "Vulkan", "OpenGL")
 
 
 def api_override(folder: Path) -> str:

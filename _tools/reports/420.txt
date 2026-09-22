@@ -1,0 +1,59 @@
+**Did the game start?** it never started
+
+**What happened**
+DX 12 error
+
+---
+- version: 2.0.4
+- gpu: NVIDIA GeForce RTX 5070 Ti (sm_120), driver 616.92
+- game: Assassin's Creed Black Flag Resynced
+- exe: ACBlackFlag.exe
+- arch/api: 64-bit / DX12 (imports d3d12.dll statically)
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: Inconclusive - open the overlay (Insert) and read the status under the Neural Rendering checkbox.
+- [warn] OptiScaler mentions neural rendering but never reports it running.
+- [ok] When it last ran (22 Sep 18:21), the process had WINMM.dll, amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll, nvngx_dlssnr.dll loaded.
+
+**Files in the folder**
+- winmm.dll: present
+- nvngx_dlssnr.dll: present
+- optiscaler build: Dagherbou (v0.2.0-dlssnr)
+
+**What ran, and what it loaded** (seen at 22 Sep 18:21)
+- process: ACBlackFlag.exe
+- DLLs in the process: 171
+- ours, loaded: WINMM.dll, amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll, nvngx_dlssnr.dll
+- also written, loaded only if the game asks: nvngx.dll_dlssnr.dll
+
+**ReShade.log**
+```
+18:20:55:667 [25260] | INFO  | Registered add-on "DLSS 5 Swapper Overlay" v0.0.0.0 using ReShade API version 20.
+18:20:55:669 [25260] | INFO  | Registered add-on "DLSS 5 Neural Rendering" v0.2026.828.517 using ReShade API version 18.
+18:20:55:673 [25260] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff918018740 ) (0x00007ff8cf316d48))
+18:20:55:673 [25260] | ERROR | [DLSS 5 Neural Rendering] vtable::Hook(Failed to find NVSDK_NGX_D3D12_EvaluateFeature_C)
+18:20:56:141 [25260] | INFO  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature unhooked successfully)
+18:20:56:141 [25260] | WARN  | [DLSS 5 Neural Rendering] vtable::Unhook(NVSDK_NGX_D3D12_EvaluateFeature_C not hooked, skipping)
+18:20:56:194 [25260] | INFO  | Registered add-on "DLSS 5 Swapper Overlay" v0.0.0.0 using ReShade API version 20.
+18:20:56:197 [25260] | INFO  | Registered add-on "DLSS 5 Neural Rendering" v0.2026.828.517 using ReShade API version 18.
+18:20:56:201 [25260] | DEBUG | [DLSS 5 Neural Rendering] vtable::Hook(NVSDK_NGX_D3D12_EvaluateFeaturehooked (0x00007ff918018740 ) (0x00007ff8cf316d48))
+18:20:56:201 [25260] | ERROR | [DLSS 5 Neural Rendering] vtable::Hook(Failed to find NVSDK_NGX_D3D12_EvaluateFeature_C)
+18:20:59:809 [23696] | INFO  | Redirecting IDXGIFactory2::CreateSwapChainForComposition(this = 000001EA5D686D50, pDevice = 000001EA6C6C4840, pDesc = 000000C1657FE790, pRestrictToOutput = 0000000000000
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[18:21:04.133818] [I] OptiInput::InstallHooks Win32 windows input hooks installed
+[18:21:04.133876] [I] OptiInput::InstallHooks Win32 position input hooks installed
+[18:21:04.133884] [I] OptiInput::Initialize Initialize completed hooksInstalled:1 target:0xd0806 targetPid:22316 input:0xd0806 inputPid:22316 externalTarget:0 subclassed:1
+[18:21:04.133991] [I] OptiInput::UpdateXInputIntegrationLocked XInput hooks installed module:0x7ff936fd0000 getState:1 getStateEx:1 getKeystroke:1 setState:1
+[18:21:04.134035] [I] OptiInput::`anonymous-namespace'::InstallDirectInputExportHookLocked DirectInput8Create hook installed module:0x7ff917f00000
+[18:21:04.136046] [E] StreamlineHooks::streamlineLogCallback [18-21-04][streamline][error][tid:23696][9s:967ms:236us]exception.cpp:75[writeMiniDump] Exception detected - thread 23696 - creating mini-d
+```

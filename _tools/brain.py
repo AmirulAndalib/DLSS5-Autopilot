@@ -91,6 +91,14 @@ def main() -> int:
     print("by route")
     for r, (w, f) in sorted(routes.items(), key=lambda x: -(x[1][0] + x[1][1])):
         print(f"  {r:<12} {w:>3} worked  {f:>3} failed  {_pct(w, w + f)} work")
+    # renodx 0/7, native 0/5 and bridge 3/15 were how share_result WROTE
+    # them, not how the routes did (#414: "WORKED FINE", filed as failed).
+    # A whole route that never works, or never fails, is a question about
+    # the recording path before it is a finding about the route.
+    for r, (w, f) in sorted(routes.items()):
+        if w + f >= 5 and (w == 0 or f == 0):
+            print(f"  !! {r}: {w} of {w + f} - read how these results were "
+                  f"recorded before believing it (see #414)")
 
     if measured:
         print("\nwhat it cost, where people said so")
