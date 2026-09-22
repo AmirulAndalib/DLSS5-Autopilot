@@ -559,6 +559,10 @@
     "616.92": {
      "failed": 1,
      "worked": 4
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
     }
    },
    "measured": {
@@ -568,7 +572,7 @@
      "res": 55
     }
    },
-   "name": "Cyberpunk 2077",
+   "name": "Cyberpunk 2077: Phantom Liberty",
    "routes": {
     "feeder": {
      "failed": 1,
@@ -576,7 +580,7 @@
     },
     "optiscaler": {
      "failed": 2,
-     "worked": 3
+     "worked": 4
     },
     "upstream": {
      "failed": 0,
@@ -2534,6 +2538,6 @@
    }
   }
  },
- "generated": "2026-09-22T22:25:13Z",
- "reports": 211
+ "generated": "2026-09-22T23:22:09Z",
+ "reports": 212
 }
