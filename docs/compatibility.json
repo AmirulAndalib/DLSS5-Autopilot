@@ -2322,6 +2322,21 @@
     }
    }
   },
+  "spider-man.exe": {
+   "drivers": {
+    "616.64": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Marvel\u2019s Spider-Man Remastered",
+   "routes": {
+    "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "splintercell3.exe": {
    "drivers": {
     "616.92": {
@@ -2646,6 +2661,6 @@
    }
   }
  },
- "generated": "2026-09-22T16:55:56Z",
- "reports": 229
+ "generated": "2026-09-22T17:02:07Z",
+ "reports": 230
 }
