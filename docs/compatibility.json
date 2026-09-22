@@ -449,6 +449,21 @@
     }
    }
   },
+  "bodycam-win64-shipping.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Bodycam",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "bully.exe": {
    "drivers": {
     "616.92": {
@@ -2616,6 +2631,6 @@
    }
   }
  },
- "generated": "2026-09-22T15:50:40Z",
- "reports": 226
+ "generated": "2026-09-22T16:01:57Z",
+ "reports": 227
 }
