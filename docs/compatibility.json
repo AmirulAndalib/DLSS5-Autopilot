@@ -306,6 +306,21 @@
     }
    }
   },
+  "bf6.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Battlefield 6",
+   "routes": {
+    "renodx": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "bfbc2game.exe": {
    "drivers": {
     "616.92": {
@@ -2533,6 +2548,6 @@
    }
   }
  },
- "generated": "2026-09-22T06:33:08Z",
- "reports": 217
+ "generated": "2026-09-22T07:01:44Z",
+ "reports": 218
 }
