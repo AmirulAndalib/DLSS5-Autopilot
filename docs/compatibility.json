@@ -27,7 +27,7 @@
    "drivers": {
     "616.92": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "measured": {
@@ -41,7 +41,7 @@
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -2646,6 +2646,6 @@
    }
   }
  },
- "generated": "2026-09-22T16:34:25Z",
- "reports": 228
+ "generated": "2026-09-22T16:55:56Z",
+ "reports": 229
 }
