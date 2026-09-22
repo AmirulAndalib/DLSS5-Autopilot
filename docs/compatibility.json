@@ -2,21 +2,13 @@
  "games": {
   "007firstlight.exe": {
    "drivers": {
-    "616.56": {
-     "failed": 1,
-     "worked": 0
-    },
     "616.92": {
      "failed": 0,
      "worked": 1
     }
    },
-   "name": "007.First.Light-InsaneRamZes",
+   "name": "007 First Light",
    "routes": {
-    "native": {
-     "failed": 1,
-     "worked": 0
-    },
     "optiscaler": {
      "failed": 0,
      "worked": 1
@@ -67,21 +59,6 @@
     }
    }
   },
-  "acmirage_plus.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Assassins Creed Mirage",
-   "routes": {
-    "renodx": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "acodyssey.exe": {
    "drivers": {
     "616.56": {
@@ -102,21 +79,6 @@
     "standalone": {
      "failed": 0,
      "worked": 1
-    }
-   }
-  },
-  "acr.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Assetto Corsa Rally",
-   "routes": {
-    "optiscaler": {
-     "failed": 1,
-     "worked": 0
     }
    }
   },
@@ -294,15 +256,15 @@
   "batmanak.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    },
    "name": "Batman\u2122: Arkham Knight",
    "routes": {
     "renodx": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -415,21 +377,6 @@
     }
    }
   },
-  "bloodlines2-win64-shipping.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Vampire: The Masquerade - Bloodlines 2",
-   "routes": {
-    "feeder": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "blur.exe": {
    "drivers": {
     "616.92": {
@@ -446,21 +393,6 @@
     "feeder": {
      "failed": 0,
      "worked": 3
-    }
-   }
-  },
-  "bodycam-win64-shipping.exe": {
-   "drivers": {
-    "617.14": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Bodycam",
-   "routes": {
-    "feeder": {
-     "failed": 1,
-     "worked": 0
     }
    }
   },
@@ -554,7 +486,7 @@
   "crimsondesert.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 0,
      "worked": 1
     }
    },
@@ -568,7 +500,7 @@
    "name": "Crimson Desert Enhanced",
    "routes": {
     "optiscaler": {
-     "failed": 1,
+     "failed": 0,
      "worked": 1
     }
    }
@@ -576,14 +508,14 @@
   "cronos-win64-shipping.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 0,
      "worked": 2
     }
    },
    "name": "Cronos: The New Dawn",
    "routes": {
     "optiscaler": {
-     "failed": 1,
+     "failed": 0,
      "worked": 1
     },
     "upstream": {
@@ -690,7 +622,7 @@
   "dead space.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 0,
      "worked": 1
     }
    },
@@ -703,10 +635,6 @@
    },
    "name": "Dead Space",
    "routes": {
-    "bridge": {
-     "failed": 1,
-     "worked": 0
-    },
     "optiscaler": {
      "failed": 0,
      "worked": 1
@@ -806,8 +734,8 @@
   "dsclient-win64-shipping.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
-     "worked": 1
+     "failed": 0,
+     "worked": 2
     }
    },
    "measured": {
@@ -820,8 +748,8 @@
    "name": "DragonSword : Awakening",
    "routes": {
     "native": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     },
     "optiscaler": {
      "failed": 0,
@@ -850,10 +778,6 @@
      "failed": 0,
      "worked": 1
     },
-    "616.64": {
-     "failed": 1,
-     "worked": 0
-    },
     "616.92": {
      "failed": 0,
      "worked": 1
@@ -871,10 +795,6 @@
     "feeder": {
      "failed": 0,
      "worked": 2
-    },
-    "renodx": {
-     "failed": 1,
-     "worked": 0
     }
    }
   },
@@ -898,20 +818,12 @@
     "616.56": {
      "failed": 2,
      "worked": 0
-    },
-    "616.92": {
-     "failed": 1,
-     "worked": 0
     }
    },
-   "name": "yuzu / suyu / Eden / Citron (Switch)",
+   "name": "switch",
    "routes": {
     "feeder": {
      "failed": 2,
-     "worked": 0
-    },
-    "renodx": {
-     "failed": 1,
      "worked": 0
     }
    }
@@ -1178,7 +1090,7 @@
      "worked": 2
     },
     "616.92": {
-     "failed": 2,
+     "failed": 1,
      "worked": 3
     }
    },
@@ -1192,7 +1104,7 @@
    "name": "Forza Horizon 6",
    "routes": {
     "optiscaler": {
-     "failed": 2,
+     "failed": 1,
      "worked": 4
     },
     "renodx": {
@@ -1279,19 +1191,15 @@
   "gow.exe": {
    "drivers": {
     "616.56": {
-     "failed": 1,
-     "worked": 0
-    },
-    "616.92": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    },
    "name": "God of War",
    "routes": {
     "bridge": {
-     "failed": 2,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -1420,25 +1328,6 @@
     }
    }
   },
-  "hogwartslegacy.exe": {
-   "drivers": {
-    "616.56": {
-     "failed": 2,
-     "worked": 0
-    }
-   },
-   "name": "Hogwarts Legacy",
-   "routes": {
-    "bridge": {
-     "failed": 1,
-     "worked": 0
-    },
-    "feeder": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "homefront.exe": {
    "drivers": {
     "616.56": {
@@ -1506,8 +1395,8 @@
      "worked": 1
     },
     "616.92": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    },
    "measured": {
@@ -1520,8 +1409,8 @@
    "name": "inZOI",
    "routes": {
     "optiscaler": {
-     "failed": 1,
-     "worked": 1
+     "failed": 0,
+     "worked": 2
     }
    }
   },
@@ -1588,14 +1477,14 @@
   "masseffect1.exe": {
    "drivers": {
     "616.56": {
-     "failed": 3,
+     "failed": 2,
      "worked": 1
     }
    },
    "name": "Mass Effect\u2122 Legendary Edition",
    "routes": {
     "bridge": {
-     "failed": 2,
+     "failed": 1,
      "worked": 0
     },
     "feeder": {
@@ -1802,23 +1691,19 @@
   "nms.exe": {
    "drivers": {
     "581.80": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     },
     "616.64": {
      "failed": 1,
-     "worked": 0
-    },
-    "616.92": {
-     "failed": 2,
      "worked": 0
     }
    },
    "name": "No Man's Sky",
    "routes": {
     "bridge": {
-     "failed": 3,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     },
     "feeder": {
      "failed": 1,
@@ -1844,16 +1729,12 @@
   "onimushawots.exe": {
    "drivers": {
     "616.92": {
-     "failed": 2,
+     "failed": 1,
      "worked": 0
     }
    },
    "name": "Onimusha: Way of the Sword",
    "routes": {
-    "native": {
-     "failed": 1,
-     "worked": 0
-    },
     "optiscaler": {
      "failed": 1,
      "worked": 0
@@ -1960,21 +1841,6 @@
     }
    }
   },
-  "princeofpersia.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Prince of Persia The Two Thrones",
-   "routes": {
-    "feeder": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "prototype2.exe": {
    "drivers": {
     "616.92": {
@@ -2036,21 +1902,6 @@
     "feeder": {
      "failed": 0,
      "worked": 1
-    }
-   }
-  },
-  "re3.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Resident Evil 3",
-   "routes": {
-    "bridge": {
-     "failed": 1,
-     "worked": 0
     }
    }
   },
@@ -2348,21 +2199,6 @@
     }
    }
   },
-  "spider-man.exe": {
-   "drivers": {
-    "616.64": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Marvel\u2019s Spider-Man Remastered",
-   "routes": {
-    "optiscaler": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "splintercell3.exe": {
    "drivers": {
     "616.92": {
@@ -2395,10 +2231,6 @@
   },
   "starfield.exe": {
    "drivers": {
-    "616.64": {
-     "failed": 1,
-     "worked": 0
-    },
     "616.92": {
      "failed": 0,
      "worked": 2
@@ -2407,7 +2239,7 @@
    "name": "Starfield",
    "routes": {
     "optiscaler": {
-     "failed": 1,
+     "failed": 0,
      "worked": 1
     },
     "upstream": {
@@ -2536,33 +2368,18 @@
     }
    }
   },
-  "uboat.exe": {
-   "drivers": {
-    "616.56": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "UBOAT",
-   "routes": {
-    "bridge": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "venus vacation prism - dead or alive xtreme -.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    },
    "name": "Venus Vacation PRISM - DEAD OR ALIVE Xtreme",
    "routes": {
     "renodx": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -2687,6 +2504,6 @@
    }
   }
  },
- "generated": "2026-09-22T19:32:31Z",
- "reports": 232
+ "generated": "2026-09-22T20:47:45Z",
+ "reports": 209
 }
