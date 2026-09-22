@@ -1059,6 +1059,21 @@
     }
    }
   },
+  "ffxiv_dx11.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "game",
+   "routes": {
+    "bridge": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "ffxvi.exe": {
    "drivers": {
     "616.92": {
@@ -2631,6 +2646,6 @@
    }
   }
  },
- "generated": "2026-09-22T16:21:57Z",
- "reports": 227
+ "generated": "2026-09-22T16:33:38Z",
+ "reports": 228
 }
