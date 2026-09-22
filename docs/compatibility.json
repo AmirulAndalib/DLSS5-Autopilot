@@ -1044,6 +1044,28 @@
     }
    }
   },
+  "ff7rebirth_.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 4.11,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "FINAL FANTASY VII REBIRTH",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "ffxiiiimg.exe": {
    "drivers": {
     "616.92": {
@@ -2665,6 +2687,6 @@
    }
   }
  },
- "generated": "2026-09-22T18:15:50Z",
- "reports": 231
+ "generated": "2026-09-22T19:32:31Z",
+ "reports": 232
 }
