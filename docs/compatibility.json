@@ -291,6 +291,21 @@
     }
    }
   },
+  "batmanak.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Batman\u2122: Arkham Knight",
+   "routes": {
+    "renodx": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "bayonetta.exe": {
    "drivers": {
     "581.42": {
@@ -2552,6 +2567,6 @@
    }
   }
  },
- "generated": "2026-09-22T10:18:18Z",
- "reports": 221
+ "generated": "2026-09-22T11:57:02Z",
+ "reports": 222
 }
