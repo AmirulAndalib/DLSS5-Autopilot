@@ -2452,13 +2452,24 @@
     "616.92": {
      "failed": 0,
      "worked": 2
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 13.24,
+     "n": 1,
+     "res": 75
     }
    },
    "name": "Starfield",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     },
     "upstream": {
      "failed": 0,
@@ -2726,6 +2737,6 @@
    }
   }
  },
- "generated": "2026-09-23T15:48:40Z",
- "reports": 227
+ "generated": "2026-09-23T16:00:30Z",
+ "reports": 228
 }
