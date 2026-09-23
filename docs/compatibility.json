@@ -452,14 +452,14 @@
    "drivers": {
     "617.14": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "name": "Carcassonne: The Official Board Game",
    "routes": {
     "standalone": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -2737,6 +2737,6 @@
    }
   }
  },
- "generated": "2026-09-23T16:00:30Z",
- "reports": 228
+ "generated": "2026-09-23T16:01:23Z",
+ "reports": 229
 }
