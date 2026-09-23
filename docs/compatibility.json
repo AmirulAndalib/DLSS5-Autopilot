@@ -1958,6 +1958,21 @@
     }
    }
   },
+  "re8.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Resident Evil Village",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "re9.exe": {
    "drivers": {
     "616.92": {
@@ -2561,6 +2576,6 @@
    }
   }
  },
- "generated": "2026-09-23T07:12:31Z",
- "reports": 215
+ "generated": "2026-09-23T07:24:49Z",
+ "reports": 216
 }
