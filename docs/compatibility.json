@@ -1068,6 +1068,21 @@
     }
    }
   },
+  "ffx-2.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "FINAL FANTASY X/X-2 HD Remaster",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "ffxiiiimg.exe": {
    "drivers": {
     "616.92": {
@@ -2673,6 +2688,6 @@
    }
   }
  },
- "generated": "2026-09-23T14:29:48Z",
- "reports": 223
+ "generated": "2026-09-23T14:35:01Z",
+ "reports": 224
 }
