@@ -2680,6 +2680,21 @@
     }
    }
   },
+  "watchdogslegion.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Watch Dogs: Legion",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "witcher2.exe": {
    "drivers": {
     "616.56": {
@@ -2771,6 +2786,6 @@
    }
   }
  },
- "generated": "2026-09-23T20:32:37Z",
- "reports": 232
+ "generated": "2026-09-23T20:50:29Z",
+ "reports": 233
 }
