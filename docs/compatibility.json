@@ -2407,13 +2407,17 @@
     "616.92": {
      "failed": 5,
      "worked": 3
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
     }
    },
    "name": "UBOAT",
    "routes": {
     "feeder": {
      "failed": 5,
-     "worked": 1
+     "worked": 2
     },
     "standalone": {
      "failed": 0,
@@ -2557,6 +2561,6 @@
    }
   }
  },
- "generated": "2026-09-23T05:46:35Z",
- "reports": 214
+ "generated": "2026-09-23T07:09:39Z",
+ "reports": 215
 }
