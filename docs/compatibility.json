@@ -1965,6 +1965,21 @@
     }
    }
   },
+  "quake2ex_steam.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Quake II",
+   "routes": {
+    "standalone": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "rdr.exe": {
    "drivers": {
     "616.56": {
@@ -2636,6 +2651,6 @@
    }
   }
  },
- "generated": "2026-09-23T13:55:36Z",
- "reports": 221
+ "generated": "2026-09-23T14:18:45Z",
+ "reports": 222
 }
