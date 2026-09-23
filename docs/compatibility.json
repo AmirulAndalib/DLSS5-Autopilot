@@ -448,6 +448,21 @@
     }
    }
   },
+  "carcassonne.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Carcassonne: The Official Board Game",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "cities.exe": {
    "drivers": {
     "610.62": {
@@ -2703,6 +2718,6 @@
    }
   }
  },
- "generated": "2026-09-23T15:08:08Z",
- "reports": 225
+ "generated": "2026-09-23T15:10:18Z",
+ "reports": 226
 }
