@@ -37,6 +37,21 @@
     }
    }
   },
+  "aces.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Aces of Thunder",
+   "routes": {
+    "standalone": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "acmirage.exe": {
    "drivers": {
     "616.92": {
@@ -2576,6 +2591,6 @@
    }
   }
  },
- "generated": "2026-09-23T07:24:49Z",
- "reports": 216
+ "generated": "2026-09-23T07:57:40Z",
+ "reports": 217
 }
