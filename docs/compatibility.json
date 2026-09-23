@@ -2217,6 +2217,28 @@
     }
    }
   },
+  "shadowofwar.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "feeder": {
+     "fps": 56.2,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "Middle-earth\u2122: Shadow of War\u2122",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "shproto-win64-shipping.exe": {
    "drivers": {
     "616.92": {
@@ -2651,6 +2673,6 @@
    }
   }
  },
- "generated": "2026-09-23T14:18:45Z",
- "reports": 222
+ "generated": "2026-09-23T14:29:48Z",
+ "reports": 223
 }
