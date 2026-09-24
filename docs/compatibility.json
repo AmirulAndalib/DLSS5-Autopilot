@@ -2365,11 +2365,15 @@
    "drivers": {
     "616.92": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    },
-   "name": "Stellar.Blade.Complete.Edition-InsaneRamZes",
+   "name": "Stellar Blade\u2122",
    "routes": {
+    "bridge": {
+     "failed": 0,
+     "worked": 1
+    },
     "optiscaler": {
      "failed": 1,
      "worked": 0
@@ -2903,6 +2907,6 @@
    }
   }
  },
- "generated": "2026-09-24T18:10:13Z",
- "reports": 246
+ "generated": "2026-09-24T19:20:44Z",
+ "reports": 247
 }
