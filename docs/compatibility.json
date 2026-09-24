@@ -614,7 +614,7 @@
     },
     "617.14": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "measured": {
@@ -624,7 +624,7 @@
      "res": 55
     }
    },
-   "name": "Cyberpunk 2077: Phantom Liberty",
+   "name": "Cyberpunk.2077.GOG.Rip-InsaneRamZes",
    "routes": {
     "feeder": {
      "failed": 1,
@@ -632,7 +632,7 @@
     },
     "optiscaler": {
      "failed": 2,
-     "worked": 4
+     "worked": 5
     },
     "upstream": {
      "failed": 0,
@@ -2861,6 +2861,6 @@
    }
   }
  },
- "generated": "2026-09-24T06:08:09Z",
- "reports": 240
+ "generated": "2026-09-24T06:53:27Z",
+ "reports": 241
 }
