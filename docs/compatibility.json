@@ -572,6 +572,28 @@
     }
    }
   },
+  "controlresonant.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 6.16,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "CONTROL.Resonant-InsaneRamZes",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "crimsondesert.exe": {
    "drivers": {
     "616.56": {
@@ -2922,6 +2944,6 @@
    }
   }
  },
- "generated": "2026-09-24T20:07:04Z",
- "reports": 248
+ "generated": "2026-09-24T20:15:38Z",
+ "reports": 249
 }
