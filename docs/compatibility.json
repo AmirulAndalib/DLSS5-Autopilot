@@ -970,6 +970,28 @@
     }
    }
   },
+  "easy red 2.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "feeder": {
+     "fps": 93.1,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "Easy Red 2",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "eden.exe": {
    "drivers": {
     "616.56": {
@@ -2959,6 +2981,6 @@
    }
   }
  },
- "generated": "2026-09-24T23:26:46Z",
- "reports": 252
+ "generated": "2026-09-24T23:29:36Z",
+ "reports": 253
 }
