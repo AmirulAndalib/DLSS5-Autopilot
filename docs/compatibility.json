@@ -2005,6 +2005,21 @@
     }
    }
   },
+  "onimushawots_demo.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Onimusha: Way of the Sword DEMO",
+   "routes": {
+    "renodx": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "outlaws.exe": {
    "drivers": {
     "616.92": {
@@ -2888,6 +2903,6 @@
    }
   }
  },
- "generated": "2026-09-24T13:04:58Z",
- "reports": 245
+ "generated": "2026-09-24T18:10:13Z",
+ "reports": 246
 }
