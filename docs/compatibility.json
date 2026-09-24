@@ -586,7 +586,7 @@
      "res": 100
     }
    },
-   "name": "CONTROL.Resonant-InsaneRamZes",
+   "name": "CONTROL.Resonant",
    "routes": {
     "optiscaler": {
      "failed": 0,
@@ -2944,6 +2944,6 @@
    }
   }
  },
- "generated": "2026-09-24T20:15:38Z",
+ "generated": "2026-09-24T20:24:05Z",
  "reports": 249
 }
