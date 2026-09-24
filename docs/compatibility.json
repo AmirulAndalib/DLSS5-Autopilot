@@ -655,6 +655,21 @@
     }
    }
   },
+  "darksoulsremastered.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "DARK SOULS\u2122: REMASTERED",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "dawnwalker.exe": {
    "drivers": {
     "616.56": {
@@ -2846,6 +2861,6 @@
    }
   }
  },
- "generated": "2026-09-24T01:04:07Z",
- "reports": 239
+ "generated": "2026-09-24T01:41:37Z",
+ "reports": 240
 }
