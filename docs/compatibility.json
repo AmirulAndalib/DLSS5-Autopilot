@@ -559,6 +559,10 @@
   },
   "crimsondesert.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 1,
+     "worked": 0
+    },
     "616.92": {
      "failed": 0,
      "worked": 1
@@ -576,6 +580,10 @@
     "optiscaler": {
      "failed": 0,
      "worked": 1
+    },
+    "upstream": {
+     "failed": 1,
+     "worked": 0
     }
    }
   },
@@ -2861,6 +2869,6 @@
    }
   }
  },
- "generated": "2026-09-24T06:53:27Z",
- "reports": 241
+ "generated": "2026-09-24T09:03:08Z",
+ "reports": 242
 }
