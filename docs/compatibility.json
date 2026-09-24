@@ -1298,14 +1298,21 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 2
+     "worked": 3
     }
    },
-   "name": "Ghost of Tsushima DIRECTOR'S CUT",
+   "measured": {
+    "optiscaler": {
+     "ms": 4.76,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Ghost of Tsushima DIRECTORS CUT",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 2
+     "worked": 3
     },
     "upstream": {
      "failed": 1,
@@ -2820,6 +2827,6 @@
    }
   }
  },
- "generated": "2026-09-24T00:09:18Z",
- "reports": 236
+ "generated": "2026-09-24T00:31:49Z",
+ "reports": 237
 }
