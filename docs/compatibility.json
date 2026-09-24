@@ -448,6 +448,21 @@
     }
    }
   },
+  "captain of industry.exe": {
+   "drivers": {
+    "616.86": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Captain of Industry",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "carcassonne.exe": {
    "drivers": {
     "617.14": {
@@ -2873,6 +2888,6 @@
    }
   }
  },
- "generated": "2026-09-24T10:07:58Z",
- "reports": 243
+ "generated": "2026-09-24T11:29:53Z",
+ "reports": 244
 }
