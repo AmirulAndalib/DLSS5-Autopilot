@@ -557,14 +557,14 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 2
+     "worked": 3
     }
    },
-   "name": "Control Ultimate Edition",
+   "name": "Control",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     },
     "upstream": {
      "failed": 0,
@@ -2944,6 +2944,6 @@
    }
   }
  },
- "generated": "2026-09-24T20:24:27Z",
- "reports": 249
+ "generated": "2026-09-24T20:51:46Z",
+ "reports": 250
 }
