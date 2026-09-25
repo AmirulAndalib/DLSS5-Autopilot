@@ -625,21 +625,21 @@
     },
     "617.14": {
      "failed": 0,
-     "worked": 2
+     "worked": 3
     }
    },
    "measured": {
     "optiscaler": {
-     "ms": 6.16,
-     "n": 1,
-     "res": 100
+     "ms": 5.47,
+     "n": 2,
+     "res": 88
     }
    },
    "name": "CONTROL Resonant",
    "routes": {
     "optiscaler": {
      "failed": 1,
-     "worked": 2
+     "worked": 3
     }
    }
   },
@@ -3097,6 +3097,6 @@
    }
   }
  },
- "generated": "2026-09-25T21:09:34Z",
- "reports": 264
+ "generated": "2026-09-25T21:42:18Z",
+ "reports": 265
 }
