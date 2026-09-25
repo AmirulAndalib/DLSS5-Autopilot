@@ -574,6 +574,10 @@
   },
   "controlresonant.exe": {
    "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    },
     "617.14": {
      "failed": 0,
      "worked": 1
@@ -586,10 +590,10 @@
      "res": 100
     }
    },
-   "name": "CONTROL.Resonant",
+   "name": "CONTROL Resonant",
    "routes": {
     "optiscaler": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    }
@@ -3018,6 +3022,6 @@
    }
   }
  },
- "generated": "2026-09-25T11:24:50Z",
- "reports": 255
+ "generated": "2026-09-25T12:35:03Z",
+ "reports": 256
 }
