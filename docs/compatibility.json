@@ -2848,6 +2848,21 @@
     }
    }
   },
+  "trainsimworld.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Train Sim World 7",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "uboat launcher.exe": {
    "drivers": {
     "616.56": {
@@ -3067,6 +3082,6 @@
    }
   }
  },
- "generated": "2026-09-25T17:11:36Z",
- "reports": 261
+ "generated": "2026-09-25T17:33:06Z",
+ "reports": 262
 }
