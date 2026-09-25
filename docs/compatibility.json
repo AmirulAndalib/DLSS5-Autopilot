@@ -610,7 +610,7 @@
     },
     "617.14": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "measured": {
@@ -624,7 +624,7 @@
    "routes": {
     "optiscaler": {
      "failed": 1,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -3082,6 +3082,6 @@
    }
   }
  },
- "generated": "2026-09-25T17:33:06Z",
- "reports": 262
+ "generated": "2026-09-25T17:53:43Z",
+ "reports": 263
 }
