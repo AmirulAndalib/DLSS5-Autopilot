@@ -761,6 +761,28 @@
     }
    }
   },
+  "daysgone.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "feeder": {
+     "fps": 81.9,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "Days Gone",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "dead space.exe": {
    "drivers": {
     "616.92": {
@@ -2996,6 +3018,6 @@
    }
   }
  },
- "generated": "2026-09-25T10:48:30Z",
- "reports": 254
+ "generated": "2026-09-25T11:24:50Z",
+ "reports": 255
 }
