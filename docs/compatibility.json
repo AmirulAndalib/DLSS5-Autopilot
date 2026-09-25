@@ -2936,13 +2936,24 @@
     "610.74": {
      "failed": 0,
      "worked": 1
+    },
+    "616.92": {
+     "failed": 0,
+     "worked": 1
     }
    },
-   "name": "TheWitcher3",
+   "measured": {
+    "optiscaler": {
+     "ms": 9.17,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "The Witcher 3: Wild Hunt - Complete Edition",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -3022,6 +3033,6 @@
    }
   }
  },
- "generated": "2026-09-25T14:58:48Z",
- "reports": 257
+ "generated": "2026-09-25T15:57:50Z",
+ "reports": 258
 }
