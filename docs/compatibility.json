@@ -3039,7 +3039,7 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "measured": {
@@ -3054,6 +3054,10 @@
     "optiscaler": {
      "failed": 0,
      "worked": 2
+    },
+    "upstream": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3133,6 +3137,6 @@
    }
   }
  },
- "generated": "2026-09-26T10:03:34Z",
- "reports": 272
+ "generated": "2026-09-26T10:39:30Z",
+ "reports": 273
 }
