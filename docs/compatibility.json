@@ -1,4 +1,193 @@
 {
+ "by_class": {},
+ "by_driver": {
+  "560.94": {
+   "bridge": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
+  "581.42": {
+   "feeder": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
+  "581.80": {
+   "bridge": {
+    "failed": 0,
+    "worked": 1
+   },
+   "feeder": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
+  "591.44": {
+   "optiscaler": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
+  "610.47": {
+   "feeder": {
+    "failed": 1,
+    "worked": 0
+   },
+   "optiscaler": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
+  "610.62": {
+   "feeder": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
+  "610.74": {
+   "feeder": {
+    "failed": 0,
+    "worked": 2
+   },
+   "optiscaler": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
+  "610.88": {
+   "feeder": {
+    "failed": 0,
+    "worked": 2
+   },
+   "optiscaler": {
+    "failed": 2,
+    "worked": 0
+   }
+  },
+  "616.56": {
+   "bridge": {
+    "failed": 1,
+    "worked": 3
+   },
+   "feeder": {
+    "failed": 12,
+    "worked": 24
+   },
+   "native": {
+    "failed": 1,
+    "worked": 0
+   },
+   "optiscaler": {
+    "failed": 4,
+    "worked": 11
+   },
+   "remix": {
+    "failed": 2,
+    "worked": 0
+   },
+   "renodx": {
+    "failed": 1,
+    "worked": 3
+   },
+   "standalone": {
+    "failed": 1,
+    "worked": 0
+   },
+   "upstream": {
+    "failed": 2,
+    "worked": 1
+   }
+  },
+  "616.64": {
+   "feeder": {
+    "failed": 17,
+    "worked": 4
+   },
+   "native": {
+    "failed": 1,
+    "worked": 0
+   },
+   "optiscaler": {
+    "failed": 0,
+    "worked": 3
+   },
+   "standalone": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
+  "616.86": {
+   "optiscaler": {
+    "failed": 0,
+    "worked": 1
+   },
+   "standalone": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
+  "616.92": {
+   "bridge": {
+    "failed": 1,
+    "worked": 3
+   },
+   "feeder": {
+    "failed": 30,
+    "worked": 11
+   },
+   "native": {
+    "failed": 0,
+    "worked": 1
+   },
+   "optiscaler": {
+    "failed": 11,
+    "worked": 36
+   },
+   "remix": {
+    "failed": 2,
+    "worked": 0
+   },
+   "renodx": {
+    "failed": 1,
+    "worked": 2
+   },
+   "standalone": {
+    "failed": 5,
+    "worked": 8
+   },
+   "upstream": {
+    "failed": 1,
+    "worked": 12
+   }
+  },
+  "617.14": {
+   "bridge": {
+    "failed": 2,
+    "worked": 1
+   },
+   "feeder": {
+    "failed": 3,
+    "worked": 4
+   },
+   "optiscaler": {
+    "failed": 1,
+    "worked": 14
+   },
+   "renodx": {
+    "failed": 1,
+    "worked": 0
+   },
+   "standalone": {
+    "failed": 3,
+    "worked": 5
+   },
+   "upstream": {
+    "failed": 0,
+    "worked": 1
+   }
+  }
+ },
  "games": {
   "007firstlight.exe": {
    "drivers": {
@@ -280,21 +469,6 @@
     "optiscaler": {
      "failed": 0,
      "worked": 1
-    }
-   }
-  },
-  "bannerlord.exe": {
-   "drivers": {
-    "616.64": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "Mount & Blade II: Bannerlord",
-   "routes": {
-    "optiscaler": {
-     "failed": 1,
-     "worked": 0
     }
    }
   },
@@ -1425,21 +1599,6 @@
     }
    }
   },
-  "fivem.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "FiveM",
-   "routes": {
-    "feeder": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "flatout.exe": {
    "drivers": {
     "616.64": {
@@ -1978,21 +2137,6 @@
     }
    }
   },
-  "mgsvtpp.exe": {
-   "drivers": {
-    "616.56": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "METAL GEAR SOLID V: THE PHANTOM PAIN",
-   "routes": {
-    "feeder": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "mm.exe": {
    "drivers": {
     "616.92": {
@@ -2148,10 +2292,6 @@
     "581.80": {
      "failed": 0,
      "worked": 1
-    },
-    "616.64": {
-     "failed": 1,
-     "worked": 0
     }
    },
    "name": "No Man's Sky",
@@ -2159,10 +2299,6 @@
     "bridge": {
      "failed": 0,
      "worked": 1
-    },
-    "feeder": {
-     "failed": 1,
-     "worked": 0
     }
    }
   },
@@ -2272,16 +2408,11 @@
    }
   },
   "playrdr2.exe": {
-   "drivers": {
-    "617.14": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
+   "drivers": {},
    "name": "Red Dead Redemption 2",
    "routes": {
     "optiscaler": {
-     "failed": 2,
+     "failed": 1,
      "worked": 0
     }
    }
@@ -2368,8 +2499,8 @@
      "worked": 1
     },
     "616.92": {
-     "failed": 2,
-     "worked": 0
+     "failed": 1,
+     "worked": 1
     },
     "617.14": {
      "failed": 0,
@@ -2383,8 +2514,8 @@
      "worked": 2
     },
     "upstream": {
-     "failed": 1,
-     "worked": 0
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3030,21 +3161,6 @@
     }
    }
   },
-  "walkingdead.exe": {
-   "drivers": {
-    "616.92": {
-     "failed": 1,
-     "worked": 0
-    }
-   },
-   "name": "The Walking Dead Survival Instinct",
-   "routes": {
-    "feeder": {
-     "failed": 1,
-     "worked": 0
-    }
-   }
-  },
   "warframe.x64.exe": {
    "drivers": {
     "610.88": {
@@ -3211,6 +3327,6 @@
    }
   }
  },
- "generated": "2026-09-26T15:43:15Z",
- "reports": 277
+ "generated": "2026-09-26T15:46:09Z",
+ "reports": 271
 }
