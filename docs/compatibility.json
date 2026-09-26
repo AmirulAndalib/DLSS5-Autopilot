@@ -72,7 +72,7 @@
    },
    "feeder": {
     "failed": 12,
-    "worked": 24
+    "worked": 25
    },
    "native": {
     "failed": 1,
@@ -1446,6 +1446,28 @@
     "feeder": {
      "failed": 1,
      "worked": 0
+    }
+   }
+  },
+  "fatal_frame_mobw.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "feeder": {
+     "fps": 59.2,
+     "n": 1,
+     "res": 100
+    }
+   },
+   "name": "FATAL FRAME / PROJECT ZERO: Maiden of Black Water",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3327,6 +3349,6 @@
    }
   }
  },
- "generated": "2026-09-26T15:48:58Z",
- "reports": 271
+ "generated": "2026-09-26T16:06:09Z",
+ "reports": 272
 }
