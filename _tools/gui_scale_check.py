@@ -18,6 +18,8 @@ Per case (theme.set_scale(96 * k) before the window is built):
              name and status) without scrolling, and no cover runs off the
              right edge
   search     the search box is at least px(150) wide
+  header     at the window's minimum width, too: the search box keeps its
+             px(150) and 'add a game' and 'scan' stay whole beside it
   buttons    every button's label fits inside the button, on the library,
              the game page with its settings open, the video and remix pages,
              and the dlss page (some behind, all current, nothing found)
@@ -318,6 +320,26 @@ def check(sb: Sandbox, scale: float, dw: int, dh: int, what: str, out: Path | No
         for where, probs in rail_case(sb, shell, root, ww, sorted({wh, low}, reverse=True)):
             say("rail", f"{where}: " + ("; ".join(probs) if probs else "every item whole, apart, hittable"),
                 not probs)
+        # the library's header at the narrowest the window lets a person drag
+        # it: search, 'add a game' and 'scan' share one row, and every case
+        # above is a wide window
+        narrow = max(int(mw * f), 400) if mw else ww
+        root.geometry(f"{narrow}x{wh}+0+0")
+        sb.pump(root, 0.2)
+        shell.redraw()
+        sb.pump(root, 0.2)
+        page = shell.pages["library"]
+        cw_ = c.winfo_width()
+        fb = c.coords(page.field.box) if page.field else [0, 0, 0, 0]
+        heads = [(t, c.bbox(t)) for t in (page.add_btn.tag, page.scan_btn.tag)]
+        off = [lab for (t, b), lab in zip(heads, ("add a game", "scan"))
+               if not b or b[0] < fb[2] or b[2] > cw_ + 1]
+        say("header", f"{narrow} px window: search {int(fb[2] - fb[0])} px (needs {T.px(150)}), "
+            + (", ".join(off) + " not whole or over the search" if off else "add a game and scan whole"),
+            fb[2] - fb[0] >= T.px(150) and not off)
+        cut = _label_fits(c, k)
+        say("buttons", "library, narrow: " + (", ".join(cut) if cut else "all labels fit"), not cut)
+        shot("library-narrow")
         root.geometry(f"{ww}x{wh}+0+0")
         sb.pump(root, 0.2)
         for e in sb.errors:

@@ -12,7 +12,13 @@ drift apart), and writes one small aggregate:
         "routes": {"optiscaler": {"worked": 41, "failed": 6}},
         "drivers": {"616.64": {"worked": 3, "failed": 22}},
         "measured": {"optiscaler": {"n": 9, "res": 70, "ms": 6.4,
-                                    "fps": 78}}}}}
+                                    "fps": 78}}}},
+     "by_class": {"DX12/dlss": {"optiscaler": {"worked": 30, "failed": 8}}},
+     "by_driver": {"616.92": {"feeder": {"worked": 11, "failed": 32}}}}
+
+`by_class` counts results by the kind of game (graphics api, and whether
+it ships DLSS, FSR, XeSS or none of them) and `by_driver` by driver, each
+split by route: what the tool knows about a game nobody has reported yet.
 
 The `measured` rows are the middle of what people ran: the work area and
 the frame rate they played at, and what grows with the work area cost a
@@ -31,6 +37,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import sys
 import urllib.request
 from datetime import datetime, timezone
@@ -54,6 +61,7 @@ SAID_IN_WORDS = {
     257: "worked",      # "It Did Work" - DragonSword, native
     242: "worked",      # "did work but charges me to update" - No Man's Sky, bridge
     222: "worked",      # "inZOI - worked perfectly" - optiscaler
+    437: "worked",      # "It appeared to work in game" - Red Dead Redemption 2, upstream
 }
 
 
@@ -97,6 +105,24 @@ API = "https://api.github.com/repos/{repo}/issues"
 # The published file is downloaded by every copy of the tool. Anybody can
 # open an issue, so the number of games in it is bounded here too.
 MAX_GAMES = 5000
+# The two tables the recommendation reads (community.class_pick,
+# community.driver_note): the same results counted by what the tool knows
+# before an install - the class of game, and the driver - each split by
+# route, because a driver's rate across all routes is mostly its route mix.
+# Keys are checked against the shapes the tool writes; a hand-written block
+# with anything else counts for its game and not here. Bounded like MAX_GAMES.
+MAX_KEYS = 300
+APIS = {"DX8", "DX9", "DX10", "DX11", "DX12", "VULKAN", "OPENGL", "UNKNOWN"}
+UPS = {"dlss", "fsr", "xess", "none"}
+DRIVER = re.compile(r"^\d{3}\.\d{2}$")
+ROUTE = re.compile(r"^[a-z_]{2,20}$")
+
+
+def bump(table: dict, key: str, route: str, result: str) -> None:
+    if not ROUTE.match(route) or (key not in table and len(table) >= MAX_KEYS):
+        return
+    row = table.setdefault(key, {}).setdefault(route, {"worked": 0, "failed": 0})
+    row[result] += 1
 
 
 def issues(repo: str, token: str) -> list[dict]:
@@ -128,7 +154,12 @@ def main() -> int:
     repo = os.environ.get("REPO") or "Kizzuwatnaa/DLSS5-Autopilot"
     token = os.environ.get("GH_TOKEN") or ""
     games: dict[str, dict] = {}
+    by_class: dict[str, dict] = {}
+    by_driver: dict[str, dict] = {}
     seen_ms: dict[str, dict[str, list]] = {}
+    # One row per configuration for the published page: the same results,
+    # kept apart by card, driver and build instead of summed per game (#304).
+    configs: dict[tuple, dict] = {}
     seen = unseen = 0
     for issue in issues(repo, token):
         rec = parse(issue.get("body") or "")
@@ -161,6 +192,25 @@ def main() -> int:
                 continue
             row = g[bucket].setdefault(value, {"worked": 0, "failed": 0})
             row[rec["result"]] += 1
+        # Only results that say what the game ships (2.0.6 on) have a
+        # class: guessing it for the older ones would count DLSS games and
+        # games without as one kind, which is the comparison this table
+        # exists to avoid.
+        api = text(rec.get("api"), 12).upper()
+        up = text(rec.get("up"), 8).lower()
+        if api in APIS and up in UPS:
+            bump(by_class, f"{api}/{up}", route, rec["result"])
+        drv = text(rec.get("driver"), 20)
+        if DRIVER.match(drv):
+            bump(by_driver, drv, route, rec["result"])
+        key = (exe, route, text(rec.get("build"), 60), text(rec.get("api"), 12).upper(),
+               text(rec.get("sm"), 12).lower(), text(rec.get("gpu"), 40),
+               text(rec.get("driver"), 40), text(rec.get("tool"), 20))
+        row = configs.setdefault(key, {"worked": 0, "failed": 0, "last": ""})
+        row[rec["result"]] += 1
+        # The day only, from GitHub's own clock: when this configuration was
+        # last reported, not who reported it or which issue it was.
+        row["last"] = max(row["last"], text(issue.get("created_at"), 10))
         # What it cost, kept per route and only where it worked: the
         # settings of a session that failed are the settings of a failure.
         # The route is the stripped one, or a record with a trailing space
@@ -191,10 +241,19 @@ def main() -> int:
         "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "reports": seen,
         "games": dict(sorted(games.items())),
+        "by_class": dict(sorted(by_class.items())),
+        "by_driver": dict(sorted(by_driver.items())),
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(payload, indent=1, sort_keys=True) + "\n",
                    encoding="utf8")
+    page_dir = os.environ.get("PAGE_DIR")
+    if page_dir:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import compat_page
+        rows = [dict(zip(compat_page.KEYS, k), **v) for k, v in configs.items()]
+        out = compat_page.write(payload, rows, Path(page_dir))
+        print(f"{len(rows)} configurations -> {out}")
     print(f"{seen} results across {len(games)} games -> {OUT}"
           f" ({unseen} left out: the tool could not see their outcome)")
     return 0

@@ -104,7 +104,7 @@ current version of every part each time it runs.
 
 1. Run `dlss5-autopilot.exe` and press **find my games**. It reads Steam, Epic, GOG, EA, Ubisoft,
    Battle.net, Rockstar, Amazon, itch, Heroic, Xbox/Game Pass, `D:\Games\*`
-   folders and 19 emulators. Anything else: **choose a folder**. With **read the
+   folders and 19 emulators. Anything else: **add a game** beside **scan**, then pick the folder its .exe is in. With **read the
    library when the tool opens** on (the **view** menu) - the default - later runs open straight on that
    library; **scan** → **rescan** picks up games installed or removed since the last scan, and
    **full rescan** reads every launcher, game folder and emulator location
@@ -172,7 +172,7 @@ OpenGL); the choice is remembered for that folder.
 | **renodx-dlss** | ShortFuse's add-on hooks D3D9/11/12 in-process; no bridge, no shaders | 64-bit DirectX 9 (nothing else reaches it); reported failing in many other games | the game's DLSS mode |
 | **remix** | the game has an **RTX Remix** mod; DLSS 5 runs inside the Remix runtime, after its upscaler. Nothing injected | any game with a `.trex` folder beside it | Remix's Neural Uplift sliders |
 
-**Three things that override the diagram.** A Remix mod present means
+**Four things that override the diagram.** A Remix mod present means
 *remix*, always - ReShade crashes a Remix game before it draws.
 
 On NVIDIA driver 616.64 and newer, the native, bridge and feeder routes
@@ -189,6 +189,12 @@ reaches the same runtime through ShortFuse's own add-on, which has no such
 pin and no report either way on these drivers. Rolling the driver back to
 616.56 is the other answer.
 
+Shared results move the recommendation too, for a game with fewer than
+five results of its own: once two offered routes each have 20 results
+from games with the same graphics API and the same DLSS, FSR, XeSS or
+none, and their ranges do not overlap. The reason is printed in the log
+when the game's page opens.
+
 And an online game with anti-cheat (BattlEye, EAC, Vanguard, EA Javelin, HoYoverse, GameGuard,
 XIGNCODE3, Denuvo Anti-Cheat, PunkBuster, FACEIT, Ricochet, ACE) is marked
 in the library and asks for confirmation before an install: ReShade add-ons and
@@ -197,7 +203,7 @@ install anyway.
 
 ### Frame generation
 
-Two switches, both off by default:
+Three options, all off by default:
 
 - **Frame generation, any RTX card** (optiscaler route, D3D12). OptiScaler
   ships AMD's FSR 3.1 frame-generation libraries; the tool turns them on
@@ -214,9 +220,18 @@ Two switches, both off by default:
   only when `nvngx_dlssg.dll` or `sl.dlss_g.dll` is in the folder. Research
   software: higher multipliers and Vulkan can freeze or crash. The
   multiplier is chosen in ReShade's **DLSS MFG** tab.
+- **Frame generation files you downloaded** (optiscaler route, D3D12).
+  For DLSS Frame Generation on RTX 30 (dlssg_for_sm86) or RTX 20/30 (DLSS
+  Enabler) through a project this tool cannot download - **frame
+  generation files** -> **add your own...** takes the `version.dll` you
+  downloaded (for dlssg_for_sm86, with its `dlssg_sm86.ini` beside it).
+  The install places them beside the game and records them, OptiScaler
+  never takes the name those files need, and uninstall takes them out
+  again. The tool only uses the copy you give it.
+  Not run in a game here; experimental.
 
 The first works in any D3D12 game on the optiscaler route; the second only
-raises a multiplier the game already has. NVIDIA's own multi-frame
+raises a multiplier the game already has; the third uses files you bring. NVIDIA's own multi-frame
 generation stays an RTX 50 feature.
 
 ## Keeping a game's DLSS up to date
@@ -365,7 +380,7 @@ matters.
 - **profile**: save the dials under a name; Quality / Balanced /
   Performance are built in.
 - **read the library when the tool opens** (the library's **view** menu): off means no scan at all -
-  *rescan* and *choose a folder* still work. The scan never walks a whole
+  *rescan* and *add a game* still work. The scan never walks a whole
   disk (launcher registries, `XboxGames`, folders named Games and the
   like, emulator locations) and skips removable drives. What it finds is
   kept in `%LOCALAPPDATA%\dlss5-autopilot\library.json`, so later launches
@@ -540,6 +555,21 @@ as an experiment; a report of what happens, either way, is what it needs.
 </details>
 
 <details>
+<summary>Laptops: the game has to draw on the NVIDIA card</summary>
+
+On a machine with an NVIDIA card and a second GPU - a laptop, or a desktop
+with the processor's graphics switched on - Windows picks the GPU per
+program, and DLSS 5 only exists on the NVIDIA one. The install sets Windows'
+graphics setting (Settings > System > Display > Graphics) to High performance for the
+game and, on 32-bit feeder installs, for the helper in `host64`. A choice
+already made there is left alone, and uninstall takes the setting back out
+while it still says High performance. Turning **use the NVIDIA card (Windows
+setting)** off in the game's settings, or `--no-gpu-pref`, skips it, and
+an install with it off takes back out a setting an earlier install made. Not verified
+on a laptop here.
+</details>
+
+<details>
 <summary>Driver 616.64 or newer: everything loads, nothing changes</summary>
 
 NVIDIA's DLSS 5 launch drivers route the neural feature into the runtime
@@ -612,7 +642,7 @@ antivirus or VPN inside the HTTPS connection; turn that off for the tool.
 Not every launcher is in the registry, and an executable locked at scan
 time (antivirus, an updater, OneDrive placeholders) cannot be read.
 **open the log file** (the **help** menu) shows what each store returned;
-**choose a folder** always works. Xbox/Game Pass: some games protect only the executable and let files
+**add a game** (beside **scan**) always works. Xbox/Game Pass: some games protect only the executable and let files
 beside it be written. For those, choose **architecture** in the game's
 settings and check **graphics api** there (both are remembered for that
 folder). Where Windows refuses writes into the folder itself, only games
@@ -639,7 +669,7 @@ when Windows recorded one, the faulting module of the crash. Nothing is sent
 by itself - you see it in the browser and decide.
 
 **share the result** does the same for the compatibility list: the game's
-name and executable, the route and build, the graphics API, the card and
+name and executable, the route and build, the graphics API, whether the game ships DLSS, FSR or XeSS, the card and
 driver, this tool's version, whether it worked, the one-line verdict the
 diagnosis reached, and - where the session was measured - the work area it
 ran at, the milliseconds a frame spent on what grows with that area, and
@@ -652,6 +682,9 @@ five results, the next person with it is told which route worked most often,
 and whether the one they picked did worse. The issue is closed as soon as it
 is read - it is a record, not a bug report - and still counts.
 
+Every shared result, by game, card, driver and build:
+[the compatibility list](https://kizzuwatnaa.github.io/DLSS5-Autopilot/) (also in the tool's **help** menu).
+
 ## Command line
 
 ```
@@ -662,6 +695,7 @@ dlss5-autopilot.exe "D:\Games\Game" --route feeder  native, upstream, optiscaler
 dlss5-autopilot.exe "D:\Games\Game" --route remix --remix-swap   replace a Remix runtime that has no neural pass
 dlss5-autopilot.exe "D:\Games\Game" --dxvk          run the game on Vulkan through DXVK (--no-dxvk turns the automatic choice off)
 dlss5-autopilot.exe "D:\Games\Game" --vr            register ReShade's OpenXR layer as well (VR, OpenXR games; unverified with a headset)
+dlss5-autopilot.exe "D:\Games\Game" --no-gpu-pref   leave Windows' graphics setting alone (two-GPU machines)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build y4my4my4m   another OptiScaler build than Dagherbou's (untested)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2     ...the neural pass before the upscaler, 1-3 passes (untested)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2-mfg   ...the same with RTX 40 multi-frame generation (RTX 40 only, untested)

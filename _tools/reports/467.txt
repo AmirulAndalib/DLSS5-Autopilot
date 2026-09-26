@@ -1,0 +1,51 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+black screen it started
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 4080 SUPER (sm_89), driver 617.14
+- game: Call of Duty 2
+- exe: CoD2MP_s.exe
+- arch/api: 32-bit / DX9 (loads d3d9.dll at run time (gfx_d3d_mp_x86_s.dll beside the exe imports it); no static graphics import)
+- route: feeder
+- compatibility flags: HIGHDPIAWARE (per user)
+
+**Diagnosis**: The feed crashed after starting - a feeder bug; try another feeder build.
+- [ok] The add-on loaded - it wrote its own log in the session this report reads.
+- [bad] The feed recorded a crash (0xC00000FD) while nothing yet -- no feed work has run in this process (later faults in this process are not recorded).
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 24 Sep 09:05)
+- process: CoD2SP_s.exe
+- DLLs in the process: 140
+- ours, loaded: d3d9.dll, dlss5-feed.addon32
+
+**ReShade.log**
+```
+09:06:19:689 [23184] | WARN  | No add-on was registered by 'E:\Program Files (x86)\Steam\steamapps\common\Call of Duty 2\.\dlss5-feed.addon32'. Unloading again ...
+```
+
+**dlss5-feed.log**
+```
+09:06:17.580  dlss5-feed32 0.15.1 (built Sep  9 2026 07:48:17) attached.
+09:06:17.580    host game: E:\Program Files (x86)\Steam\steamapps\common\Call of Duty 2\CoD2SP_s.exe
+09:06:17.580  [feed32] config: enabled=1 mode=2 hdr=-1 depth_inverted=-1 flags=-1 reset_every=0 log_frames=3 host_window=1 host_gpu_priority=0 work_resolution=100% work_upscale=0 work_sharpness=0.30 a
+09:06:17.580  [feed32] Deep Fried Chicken: not present in host64\
+09:06:17.581  [feed32] OptiScaler: not present in host64\
+09:06:17.628  [feed] vkCreateDevice hook installed on vulkan-1!vkCreateDevice (72A3CCB0): the KHR external-interop extensions will be appended to every device this game creates
+09:06:17.649  [feed] vkQueuePresentKHR hook installed (72A39760): counting presents against frames fed, to detect an external frame pacer (Smooth Motion is invisible to a module check on Vulkan)
+09:06:21.156  ### CRASH RECORDED ###  exception 0xC00000FD at 0A640827 in C:\WINDOWS\System32\DriverStore\FileRepository\nvmdi.inf_amd64_3990df11758b8744\nvoglv32.dll; this add-on was last doing: noth
+09:06:21.482  [feed32] crash dump written: E:\Program Files (x86)\Steam\steamapps\common\Call of Duty 2\dlss5-feed-crash.dmp -- attach it to the issue with this log
+```

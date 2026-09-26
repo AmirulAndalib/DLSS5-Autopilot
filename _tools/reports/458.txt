@@ -1,0 +1,53 @@
+**Did the game start?** it started and ran
+
+**What happened**
+NR works in Mass Effect Andromeda, but enabling the required reduced-resolution swapchain causes heavy stuttering/flickering, like two presentation layers are conflicting.
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 617.14
+- game: Mass Effect Andromeda
+- exe: MassEffectAndromeda.exe
+- arch/api: 64-bit / DX12 (imports d3d11.dll, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: standalone
+- starts as administrator: RUNASADMIN HIGHDPIAWARE (per user)
+
+**Diagnosis**: Working.
+- [ok] ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0
+- [warn] Running on zero-motion guides - expect ghosting.
+- [ok] Frames are going through the pipeline (10 logged, last was frame 3600).
+- [info] Active contract: NR=feature 18 active passes=1 requested=1 at 2560x1440, DLAA (DLAA preset L) -> 2560x1440, DLSS-G=fallback-off, model=1 style=0, profile=sRGB
+
+**Files in the folder**
+- dxgi.dll: present
+- standalone-dlssnr.addon64: present
+- nvngx.dll: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_AIO_Feed.fx: present
+- reshade-shaders/Shaders/vort_Motion.fx: present
+
+**ReShade.log**
+```
+23:10:00:154 [10544] | INFO  | Registered add-on "Standalone DLSS-NR + SR 2.2.4" v0.0.0.0 using ReShade API version 20.
+23:10:00:404 [10544] | WARN  | IDirectInput8W::CreateDevice failed with error code E_FAIL.
+23:10:00:697 [10544] | INFO  | Redirecting IDXGIFactory::CreateSwapChain(this = 000000002E778170, pDevice = 00000000D021F070, pDesc = 000000002A42F2B0, ppSwapChain = 0000000038770728) ...
+23:10:23:078 [17884] | INFO  | Redirecting IDXGIFactory2::CreateSwapChainForComposition(this = 000000025BB23F70, pDevice = 00000000E5B61F10, pDesc = 0000000032A2E6C8, pRestrictToOutput = 0000000000000
+23:13:49:397 [10544] | WARN  | Reference count for ID3D11Device1 object 00000000D021F070 (0000000039DD6F50) is inconsistent (28).
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**standalone-dlssnr.log**
+```
+...
+23:13:46.123 performance phase-scheduled FG: active=0 api=D3D11 common-post-capture=1 submissions=3049 outstanding=0 dispatcher-waits=9027 common-deferrals=0 completed-in-window=3049 queue-pressure-by
+23:13:46.123 performance adaptive governor: enabled=1 active=0 target=0 real_FPS pacing_wait=10.925ms waits=957 pressure=0ms healthy=0ms
+23:13:46.123 presentation compatibility: host=detached window_virtualization=inactive logical_client=disabled input_coordinates=native-client render=1280x720 output=2560x1440 resolution_intents=0 WM_S
+23:13:47.350 primary runtime teardown quiesced proxy presentation before backbuffer destruction: worker_state=0
+23:13:49.397 game legacy graphics device is being destroyed; standalone session ending
+23:13:49.614 startup recovery marker cleared: clean process shutdown
+```

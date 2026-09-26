@@ -47,21 +47,40 @@ HOOKS = HERE / "hooks"
 # The shape of an answer, not its words. Ordered: the first that matches
 # names the class, so the specific ones come before the vague ones.
 CLASSES = (
+    # Something that is not ours sits in front of our file or beside our
+    # hook: another DLSS hook (#250, #439), ReShade's own d3d9.dll found
+    # before DXVK's (#348).
+    ("something else stands in front of ours or beside it",
+     ("another dlss hook", "in front of dxvk", "older bridge add-on")),
     ("nothing we wrote ever loaded",
      ("not started since the install", "closed during start-up",
       "nothing this install wrote was loaded", "never loaded",
       "is not in the game folder",
       # #328: the game took d3d9.dll from System32, ours was never reached
-      "ours is never reached")),
+      "ours is never reached",
+      # #403, #238, #367, #400, #11, #191: ran and loaded nothing of ours,
+      # the Vulkan layer never reached it, or it went beside a launcher
+      "loaded nothing from this folder", "no log was written",
+      "vulkan layer is not registered", "dxvk ran and reshade did not",
+      "beside a launcher")),
+    # The game draws in a way the route cannot use: it refused the swap
+    # chain (#58, #89), made no DLSS call (#390), drew with Direct3D 9 on a
+    # D3D11/12 install (#479), or Remix never tried the pass (#211).
+    ("the game does not draw the way the route needs",
+     ("refused", "no d3d12 dlss call", "never called dlss",
+      "direct3d 9 device", "never even attempted")),
     ("upstream: the driver's NGX runtime faults",
      ("driver 616.64", "faults inside", "no dlss 5 entry point")),
     # The person said the game closed itself or never started, and the
     # logs could not say why: the answer is what to take out first (#412).
     # Before "cannot tell" and the overlay ask, which it replaces.
     ("they say it closed or never started - we name what to take out",
-     ("closed itself", "never started with this install")),
+     ("closed itself", "never started with this install",
+      "windows recorded the game faulting")),
     ("we cannot tell from the logs",
-     ("inconclusive", "did not get far enough")),
+     ("inconclusive", "did not get far enough",
+      # #252: frames went to the 64-bit helper and its log was not there
+      "only its own log says")),
     ("we ask the person to look in the overlay",
      # "...and the switch is on. This route logs no frames, so the panel is
      # the only live picture" (#287, #352) is the same ask in other words
@@ -73,7 +92,11 @@ CLASSES = (
     # person pointed at a folder we never installed into.
     ("the install stopped part way",
      ("install never finished", "install stopped for a reason",
-      "drive was full", "uninstall left files")),
+      "drive was full", "uninstall left files",
+      # 2.0.6: the connection verdicts (#434, #438) - "The install
+      # stopped: Windows blocked the download ...", and the crash rule's
+      # own "The install crashed before it finished" (#213 once had it)
+      "the install stopped:", "install crashed before it finished")),
     ("we were never installed in that folder",
      ("nothing is installed in this folder", "no install record here")),
     ("the install is incomplete on disk",

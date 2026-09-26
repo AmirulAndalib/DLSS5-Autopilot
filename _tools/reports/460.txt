@@ -1,0 +1,48 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+OptiScaler won't launch with Gears of War: Reloaded, even after completely disabling or purging Easy Anti-Cheat.
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 617.14
+- game: Gears of War Reloaded 2025
+- exe: GOWDE-Steam.exe
+- arch/api: 64-bit / DX12 (no graphics DLL imported statically, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: optiscaler
+- work area: 75%
+- windows event: GOWDE-Steam.exe faulted in GOWDE-Steam.exe 0xC0000005 at 2026-09-23 22:03:22 UTC
+- starts as administrator: RUNASADMIN (per user)
+
+**Diagnosis**: Neural rendering never ran - the game's own upscaler has to be on for this route.
+- [bad] Neural rendering was switched on, but the model never drew a frame.
+- [info] OptiScaler runs the model around the game's own upscaler. Turn DLSS (or FSR 2 or later, or XeSS) on in the game's graphics menu - FSR 1.0 does not count, it makes no call OptiScaler can take over. With no upscaler running there is nothing for neural rendering to attach to, which is what the overlay means by 'waiting for the upscaler to run'. If the game has no upscaler at all, use the feeder route.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- optiscaler build: wilsjo2 (v0.8.91)
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[00:02:56.828617] [I] OptiInput::InstallHooks Win32 position input hooks installed
+[00:02:56.828623] [I] OptiInput::Initialize Initialize completed hooksInstalled:1 target:0x2104b2 targetPid:15664 input:0x2104b2 inputPid:15664 externalTarget:0 subclassed:1
+[00:02:56.828716] [I] OptiInput::UpdateXInputIntegration XInput hooks installed module:0x7ffd85b50000 getState:1 getStateEx:1 getKeystroke:1 setState:1
+[00:02:56.828773] [I] OptiInput::`anonymous-namespace'::InstallDirectInputExportHook DirectInput8Create hook installed module:0x7ffd85930000
+[00:02:56.828790] [I] MenuHdrCheck Output HDR: false, UI Mode: SDR
+[00:02:56.835107] [I] CreateRenderTargetDx12 done!
+[00:02:56.952262] [I] CreateRenderTargetDx12 done!
+[00:02:57.734068] [I] hkD3D12CreateDevice Adapter Desc: NVIDIA GeForce RTX 5080
+[00:03:02.997443] [I] LibraryLoadHooks::LoadLibraryCheckW nvapi64.dll call!
+```

@@ -154,6 +154,15 @@ def answers(only: str = "") -> dict:
     return out
 
 
+def _printed_for(n: str) -> str:
+    """The verdict report `n` says the tool printed, or ""."""
+    for p in (REPORTS / f"{n}.txt", REPORTS / f"{n.zfill(3)}.txt"):
+        if p.is_file():
+            return printed_verdict(p.read_text(encoding="utf8", errors="replace")
+                                   .replace("\r\n", "\n"))
+    return ""
+
+
 def _diff(old: dict, new: dict) -> list[str]:
     """Every report whose answer moved, said in one place."""
     lines: list[str] = []
@@ -163,6 +172,15 @@ def _diff(old: dict, new: dict) -> list[str]:
             continue
         if a is None:
             lines.append(f"  NEW  #{n}: {b.get('verdict', b)}")
+            # A new report is the one moment its replay can be held against
+            # the machine it came from while nothing else has moved: #458's
+            # machine said "Working." and its replay "Inconclusive", because
+            # the report carried only the log's tail - and it went by as NEW.
+            said = _printed_for(n)
+            if said and said != b.get("verdict"):
+                lines.append(f"       !! the machine printed: {said}")
+                lines.append("          a rule changed since, or the report does "
+                             "not carry what decided it")
             continue
         if b is None:
             lines.append(f"  GONE #{n}")

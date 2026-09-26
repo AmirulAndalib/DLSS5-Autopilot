@@ -1,0 +1,44 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+wilsjo2's fork crashes to desktop as soon as I enable any upscaler in the in-game menu
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 616.56
+- game: Uncharted 4 Legacy of Thieves Collection
+- exe: u4.exe
+- arch/api: 64-bit / DX12 (imports d3d12.dll statically)
+- route: optiscaler
+- work area: 100%
+- starts as administrator: RUNASADMIN (per user)
+
+**Diagnosis**: The game closed itself and nothing here recorded why - see below for what to take out first.
+- [bad] You said the game closed itself.
+- [warn] OptiScaler mentions neural rendering but never reports it running.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 2.4.12 kept beside it)
+- optiscaler build: wilsjo2 (v0.8.91)
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[01:01:04.168050] [I] DlssNr::NgxDiagnostics::`anonymous-namespace'::FileReport NR diagnostic driver dispatcher: C:\WINDOWS\System32\DriverStore\FileRepository\nv_dispi.inf_amd64_a3944b54ff18b284\_nvn
+[01:01:04.168059] [I] DlssNr::NgxDiagnostics::RuntimeReport NR diagnostic NGX search path: C:\Games\Uncharted 4 Legacy of Thieves Collection\OptiScaler
+[01:01:04.168065] [I] DlssNr::NgxDiagnostics::RuntimeReport NR diagnostic NGX search path: C:\Games\Uncharted 4 Legacy of Thieves Collection\
+[01:01:04.168070] [I] DlssNr::NgxDiagnostics::RuntimeReport NR diagnostic NGX search path: C:\Games\Uncharted 4 Legacy of Thieves Collection
+[01:01:04.168091] [I] DlssNr::NgxDiagnostics::`anonymous-namespace'::FileReport NR diagnostic runtime candidate: C:\Games\Uncharted 4 Legacy of Thieves Collection\OptiScaler\nvngx_dlssnr.dll [not foun
+```

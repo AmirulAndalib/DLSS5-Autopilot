@@ -1,0 +1,97 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+=== diagnosis :: log 25 Sep 00:51 ===
+> Working.
+[ok]   ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+[ok]   DLSS5_Feed.fx loaded and its textures were found.
+[ok]   Motion vectors: LumeniteFX Kernel is enabled.
+[ok]   The 32-bit helper process started.
+[ok]   The game and the helper are talking.
+[--]   On 32-bit the DLSS 5 page in the game's overlay drives the 64-bit helper; the helper's own window is there too, but do not alt-tab to it while playing - that minimizes the game and tears the feature down.
+[ok]   NGX initialised successfully.
+[ok]   The driver reports DLSS as available.
+[ok]   Frames are being processed (6 logged, last was frame 3).
+
+=== what Windows recorded ===
+[fail] Windows recorded GettingUp.exe faulting in F:\SteamLibrary\steamapps\common\Marc Ecko's Getting Up 2\_Bin\GettingUp.exe (no code).
+        That module is neither the game's executable nor anything this tool installs, at 2026-09-24 21:51:18 UTC - an overlay, a driver component or another mod. Close overlays (RivaTuner, Discord, GeForce Experience) and try again; if it persists, that module is the one to chase.
+
+> It ran, and then the game crashed - Windows recorded the fault in F:\SteamLibrary\steamapps\common\Marc Ecko's Getting Up 2\_Bin\GettingUp.exe.
+
+> the neural pass did run, so the install is right - but Windows recorded this game faulting afterwards, and a session that ends in a crash is not a working one.
+> the test that splits it in two: uninstall (the game's own files go back) and play the same spot again. Still crashes = the game or another mod, and this was never it. Survives = it is what we installed - say so in an issue with this report, and the module Windows named above says whose it is.
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 617.14
+- game: Marc Eckō's Getting Up: Contents Under Pressure
+- exe: GettingUp.exe
+- arch/api: 32-bit / DX9 (set by hand (detected DX8))
+- route: feeder
+- windows event: GettingUp.exe faulted in F:\SteamLibrary\steamapps\common\Marc Ecko's Getting Up 2\_Bin\GettingUp.exe  at 2026-09-24 21:51:18 UTC
+- compatibility flags: HIGHDPIAWARE (per user)
+- this tool: running as administrator
+
+**Diagnosis**: It ran, and then the game crashed - Windows recorded the fault in F:\SteamLibrary\steamapps\common\Marc Ecko's Getting Up 2\_Bin\GettingUp.exe.
+- [ok] ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+- [ok] DLSS5_Feed.fx loaded and its textures were found.
+- [ok] Motion vectors: LumeniteFX Kernel is enabled.
+- [ok] The 32-bit helper process started.
+- [ok] The game and the helper are talking.
+- [info] On 32-bit the DLSS 5 page in the game's overlay drives the 64-bit helper; the helper's own window is there too, but do not alt-tab to it while playing - that minimizes the game and tears the feature down.
+- [ok] NGX initialised successfully.
+- [ok] The driver reports DLSS as available.
+- [ok] Frames are being processed (6 logged, last was frame 3).
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+- GettingUp_d3d9.log: present (written since the install)
+
+**What ran, and what it loaded** (seen at 25 Sep 00:51)
+- process: GettingUp.exe
+- DLLs in the process: 148
+- ours, loaded: d3d9.dll, dlss5-feed.addon32
+
+**ReShade.log**
+```
+00:50:58:031 [ 7228] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+00:50:58:674 [16452] | WARN  | Ignoring LoadLibrary('api-ms-win-core-synch-l1-2-0') call to avoid possible deadlock.
+```
+
+**dlss5-feed.log**
+```
+...
+00:51:02.105  [feed32] building: 2560x1440 backbuffer B8G8R8A8_TYPELESS (Vulkan, depth reversed=1, mode=2) -- handed to the host, the game keeps rendering
+00:51:02.971  [feed32] the host answered the build in 844 ms
+00:51:02.972  [feed32] D3D12 fence -> Vulkan timeline semaphore import: in=OK out=OK
+00:51:02.972  [feed32] cast: host panel texture imported (Vulkan, 900x1352)
+00:51:02.972  [feed32] copy home: raw vkCmdCopyImage (output B8G8R8A8_UNORM -> backbuffer B8G8R8A8_TYPELESS)
+00:51:02.972  [feed32] shared set ready (Vulkan): 2560x1440 color B8G8R8A8_UNORM output B8G8R8A8_UNORM (host ngx 0x00000001, DLSS)
+00:51:03.004  [feed32] frame 1 delivered (2560x1440, reset=0, Vulkan)
+00:51:03.038  [feed32] frame 2 delivered (2560x1440, reset=0, Vulkan)
+00:51:03.071  [feed32] frame 3 delivered (2560x1440, reset=0, Vulkan)
+00:51:03.654  [feed] present probe rebased: the feed was paused for 578 ms and the game kept presenting; those presents are not surplus
+00:51:07.042  [feed] present probe: 0 presents / 116 frames fed since the last rebase (0.00x), last swapchain image index 0
+00:51:11.046  [feed] present probe: 0 presents / 236 frames fed since the last rebase (0.00x), last swapchain image index 0
+00:51:15.050  [feed] present probe: 0 presents / 356 frames fed since the last rebase (0.00x), last swapchain image index 0
+```
+
+**dlss5-feed-host.log**
+```
+00:50:59.288  [host] DLSS 5 add-on file: renodx-dlss5.addon64
+00:50:59.294  [host] DLSS 5 add-on: v0.2026.828.517 (file version 0.2026.828.517) -- v4.6 (lazy adoption, global hotkeys, upscaling latch) engine
+00:50:59.295  [host] NeuralUplift was unset; wrote NeuralUplift=1 into the host's ReShade.ini (neural rendering on)
+00:51:02.062  [host] NVSDK_NGX_D3D12_Init -> 0x00000001 (Success)
+00:51:02.948  [host] feature ready: 2560x1440 DLAA flags=74
+00:51:02.989  [host] frame 1 evaluated (0 presents skipped so far, 0 owed)
+00:51:03.013  [host] frame 2 evaluated (0 presents skipped so far, 0 owed, DLSS GPU 0.19 ms/frame)
+00:51:03.520  [host] frame 3 evaluated (0 presents skipped so far, 0 owed, DLSS GPU 0.62 ms/frame) | pace: 24.27

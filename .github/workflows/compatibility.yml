@@ -19,6 +19,12 @@
 # in the first four hours of 1.8.0. Closed results are still counted: the
 # build below reads state=all. Nothing else is written, and only issues
 # whose body parses as a record are touched.
+#
+# The same run also writes the list as a page people can search, one row
+# per card, driver and build (#304), and publishes it with GitHub Pages
+# (Settings > Pages > Source: GitHub Actions). The page is built in the
+# runner and never committed; until Pages is switched on the publish step
+# fails on its own and the list is still rebuilt.
 name: compatibility
 
 on:
@@ -89,7 +95,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
+          PAGE_DIR: _site
         run: python .github/scripts/compatibility.py
+
+      - name: Hand the page to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
 
       - name: Commit the file if it changed
         run: |
@@ -102,3 +114,23 @@ jobs:
           git add docs/compatibility.json
           git commit -m "compatibility: rebuild from the shared results"
           git push
+
+  pages:
+    needs: build
+    runs-on: ubuntu-latest
+    # Pages is switched on by the repository owner, not by this file. Until
+    # then this job fails, and it must not turn every result's run red.
+    continue-on-error: true
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - name: Publish the page
+        id: deployment
+        uses: actions/deploy-pages@v4

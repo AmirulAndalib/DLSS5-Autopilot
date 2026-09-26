@@ -1,0 +1,76 @@
+**Did the game start?** it started and ran
+
+**What happened**
+=== diagnosis :: log 25 Sep 00:25 ===
+> Inconclusive - the feed did not get far enough to tell.
+[ok]   ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+[!!]   ReShade attached to a Direct3D 9 device, not DXGI.
+        The app renders with D3D9 here (a video player on the EVR renderer, or a game that links D3D11 but draws with D3D9); the feed needs D3D11/12. Either switch the game or player to D3D11/12, or set 'graphics api' to DirectX 9 in the game's settings and install again - the game then goes through DXVK like any DirectX 9 title.
+[fail] ReShade failed to compile: DLSS5_Feed.fx
+[ok]   Motion vectors: LumeniteFX Kernel is enabled.
+
+> stuck? 'report a bug' is under help - the diagnosis above and the log tail go into the report, you post it.
+
+=== what other people found ===
+> On driver 617.14, 16 of 22 shared results worked.
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 617.14
+- game: Life is Strange™
+- exe: LifeIsStrange.exe
+- arch/api: 32-bit / DX11 (loads d3d11.dll at run time (named in the exe); no static graphics import)
+- route: feeder
+- this tool: running as administrator
+
+**Diagnosis**: Inconclusive - the feed did not get far enough to tell.
+- [ok] ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+- [warn] ReShade attached to a Direct3D 9 device, not DXGI.
+- [bad] ReShade failed to compile: DLSS5_Feed.fx
+- [ok] Motion vectors: LumeniteFX Kernel is enabled.
+
+**Files in the folder**
+- dxgi.dll: present
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- DLSS 5 add-on switch: NeuralUplift=1
+
+**What ran, and what it loaded** (seen at 25 Sep 00:25)
+- process: LifeIsStrange.exe
+- DLLs in the process: 160
+- ours, loaded: DXGI.dll, dlss5-feed.addon32
+
+**ReShade.log**
+```
+00:25:33:529 [20176] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+00:25:33:870 [20176] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+00:25:34:040 [20176] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+00:25:34:111 [20176] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+00:25:34:117 [20176] | WARN  | Skipping device because it uses the Microsoft Basic Render Driver.
+00:25:34:156 [20176] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...
+00:25:36:285 [20176] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+00:25:37:411 [ 7764] | ERROR | Failed to compile 'F:\SteamLibrary\steamapps\common\Life Is Strange\Binaries\Win32\reshade-shaders\Shaders\DLSS5_Feed.fx':
+00:25:46:728 [20256] | WARN  | Successfully compiled 'F:\SteamLibrary\steamapps\common\Life Is Strange\Binaries\Win32\reshade-shaders\Shaders\lumenite_Kernel.fx' in 9.318001 s with warnings:
+00:25:46:728 [20176] | WARN  | Preset 'F:\SteamLibrary\steamapps\common\Life Is Strange\Binaries\Win32\ReShadePreset.ini' uses unknown technique 'DLSS5_Feed@DLSS5_Feed.fx'.
+00:25:47:816 [20176] | WARN  | Reference count for IDirect3DDevice9 object 1950B9B8 (1944EBA0) is inconsistent (84).
+00:25:48:577 [20176] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+...
+00:25:36.285    host game: F:\SteamLibrary\steamapps\common\Life Is Strange\Binaries\Win32\LifeIsStrange.exe
+00:25:36.286  [feed32] config: enabled=1 mode=2 hdr=-1 depth_inverted=-1 flags=-1 reset_every=0 log_frames=3 host_window=1 host_gpu_priority=0 work_resolution=100% work_upscale=0 work_sharpness=0.30 a
+00:25:36.286  [feed32] Deep Fried Chicken: not present in host64\
+00:25:36.286  [feed32] OptiScaler: not present in host64\
+00:25:36.641  [feed32] effect runtime 1950BBE8 initialised (device 1944EBA0, window class 'LaunchUnrealUWindowsClient'; 1 runtime in this process)
+00:25:36.642  [feed32] host DLSS 5 settings loaded into the overlay page: NeuralUplift=1(default) NREnableUpscaling=0(default) NRPreset=0(default) NRStyle=0(default) NRIntensity=1(default) NRGlobalTon
+00:25:36.642  [feed32] effects: technique MISSING, DLSS5_MV MISSING, DLSS5_Depth MISSING, DLSS5_MV_PROVIDER=3 (LumeniteFX Kernel) -> none (not installed), depth reversed=1
+00:25:46.730  [feed32] effects: technique MISSING, DLSS5_MV MISSING, DLSS5_Depth MISSING, DLSS5_MV_PROVIDER=3 (LumeniteFX Kernel) -> Lumenite_Kernel (enabled), depth reversed=1
+00:25:47.815  [feed32] effect runtime 1950BBE8 destroyed -- it was the bound one (0 runtimes left)
+00:25:47.816  shut down cleanly.
+```

@@ -17,6 +17,13 @@ except Exception:
     pass
 
 from core import games, installer, net, pe, prefs, reshade_ini, feedcfg, gpu
+# Installs here run for real and this machine may have two GPUs: Windows'
+# graphics preference goes to a dict, never the machine's own HKCU.
+from core import gpupref as _gpupref  # noqa: E402
+_gpupref.backend = _gpupref.Memory()
+# ...and runs as a one-GPU machine, whatever this one has: a check that
+# needs two GPUs says so itself.
+_gpupref.other_gpu = lambda: ""
 
 # --- simulate a clean machine --------------------------------
 TMP_CACHE = Path(tempfile.mkdtemp(prefix="sifir_cache_"))

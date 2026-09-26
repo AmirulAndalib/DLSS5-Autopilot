@@ -370,12 +370,12 @@
  },
  "213": {
   "findings": [
-   "bad: The install stopped with an error before it wrote anything."
+   "bad: The install stopped with an error, and nothing of it is in this folder."
   ],
   "never_ran": false,
   "ran": false,
   "route": "",
-  "verdict": "The install crashed before it finished - install again."
+  "verdict": "The install stopped: this PC could not look up the download server - check the connection, then install again."
  },
  "215": {
   "findings": [
@@ -508,12 +508,12 @@
  },
  "26": {
   "findings": [
-   "bad: The install did not finish."
+   "bad: The install did not finish: the download could not get through."
   ],
   "never_ran": false,
   "ran": false,
   "route": "feeder",
-  "verdict": "The install never finished - install again."
+  "verdict": "The install stopped: the download server did not answer in time - try again later or from another network."
  },
  "27": {
   "findings": [
@@ -820,12 +820,12 @@
   "findings": [
    "ok: ReShade loaded add-on: DLSS5 NR Pre-Upscale 0.0.0.0",
    "ok: The add-on hooked the game's DLSS call (4 entry points).",
-   "bad: Switched on and hooked, but the game never called DLSS."
+   "bad: Switched on and hooked, but the game made no D3D12 DLSS call."
   ],
   "never_ran": false,
   "ran": true,
   "route": "upstream",
-  "verdict": "The game never called DLSS - turn it on in the game's own settings, or use the optiscaler route."
+  "verdict": "The game made no D3D12 DLSS call - turn DLSS on in the game's own settings, or use the optiscaler route."
  },
  "40": {
   "findings": [
@@ -911,6 +911,35 @@
   "route": "",
   "verdict": "Nothing is installed in this folder - install first."
  },
+ "434": {
+  "findings": [
+   "bad: The install did not finish: the download could not get through."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "The install stopped: Windows blocked the download - allow this tool through the firewall, then install again."
+ },
+ "438": {
+  "findings": [
+   "bad: The install stopped with an error, and nothing of it is in this folder."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "",
+  "verdict": "The install stopped: the download kept being cut off - try another network or turn off the VPN/proxy, then install again."
+ },
+ "439": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Feed 0.15.1 0.15.1.0",
+   "ok: ReShade loaded add-on: DLSS 5 DX11 Bridge 1.0.27 1.0.27.0",
+   "bad: Both the feeder and the bridge add-on are loaded."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "An older bridge add-on was loaded beside ours (DLSS 5 DX11 Bridge 1.0.27, dlss5-dx11-bridge.addon64) - install again and it is moved aside."
+ },
  "44": {
   "findings": [
    "warn: The game has not been started since the install.",
@@ -939,6 +968,16 @@
   "route": "feeder",
   "verdict": "Working."
  },
+ "458": {
+  "findings": [
+   "ok: ReShade loaded add-on: Standalone DLSS-NR + SR 2.2.4 0.0.0.0",
+   "warn: The add-on attached but never reached a contract."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "standalone",
+  "verdict": "Inconclusive - the add-on attached but built nothing."
+ },
  "46": {
   "findings": [
    "warn: The game has not been started since the install.",
@@ -949,6 +988,41 @@
   "ran": false,
   "route": "feeder",
   "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "460": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "warn: OptiScaler ran, but neural rendering was never asked for.",
+   "info: OptiScaler.ini: no [DlssNr] Enabled line (the file is not there).",
+   "info: nvngx_dlssnr.dll: present.",
+   "info: nvngx.dll_dlssnr.dll: not in this folder (this build may not use one).",
+   "info: the game's own upscaler, recorded at install: none recorded - the game was expected to use DLSS. It has to be running for the model to have anything to attach to.",
+   "info: driver 617.14: new enough"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "Windows recorded the game faulting - see below for what to take out first."
+ },
+ "461": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "warn: OptiScaler mentions neural rendering but never reports it running."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
+ },
+ "467": {
+  "findings": [
+   "ok: The add-on loaded - it wrote its own log in the session this report reads.",
+   "bad: The feed recorded a crash (0xC00000FD) while noth."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "The feed crashed after starting - a feeder bug; try another feeder build."
  },
  "47": {
   "findings": [
@@ -961,6 +1035,18 @@
   "route": "feeder",
   "verdict": "Not started since the install - run the game once, then check again."
  },
+ "479": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0",
+   "warn: ReShade attached to a Direct3D 9 device, not DXGI.",
+   "bad: ReShade failed to compile: DLSS5_Feed.fx",
+   "ok: Motion vectors: LumeniteFX Kernel is enabled."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "ReShade found a Direct3D 9 device, not the D3D11/12 this install set up - set 'graphics api' to DirectX 9 and install again."
+ },
  "48": {
   "findings": [
    "warn: The game has not been started since the install.",
@@ -971,6 +1057,42 @@
   "ran": false,
   "route": "feeder",
   "verdict": "Not started since the install - run the game once, then check again."
+ },
+ "480": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0",
+   "ok: Frames are being processed (3 logged, last was frame 3)."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
+ },
+ "482": {
+  "findings": [
+   "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0",
+   "ok: DLSS5_Feed.fx loaded and its textures were found.",
+   "ok: Motion vectors: LumeniteFX Kernel is enabled.",
+   "ok: The 32-bit helper process started.",
+   "bad: The helper started but never connected.",
+   "info: On 32-bit the DLSS 5 page in the game's overlay drives the 64-bit helper; the helper's own window is there too, but do not alt-tab to it while playing - that minimizes the game and tears the feature down.",
+   "ok: NGX initialised successfully.",
+   "bad: The feed stopped waiting for the 64-bit helper 15 s after starting it, and the helper finished starting later, 18 s after it was started."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "The feed stopped waiting for the 64-bit helper while it was still starting - a feeder timing bug; start the game again or try another feeder build."
+ },
+ "497": {
+  "findings": [
+   "bad: OptiScaler.ini is missing."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "optiscaler",
+  "verdict": "OptiScaler.ini is missing - install again."
  },
  "52": {
   "findings": [
@@ -1041,7 +1163,7 @@
  },
  "61": {
   "findings": [
-   "bad: The install stopped with an error before it wrote anything."
+   "bad: The install stopped with an error, and nothing of it is in this folder."
   ],
   "never_ran": false,
   "ran": false,

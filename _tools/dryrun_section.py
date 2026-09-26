@@ -47,6 +47,12 @@ from core import (diagnose, dlss, games, gpu, installer, net, optiscaler,  # noq
 from core import dxvk, refw, video, watch, community  # noqa: E402
 from core import mfg as _m141  # noqa: E402
 import zipfile as _zf141  # noqa: E402,F811
+# as in the suite: an install never writes the machine's own graphics setting
+from core import gpupref as _gpupref  # noqa: E402
+_gpupref.backend = _gpupref.Memory()
+# ...and runs as a one-GPU machine, whatever this one has: a check that
+# needs two GPUs says so itself.
+_gpupref.other_gpu = lambda: ""
 
 # The window's source, for a section that borrows `_gsrc` from earlier in the
 # suite. Read from disk, never imported: importing a UI module here would make this runner die at start

@@ -1,0 +1,78 @@
+(the details are on your clipboard - paste them here)**Did the game start?** it started and ran
+
+**What happened**
+the 64-bit host went away
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 5070 (sm_120), driver 616.56
+- game: BiAHH
+- exe: biahh.exe
+- arch/api: 32-bit / DX9 (imports d3d9.dll, no DXGI)
+- route: feeder
+
+**Diagnosis**: Frames reach the 64-bit helper, and only its own log says what came back - look in host64\dlss5-feed-host.log.
+- [ok] ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+- [ok] DLSS5_Feed.fx loaded and its textures were found.
+- [ok] Motion vectors: LumeniteFX Kernel is enabled.
+- [ok] The 32-bit helper process started.
+- [bad] The helper started but never connected.
+- [info] On 32-bit the DLSS 5 page in the game's overlay drives the 64-bit helper; the helper's own window is there too, but do not alt-tab to it while playing - that minimizes the game and tears the feature down.
+- [ok] NGX initialised successfully.
+- [ok] The driver reports DLSS as available.
+- [warn] The game is handing its frames to the 64-bit helper (600 frames at 120.0 fps).
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+- biahh_d3d9.log: present (written since the install)
+
+**What ran, and what it loaded** (seen at 25 Sep 01:20)
+- process: biahh.exe
+- DLLs in the process: 161
+- ours, loaded: d3d9.dll, dlss5-feed.addon32
+
+**ReShade.log**
+```
+01:20:23:972 [30996] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+01:20:29:995 [ 3532] | WARN  | Preset 'C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games\BiAHH\Binaries\ReShadePreset.ini' uses unknown technique 'LumaSharpen@LumaSharpen.fx'.
+01:20:29:995 [ 3532] | WARN  | Preset 'C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games\BiAHH\Binaries\ReShadePreset.ini' uses unknown technique 'DPX@DPX.fx'.
+01:20:29:995 [ 3532] | WARN  | Preset 'C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games\BiAHH\Binaries\ReShadePreset.ini' uses unknown technique 'FXAA@FXAA.fx'.
+01:20:29:995 [ 3532] | WARN  | Preset 'C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games\BiAHH\Binaries\ReShadePreset.ini' uses unknown technique 'Levels@Levels.fx'.
+01:20:29:995 [ 3532] | WARN  | Preset 'C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games\BiAHH\Binaries\ReShadePreset.ini' uses unknown technique 'MXAO@qUINT_mxao.fx'.
+01:20:53:895 [ 3532] | WARN  | [DLSS 5 Feed (32-bit) 0.15.1] [DLSS 5 Feed 32] stopped: the 64-bit host went away -- its own dlss5-feed-host.log (in host64\) names the reason. The game renders normally
+01:21:18:315 [30996] | WARN  | A depth-stencil resource was destroyed while still in use.
+01:21:19:018 [30996] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+...
+01:20:29.900  [feed32] effects: technique MISSING, DLSS5_MV MISSING, DLSS5_Depth MISSING, DLSS5_MV_PROVIDER=3 (LumeniteFX Kernel) -> none (not installed), depth reversed=1
+01:20:30.063  [feed32] effects: technique found, DLSS5_MV found, DLSS5_Depth found, DLSS5_MV_PROVIDER=3 (LumeniteFX Kernel) -> Lumenite_Kernel (enabled), depth reversed=1
+01:20:30.066  [feed32] first frame fed from thread 3532
+01:20:30.069  [feed32] Vulkan: interop entry points resolved on device 18E88078 (thread 3532)
+01:20:30.071  [feed32] starting the 64-bit host in the background (the game keeps rendering)
+01:20:34.841  [feed32] host spawned (pid 22520): "C:\Program Files (x86)\Ubisoft\Ubisoft Game Launcher\games\BiAHH\Binaries\host64\dlss5-feed-host64.exe" 47088
+01:20:44.572  [feed32] 600 frames: feed CPU 0.14 ms/frame | frame interval 24.17 ms (41.4 fps) | feed is 1% of the frame | pipe write 0.00 ms mean, 0.00 ms worst
+01:20:49.572  [feed32] 600 frames: feed CPU 0.13 ms/frame | frame interval 8.33 ms (120.0 fps) | feed is 2% of the frame | pipe write 0.00 ms mean, 0.00 ms worst
+01:20:49.889  [feed32] host lost: pipe never appeared
+01:20:53.892  stopped: the 64-bit host went away -- its own dlss5-feed-host.log (in host64\) names the reason. The game renders normally. See dlss5-feed.log for the detail.
+01:21:19.013  [feed] vkCreateDevice hook removed
+01:21:19.016  shut down cleanly.
+```
+
+**dlss5-feed-host.log**
+```
+01:20:34.848  [host] DLSS 5 add-on file: renodx-dlss5.addon64
+01:20:34.854  [host] DLSS 5 add-on: v0.2026.923.307 (file version 0.2026.923.307) -- v4.7+ (lazy adoption, colour bridge, workset pool) engine
+01:20:34.860  [host] NeuralUplift was unset; wrote NeuralUplift=1 into the host's ReShade.ini (neural rendering on)
+01:20:52.842  [host] NVSDK_NGX_D3D12_Init -> 0x00000001 (Success)
+```

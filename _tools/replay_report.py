@@ -103,6 +103,10 @@ UNFINISHED = (
     "The install stopped for a reason of its own - see below.",
     "The drive was full - free up space and install again.",
     "The uninstall left files behind - close the game and uninstall again.",
+    # The connection verdicts come out of that branch too (#434) - and out
+    # of the no-record crash rule, where there is no record for "complete"
+    # to describe, so counting them here costs nothing there.
+    *diagnose._NET_VERDICTS.values(),
 )
 
 
@@ -152,7 +156,9 @@ def analyse(d: Path, text: str):
     from core import video as _video
     kind = "video" if _video.PLAYER_EXE.lower() in \
         _header(text).get("exe", "").lower() else "game"
-    return diagnose.answered(rep, started(text), presence(text), kind)
+    ev = re.search(r"^- windows event: (.+?) at [\d-]+ [\d:]+ UTC\s*$", text, re.M)
+    return diagnose.answered(rep, started(text), presence(text), kind,
+                             ev.group(1).strip() if ev else "")
 
 
 _DXVK_LOG = re.compile(r"_(d3d8|d3d9|d3d10|d3d11|dxgi)\.log$", re.I)
@@ -220,6 +226,11 @@ def folder_state(text: str) -> dict | None:
             # "NeuralUplift=1" / "not written yet (...)"
             if "=" in state:
                 files["(addon switch)"] = state.split("=", 1)[1].strip()
+            named = True
+            continue
+        if low in ("frame generation files", "windows graphics setting"):
+            # 2.0.6 report lines about the record and a registry value, not
+            # files a replay should create (#370, #427).
             named = True
             continue
         if low == "runtime flavour":

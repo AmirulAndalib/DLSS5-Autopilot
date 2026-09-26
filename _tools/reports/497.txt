@@ -1,0 +1,39 @@
+**Did the game start?** it never started
+
+**What happened**
+not work the optiscaler
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 4050 Laptop GPU (sm_89), driver 617.14
+- game: Halo Campaign Evolved
+- exe: HCEDigitalExtrasApp-Win64-Shipping.exe
+- arch/api: 64-bit / DX12 (imports dxgi.dll (DX11/DX12; proxy is dxgi.dll either way))
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: Not run yet, or OptiScaler did not load.
+- [warn] No OptiScaler log from this install yet.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- Engine/Plugins/Halo.External/DLSS/Binaries/ThirdParty/Win64/nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.2.1 kept beside it)
+- Engine/Plugins/Halo.External/StreamlineCore/Binaries/ThirdParty/Win64/nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.2.1 kept beside it)
+- Engine/Plugins/Halo.External/DLSS/Binaries/ThirdParty/Win64/nvngx_dlssd.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.2.1 kept beside it)
+- optiscaler build: Dagherbou (v0.2.0-dlssnr)
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+(none)
+```

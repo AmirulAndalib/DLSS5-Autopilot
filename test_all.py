@@ -121,17 +121,21 @@ import contextlib as _ui_ctx
 
 @_ui_ctx.contextmanager
 def _ui_isolated():
-    from core import covers as _cv, library as _l, prefs as _p, watch as _w
-    saved = (_p.FILE, _l.FILE, _w.RECORD, _cv.ROOT, _cv.online, _cv.undecided)
+    from core import community as _cm, covers as _cv, library as _l, prefs as _p, watch as _w
+    saved = (_p.FILE, _l.FILE, _w.RECORD, _cv.ROOT, _cv.online, _cv.undecided, _cm.cached)
     d = Path(tempfile.mkdtemp(prefix="ui_iso_"))
     _p.FILE, _l.FILE, _w.RECORD = d / "settings.json", d / "library.json", d / "record.json"
     # a test game's cover is never looked up online: its made-up name would
     # go to Steam's store, and the answer into the machine's art cache
     _cv.ROOT, _cv.online, _cv.undecided = d / "art", (lambda: False), (lambda: False)
+    # ...and its route is the tool's own pick: the shared list this machine
+    # last downloaded can move a recommendation (dlss._shared_steer), and a
+    # test cannot depend on what was published this week
+    _cm.cached = lambda: {}
     try:
         yield d
     finally:
-        _p.FILE, _l.FILE, _w.RECORD, _cv.ROOT, _cv.online, _cv.undecided = saved
+        _p.FILE, _l.FILE, _w.RECORD, _cv.ROOT, _cv.online, _cv.undecided, _cm.cached = saved
         shutil.rmtree(d, ignore_errors=True)
 
 
@@ -586,6 +590,13 @@ from core import pe, reengine, refw, watch, community  # noqa: E402
 from core import (diagnose, dlss, games, gpu, installer, net, optiscaler,  # noqa: E402
                   pe, prefs, reshade_ini, sources, update, vulkan)
 from core import log as _suite_log  # noqa: E402
+# Installs here run for real and this machine may have two GPUs: Windows'
+# graphics preference goes to a dict, never the machine's own HKCU.
+from core import gpupref as _gpupref  # noqa: E402
+_gpupref.backend = _gpupref.Memory()
+# ...and runs as a one-GPU machine, whatever this one has: a check that
+# needs two GPUs says so itself.
+_gpupref.other_gpu = lambda: ""
 
 # A run that blocks is worse than a run that fails: three gate passes ended
 # with no verdict at all and nothing to read. If the whole suite has not
@@ -1261,7 +1272,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.5", update.VERSION == "2.0.5", update.VERSION)
+check("version is 2.0.6", update.VERSION == "2.0.6", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -6554,6 +6565,88 @@ check("one route, however it was typed into the issue",
 check("...and nothing that is not a number reaches the published file",
       "Infinity" not in json.dumps(_bad) and "NaN" not in json.dumps(_bad))
 
+# The page people search (#304), built from the list as it is published
+# today and from a run that carries every configuration.
+import html.parser as _hp  # noqa: E402
+
+_pg_spec = importlib.util.spec_from_file_location(
+    "_pg_check", Path(__file__).resolve().parent / ".github" / "scripts"
+    / "compat_page.py")
+_pg = importlib.util.module_from_spec(_pg_spec)
+_pg_spec.loader.exec_module(_pg)
+
+
+class _PageRead(_hp.HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.ids, self.blob, self._in = set(), "", False
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if a.get("id"):
+            self.ids.add(a["id"])
+        self._in = tag == "script" and a.get("id") == "data"
+
+    def handle_endtag(self, tag):
+        self._in = False
+
+    def handle_data(self, d):
+        if self._in:
+            self.blob += d
+
+
+_real = json.loads((Path(__file__).resolve().parent / "docs"
+                    / "compatibility.json").read_text(encoding="utf8"))
+_pr = _PageRead()
+_pr.feed(_pg.render(_real))
+_pdata = json.loads(_pr.blob)
+_known = next(iter(_real["games"].values()))["name"]
+check("the compatibility page builds from the published list",
+      {"q", "route", "fam", "drv", "res", "list"} <= _pr.ids
+      and len(_pdata["games"]) == len(_real["games"]), sorted(_pr.ids))
+check("...and a game in the list is on it",
+      any(g["name"] == _known for g in _pdata["games"]), _known)
+check("...and without configurations it says so rather than filtering",
+      _pdata["detailed"] is False)
+_pg_bodies = [{"body": _comm.block({"v": 1, "exe": "evil.exe", "result": "worked",
+                                    "game": "</script><script>alert(1)</script>",
+                                    "route": "feeder", "sm": "sm_89", "driver": "617.14",
+                                    "gpu": "NVIDIA GeForce RTX 4060 Ti", "tool": "2.0.6"}),
+               "created_at": "2026-09-24T10:00:00Z"},
+              {"body": _comm.block({"v": 1, "exe": "evil.exe", "result": "failed",
+                                    "game": "E", "route": "feeder", "sm": "sm_86",
+                                    "driver": "616.64", "tool": "2.0.6"}),
+               "created_at": "2026-09-23T10:00:00Z"}]
+with tempfile.TemporaryDirectory() as _td:
+    _agg.issues = lambda repo, token: _pg_bodies
+    _agg.OUT = Path(_td) / "compatibility.json"
+    os.environ["PAGE_DIR"] = str(Path(_td) / "site")
+    try:
+        _agg.main()
+    finally:
+        os.environ.pop("PAGE_DIR", None)
+    _page = (Path(_td) / "site" / "index.html").read_text(encoding="utf8")
+    _pubd = json.loads(_agg.OUT.read_text(encoding="utf8"))
+_pr2 = _PageRead()
+_pr2.feed(_page)
+_pd2 = json.loads(_pr2.blob)
+_cfg = _pd2["games"][0]["configs"] if _pd2["games"] else []
+check("the page keeps each card and driver apart",
+      _pd2["detailed"] and len(_cfg) == 2
+      and {c[3] for c in _cfg} == {"RTX 40", "RTX 30"}
+      and {c[4] for c in _cfg} == {"RTX 4060 Ti", ""}, _cfg)
+check("...counts exactly the results the list counts",
+      sum(c[7] + c[8] for c in _cfg) == _pubd["reports"] == 2, _cfg)
+check("...and a game name cannot close the page's own script",
+      _page.count("</script>") == 2 and "alert(1)" in _pr2.blob, _page.count("</script>"))
+check("the published list does not carry the configurations",
+      "configs" not in json.dumps(_pubd))
+check("the tool's help menu opens the same page",
+      "community.PAGE_URL" in (Path(__file__).resolve().parent / "core" / "ui"
+                               / "app.py").read_text(encoding="utf8")
+      and community.PAGE_URL in (Path(__file__).resolve().parent
+                                 / "README.md").read_text(encoding="utf8"))
+
 # Aiming for a frame rate instead of setting a percentage by feel. The two
 # log lines below are the shapes the add-ons really write - the feeder's
 # frame-rate line, and the cost line out of issue #81.
@@ -10353,9 +10446,11 @@ _DNS_TB = (
 
 _empty = Path(tempfile.mkdtemp(prefix="diag_crash_"))
 _r = diagnose.analyse(_empty, _DNS_TB)
+# 2.0.6: a DNS failure is a connection fault with a name (#434's rule), so
+# the verdict says what stopped it rather than "crashed - install again".
 check("an install that crashed says so, and names what stopped it",
-      "crashed before it finished" in _r.verdict
-      and any("look up the download's address" in (f_.detail or "")
+      _r.verdict == diagnose._NET_VERDICTS["dns"]
+      and any("could not look up" in (f_.detail or "")
               for f_ in _r.findings), _r.verdict)
 check("...and never tells that person to go and start the game",
       not any("has not been started" in f_.title for f_ in _r.findings)
@@ -10382,7 +10477,7 @@ _d = _diag_dir("diag_crash_rec_", proxy=False, addons=False)
 shutil.rmtree(_d / "reshade-shaders", ignore_errors=True)
 _r = diagnose.analyse(_d, _DNS_TB)
 check("a record that says 'finished' over an empty folder is read the same way",
-      "crashed before it finished" in _r.verdict, _r.verdict)
+      _r.verdict == diagnose._NET_VERDICTS["dns"], _r.verdict)
 check("...and antivirus is not named for a file the install never wrote",
       not any("antivirus" in (f_.detail or "").lower() for f_ in _r.findings))
 shutil.rmtree(_d, ignore_errors=True)
@@ -10395,8 +10490,13 @@ check("a working install is still working, traceback or not",
       diagnose.analyse(_d, _DNS_TB).verdict == "Working.")
 shutil.rmtree(_d, ignore_errors=True)
 _d = _diag_dir("diag_crash_part_", feed=_FEED_OK, complete=False)
+# ...its own branch, which since 2.0.6 reads the same traceback for a named
+# connection fault (#434) - and without one it is still "never finished".
+_ru206 = diagnose.analyse(_d, _DNS_TB)
 check("...and an unfinished record still answers with its own branch",
-      "never finished" in diagnose.analyse(_d, _DNS_TB).verdict)
+      _ru206.verdict == diagnose._NET_VERDICTS["dns"]
+      and any(f_.title.startswith("The install did not finish") for f_ in _ru206.findings)
+      and "never finished" in diagnose.analyse(_d, _other).verdict, _ru206.verdict)
 shutil.rmtree(_d, ignore_errors=True)
 
 # The cause is read off the exception line, and an unfamiliar one still
@@ -11098,8 +11198,27 @@ from core import diagnose as _dpkg  # noqa: E402
 # "never called DLSS" (#390) and the display-filter window (#385).
 # process: +1, the "Working." downgrade now covers another tool's add-on
 # finding too (gate 2.0.5).
-_parts = {"model": 414, "layer": 104, "evidence": 1087, "process": 224,  # evidence +3: its own words for a renderer no route reaches
-          "helper": 150, "routes": 958, "body": 660, "chain": 1462}  # routes +5: a dump the session went on after (gate 2.0.5)
+# 2.0.6 (#434 #438): evidence +50 for a connection fault named off the
+# install's traceback (_net_cause, _net_stop, the verdicts per kind), chain
+# +13 for the unfinished branch reading it and a rolled-back record, model
+# +9 for the WinError codes ahead of "ssl".
+# 2.0.6 round 2: helper +44 for the feed that gave up on a helper still
+# starting (#482, _gave_up_early, _clock); body +98 for the report's keyed
+# log lines (#458, _keyed_lines) and the Windows event in the answer (#460,
+# event_line); chain +57 for ReShade's own d3d9.dll in front of DXVK (#348),
+# the D3D9 device kept as the verdict (#479, rs_verdict) and the 32-bit
+# feed's frame lines (#482); routes +19 for the upstream route's "DLSS was
+# called, no neural frame followed" (#390 #437).
+# Gate 2.0.6: process +6 (the older bridge add-on's own verdict, #439), helper
+# +7 (midnight and the two-minute window), body +20 (the frame generation
+# files and Windows graphics setting lines, #370 #427), chain +7 (DXVK read
+# off the record, the helper log only from this launch), routes +1.
+# Gate 2.0.6 pass 2: helper +8 (a stale helper log said as such), chain +8
+# (the loaded d3d9.dll's path against the record, apostrophes in paths).
+# Gate 2.0.6 pass 3: helper +10 (whether the helper's log is from this launch,
+# read off the logs' own clocks instead of the files' times).
+_parts = {"model": 423, "layer": 104, "evidence": 1137, "process": 230,  # evidence +3: its own words for a renderer no route reaches
+          "helper": 219, "routes": 978, "body": 778, "chain": 1547}  # routes +5: a dump the session went on after (gate 2.0.5)
 _sizes = {n: sum(1 for _ in open(SRC_DIR / "core" / "diagnose" / f"{n}.py",
                                  encoding="utf8"))
           for n in _parts}
@@ -11259,6 +11378,21 @@ check("a 64-bit runtime beside a 32-bit exe is not evidence it is DX12",
       and pe._ships_dlss(_sn, 32) == "")
 check("...and still is for the 64-bit exe beside it",
       pe._has_d3d12_agility_sdk(_sn, 64) and pe._ships_dlss(_sn, 64))
+# #458: the standalone route writes nvngx_dlssg.dll, and a DX11 game read as
+# D3D12 from it on the next scan. Ours by the manifest is not the game's -
+# unless the game's original sits backed up beside it.
+_me = Path(tempfile.mkdtemp(prefix="me458_"))
+(_me / "nvngx_dlssg.dll").write_bytes(_pe_stub(0x8664))
+check("#458: the game's own nvngx_dlssg.dll is D3D12 evidence (no install of ours)",
+      pe._has_d3d12_agility_sdk(_me, 64) and pe._ships_dlss(_me, 64) == "nvngx_dlssg.dll")
+(_me / "dlss5-autopilot.json").write_text(json.dumps({"files": ["nvngx_dlssg.dll", "dxgi.dll"]}),
+                                          encoding="utf8")
+check("#458: ...one this tool's standalone install wrote is not",
+      not pe._has_d3d12_agility_sdk(_me, 64) and pe._ships_dlss(_me, 64) == "")
+(_me / "nvngx_dlssg.dll.dlss5-autopilot-backup").write_bytes(_pe_stub(0x8664))
+check("#458: ...and one we replaced, with the game's original backed up beside it, still is",
+      pe._has_d3d12_agility_sdk(_me, 64) and pe._ships_dlss(_me, 64) == "nvngx_dlssg.dll")
+shutil.rmtree(_me, ignore_errors=True)
 check("every promotion in detect_api is told the exe's bitness",
       src_of(pe._detect_api).count("_has_d3d12_agility_sdk(path.parent, bits)") == 3
       and src_of(pe._detect_api).count("_ships_dlss(path.parent, bits)") == 2)
@@ -11495,12 +11629,58 @@ try:
     _ui191.settle(60)
     check("a search that matches nothing offers to add a game by hand (#374)",
           any('no game matches "warcraft"' in t for t in _ui191.texts())
-          and bool(_ui191.kit.find("choose a folder  -  add it by hand", "link")),
+          and bool(_ui191.kit.find("add a game  -  pick the folder it is in", "link")),
           [t for t in _ui191.texts() if "match" in t])
     _a191.set_query("")
     _ui191.settle(60)
     check("...and it is not in the way when the list has games in it",
-          not _ui191.kit.find("choose a folder  -  add it by hand", "link"))
+          not _ui191.kit.find("add a game  -  pick the folder it is in", "link"))
+    # #441: "I have games installed on a separate directory that are not
+    # being detected". The way in was behind 'scan' and a search that found
+    # nothing; now it sits on the list itself, beside 'scan'.
+    from tkinter import filedialog as _fd191
+    _add191 = _ui191.kit.find("add a game", "button")
+    _abox191 = _ui191.canvas.bbox(_add191) if _add191 else None
+    _sbox191 = _ui191.canvas.bbox(_ui191.kit.find("scan", "button") or "none")
+    check("the games list has an 'add a game' button beside 'scan' (#441)",
+          bool(_abox191) and bool(_sbox191) and _abox191[0] >= 0
+          and _abox191[2] <= _sbox191[0] and abs(_abox191[1] - _sbox191[1]) <= 2,
+          (_abox191, _sbox191))
+    _far191 = _ui_game(name="Far Drive Game")
+    _asked191: list = []
+
+    def _ask191(**k):
+        _asked191.append(k)
+        return str(_far191.folder)
+
+    with patch.object(_fd191, "askdirectory", _ask191):
+        _ui191.click(_add191)
+        _ui191.until(lambda: _a191.game is not None and _a191.game.folder == _far191.folder, 5.0)
+    check("...a real click on it asks for the folder, adds that game and opens it",
+          len(_asked191) == 1
+          and [g.name for g in _a191.all_games].count("Far Drive Game") == 1
+          and _a191.game is not None and _a191.game.folder == _far191.folder,
+          (_asked191, [g.name for g in _a191.all_games]))
+    _ui191.until(lambda: not _a191.entering, 8.0)
+    _a191.shell.show("library")
+    _ui191.settle(80)
+    _a191.set_hidden(next(g for g in _a191.all_games if g.folder == _far191.folder), True)
+    _ui191.settle(60)
+    with patch.object(_fd191, "askdirectory", _ask191):
+        _ui191.canvas.focus_force()
+        _ui191.canvas.event_generate("<KeyPress>", keysym="o", state=0x4)
+        _ui191.until(lambda: len(_asked191) == 2 and _a191.game is not None
+                     and _a191.game.folder == _far191.folder, 5.0)
+    check("...ctrl+o does the same, and a game already in the list is opened "
+          "(and shown again if it was hidden), not added twice",
+          len(_asked191) == 2
+          and [g.folder for g in _a191.all_games].count(_far191.folder) == 1
+          and str(_far191.folder) not in _a191.hidden(),
+          (len(_asked191), [g.name for g in _a191.all_games], sorted(_a191.hidden())))
+    _ui191.until(lambda: not _a191.entering, 8.0)
+    _a191.all_games = [g for g in _a191.all_games if g.folder != _far191.folder]
+    _a191.shell.show("library")
+    _ui191.settle(80)
     # the keyboard reaches the same menu: arrows to a card, then the menu key
     _ui191.canvas.focus_force()
     _ui191.canvas.event_generate("<KeyPress>", keysym="Right")
@@ -11592,6 +11772,55 @@ try:
     check("keys for a keyboard with no navigation cluster are offered",
           {"Pause", "Scroll Lock"} <= set(reshade_ini.OVERLAY_KEYS)
           and {"Pause", "Scroll Lock"} <= {k for k, _l in _a191.choices("overlay_key")})
+
+    # The result panel said "it stopped" and one line of the reason, cut at
+    # the window's edge: the MFG card refusal lost "Choose wilsjo2's fork",
+    # the part that says what to do. Every line of the panel, the verdict
+    # title included, is shown whole and stays inside the window.
+    from core import optiscaler as _opt191
+    _gr191 = _ui_game(name="Refused Card")
+    _ui191.enter(_gr191, _ui_support([dlss.OPTI, dlss.FEEDER], dlss.OPTI))
+    _ui191.app.shell.kit.close_all()
+
+    def _panel191():
+        c = _ui191.canvas
+        texts = " ".join(" ".join(str(c.itemcget(i, "text")).split())
+                         for i in c.find_all() if c.type(i) == "text")
+        cw = c.winfo_width()
+        out = [str(c.itemcget(i, "text"))[:40] for i in c.find_all()
+               if c.type(i) == "text" and (c.bbox(i) or (0, 0, 0, 0))[2] > cw]
+        return texts, out
+
+    _why191 = _opt191.card_refusal(_opt191.PRESR_MFG, 86)
+    _a191.result = {"kind": "failed", "title": "it stopped", "detail": _why191}
+    _a191.shell.redraw()
+    _ui191.settle(80)
+    _t191, _off191 = _panel191()
+    check("a refusal in the result panel is shown whole, its last words "
+          "included (the MFG card refusal)",
+          bool(_why191) and "wilsjo2's fork\" in 'optiscaler build'" in _t191
+          and "neural pass without it." in _t191 and not _off191,
+          (_off191, _t191[-300:]))
+    _long191 = ("Another DLSS hook was loaded beside ours (DLSS 5 DX11 Bridge 1.0.27) - "
+                "move it out of the game folder and test with ours alone.")
+    _a191.result = {"kind": "diagnosis", "ok": False, "ran": True, "title": _long191,
+                    "findings": [("bad", "Both the feeder and the bridge add-on are loaded.")]}
+    _a191.shell.redraw()
+    _ui191.settle(80)
+    _t191, _off191 = _panel191()
+    check("...and so is a long verdict in its title",
+          "test with ours alone." in _t191 and not _off191, (_off191, _t191[-300:]))
+    _a191.result = {"kind": "installed", "title": "installed", "warnings": []}
+    _a191.steps = [("step", "Turn DLSS on in the game's graphics menu, then open OptiScaler's "
+                            "overlay with Insert and switch neural rendering on in its DLSS-NR "
+                            "section - the setting is kept for the next start.")]
+    _a191.shell.redraw()
+    _ui191.settle(80)
+    _t191, _off191 = _panel191()
+    check("...and a step in the game, however long",
+          "the setting is kept for the next start." in _t191 and not _off191,
+          (_off191, _t191[-300:]))
+    _a191.result, _a191.steps = None, []
 finally:
     _ui191.close()
     _ui_cleanup()
@@ -14218,7 +14447,7 @@ with _ui_isolated(), _ui_threads(run=False) as _th4:
         _inst4 = installer.options_from_manifest(_g4.install_dir)
         _o4 = _c4.opts()
         _f4 = ("path", "provider", "opti_proxy", "opti_build", "fg", "keep_game_dlss", "feeder_tag",
-               "reshade_proxy", "dxvk", "remix_swap")
+               "reshade_proxy", "dxvk", "remix_swap", "gpu_pref")
         _s4[_name4] = {"diff": [f for f in _f4 if getattr(_o4, f) != getattr(_inst4, f)],
                        "nr": _o4.nr, "feed": _o4.feed, "route": _c4.route}
 check("4: a game installed on a route that is not the recommended one opens on that route, and opts() is "
@@ -15584,9 +15813,83 @@ shutil.rmtree(_d420, ignore_errors=True)
 
 # #390, ESO on the upstream route: switched on, four hooks, no frame.
 _v390, _f390 = _replay205("390")
-check("#390: switched on and hooked with no frame is 'the game never called DLSS'",
-      _v390.startswith("The game never called DLSS")
+check("#390: switched on and hooked with no frame is 'the game made no D3D12 DLSS call'",
+      _v390.startswith("The game made no D3D12 DLSS call")
       and not any("check it is switched on" in f[2] for f in _f390), _v390)
+
+# Gate 2.0.5 / #437: a CreateFeature line IS the game calling DLSS. The same
+# #390 log with the add-on's own CreateFeature line (its format string:
+# "[NRPRE] CreateFeature id=%d -> res=0x%08X handle=%u | NR W=%u H=%u ...")
+# must not say the game never called it, and a shared result on it asks.
+_t390 = (SRC_DIR / "_tools" / "reports" / "390.txt").read_text(
+    encoding="utf8", errors="replace").replace("\r\n", "\n")
+_hook390 = next(ln for ln in _t390.split("\n") if "hook on NVSDK_NGX_D3D12_CreateFeature" in ln)
+_t390c = _t390.replace(_hook390, _hook390 + "\n" + _hook390.split("[NRPRE]")[0]
+                       + "[NRPRE] CreateFeature id=18 -> res=0x00000001 handle=1 | NR W=1920 H=1080 "
+                         "ratio=1.000 pre", 1)
+_h390 = _rr205._header(_t390c)
+_d390c = _rr205.build(_h390.get("route", "upstream"), "DX12", _h390.get("exe", "Game.exe"),
+                      _rr205._blocks(_t390c), 64, state=_rr205.folder_state(_t390c),
+                      extra_manifest=_rr205.finished(_t390c))
+try:
+    _v390c = _rr205.analyse(_d390c, _t390c).verdict
+finally:
+    shutil.rmtree(_d390c, ignore_errors=True)
+from core import verdicts as _vd437  # noqa: E402
+check("#437: CreateFeature logged and no heartbeat is not 'the game made no DLSS call'",
+      _v390c.startswith("DLSS was called, and no neural frame followed"), _v390c)
+check("#437: a shared result on either verdict asks the person instead of filing 'failed'",
+      _vd437.outcome(_v390c) is None and _vd437.outcome(_v390) is None
+      and _vd437.outcome("The game never called DLSS - turn it on in the game's own settings, "
+                         "or use the optiscaler route.") is None,
+      (_vd437.outcome(_v390c), _vd437.outcome(_v390)))
+
+# #458: "Working." on the machine, "Inconclusive" in the replay - the report
+# carried the log's last 20 lines, the teardown after the frames. A real AIO
+# session (Arkham, 9 on-present frames) with #458's own teardown lines after
+# it: the excerpt keeps the decisive lines and replays to the same answer.
+_aio458 = (SRC_DIR.parent / "_research" / "native" / "DLSS5-Reshade-AIO" / "tools" / "reports"
+           / "arkham-v2.0.3-20260905-0107" / "ReShade.log")
+if _aio458.is_file():
+    from core.diagnose import body as _body458, routes as _routes458, model as _model458
+    _t458 = (SRC_DIR / "_tools" / "reports" / "458.txt").read_text(encoding="utf8", errors="replace")
+    _tear458 = [ln for ln in _t458.split("**standalone-dlssnr.log**", 1)[1].split("```")[1].splitlines()
+                if ln.strip() and ln.strip() != "..."]
+    _log458 = _aio458.read_text(encoding="utf8", errors="replace") + "\n" + "\n".join(_tear458 * 5)
+    _ex458 = _body458._keyed_lines(_log458, _body458._standalone_kind)
+    with tempfile.TemporaryDirectory() as _td458:
+        _p458 = Path(_td458) / "standalone-dlssnr.log"
+        _p458.write_text("\n".join(_ex458), encoding="utf8")
+        with patch.object(_model458, "STANDALONE_LOG", _p458):
+            _r458 = _routes458._analyse_standalone(_model458.Report(), 0, True)
+    check("#458: the standalone excerpt keeps the frame and contract lines under the teardown",
+          any("on-present frame" in ln for ln in _ex458) and any("contract ready" in ln for ln in _ex458)
+          and _ex458[-1] == _tear458[-1][:200] and len("\n".join(_ex458)) <= 900
+          and _r458.verdict == "Working.", (_r458.verdict, len("\n".join(_ex458))))
+# #289/#311: the same for OptiScaler - a dispatch line followed by a tail of
+# chatter still reaches the report, and the replay says it ran.
+_opt311 = [ln for ln in (SRC_DIR / "_tools" / "reports" / "311.txt").read_text(
+    encoding="utf8", errors="replace").splitlines() if ln.startswith("[") and "DLSS-NR" in ln and ("elapsed" in ln or "finished picture" in ln)]
+_chat311 = "[00:02:56.828790] [I] MenuHdrCheck Output HDR: false, UI Mode: SDR"
+if _opt311:
+    from core.diagnose import body as _body311
+    _ex311 = _body311._keyed_lines("\n".join(_opt311[:1] + [_chat311] * 40), _body311._opti_kind)
+    check("#289: the OptiScaler excerpt keeps the model's own work line under 40 lines of chatter",
+          _opt311[0][:200] in _ex311 and _ex311[-1] == _chat311, _ex311[:2])
+# ...and the feeder's: the last session only, as chain.py reads it, with its
+# attach line and a fault stack kept under a tail of frame chatter.
+_t467 = (SRC_DIR / "_tools" / "reports" / "467.txt").read_text(encoding="utf8", errors="replace")
+_s467 = [ln for ln in _t467.split("**dlss5-feed.log**", 1)[1].split("```")[1].splitlines() if ln.strip()]
+_fault467 = next(ln for f in sorted((SRC_DIR / "_tools" / "reports").glob("*.txt"))
+                 for ln in f.read_text(encoding="utf8", errors="replace").splitlines()
+                 if "evaluate fault stack, by module (innermost first):" in ln)
+from core.diagnose import body as _body467  # noqa: E402
+_feed467 = ("09:00:00.000  dlss5-feed32 0.14.0 (built Sep  1 2026) attached.\nold session line\n"
+            + "\n".join(_s467[:3] + [_fault467] + [_s467[-1]] * 30))
+_ex467 = _body467._keyed_lines(_body467._last_feed_session(_feed467), _body467._feed_kind, 20, 1400)
+check("the feed excerpt is the last session, keeps its attach line and the fault stack",
+      "old session line" not in _ex467 and _ex467[0] == _s467[0][:200]
+      and _fault467[:200] in _ex467 and len("\n".join(_ex467)) <= 1400, _ex467[:3])
 
 # #400, GTA San Andreas: DXVK's log is the evidence, and elevation the cause.
 _v400, _ = _replay205("400")
@@ -15871,6 +16174,943 @@ check("...and only the MFG build turns it on",
 check("...the verdict is read back out of the body the tool wrote",
       _comm.said_verdict(_b205[0]["body"]) == _UNSEEN205
       and _comm.said_verdict(_comm.block(_comm.record(_G205, "feeder", "worked"))) == "")
+
+
+section("2.0.6: frame generation files the person downloaded, placed and taken out again (#370)")
+# SiTWulf (RTX 3060) ran dlssg_for_sm86 on top of this tool's OptiScaler
+# install by copying version.dll + dlssg_sm86.ini beside the exe; DLSS
+# Enabler goes in as dlss-enabler-headless.dll. Neither can be fetched, so
+# the person picks the files and the tool does the placing, the record and
+# the undo.
+from core import ownfg as _ofg  # noqa: E402
+import fake_pe as _fpe206  # noqa: E402
+from dataclasses import replace as _rp206  # noqa: E402
+
+
+def _fg206_dir(files: dict) -> Path:
+    d = Path(tempfile.mkdtemp(prefix="ownfg_dl_"))
+    for n, b in files.items():
+        (d / n).write_bytes(b)
+    return d
+
+
+_SM86_DLL = _fpe206.dll("0.3.5") + b"\0config: dlssg_sm86.ini\0"
+_SM86_INI = b"[dlssg]\nEnable=1\n"
+_ENAB_DLL = _fpe206.dll("3.0.0") + "dlss-enabler.log".encode("utf-16-le")
+_d206a = _fg206_dir({"version.dll": _SM86_DLL, "dlssg_sm86.ini": _SM86_INI})
+_k206, _f206 = _ofg.identify([_d206a / "version.dll"])
+check("a picked version.dll with its dlssg_sm86.ini beside it is dlssg_for_sm86, and both go in",
+      _k206 == "sm86" and set(_f206) == {"version.dll", "dlssg_sm86.ini"}
+      and _f206["dlssg_sm86.ini"] == _d206a / "dlssg_sm86.ini", (_k206, _f206))
+_d206b = _fg206_dir({"version.dll": _ENAB_DLL})
+_k206b, _f206b = _ofg.identify([_d206b / "version.dll"])
+check("DLSS Enabler's version.dll is recognised from its own strings and goes in as the headless name",
+      _k206b == "enabler" and list(_f206b) == ["dlss-enabler-headless.dll"], (_k206b, _f206b))
+_d206c = _fg206_dir({"version.dll": _fpe206.dll("1.0.0")})
+_d206d = _fg206_dir({"version.dll": _fpe206.dll("1.0.0", machine=0x14C) + b"dlssg_sm86"})
+_d206e = _fg206_dir({"version.dll": _SM86_DLL})
+_e206 = {}
+for _n206, _p206 in (("unknown", [_d206c / "version.dll"]), ("32-bit", [_d206d / "version.dll"]),
+                     ("no ini", [_d206e / "version.dll"]), ("ini only", [_d206a / "dlssg_sm86.ini"]),
+                     ("text", [_fg206_dir({"version.dll": b"<html>404</html>" * 50}) / "version.dll"])):
+    try:
+        _ofg.identify(_p206)
+        _e206[_n206] = ""
+    except _ofg.OwnFgError as _e:
+        _e206[_n206] = str(_e)
+check("an unknown dll, a 32-bit one, a missing partner and a web page are refused in words",
+      "dlssg_for_sm86" in _e206["unknown"] and "DLSS Enabler" in _e206["unknown"]
+      and "64-bit" in _e206["32-bit"] and "dlssg_sm86.ini was not beside" in _e206["no ini"]
+      and "64-bit" in _e206["text"], _e206)
+check("...while the ini picked on its own still finds the dll beside it",
+      _e206["ini only"] == "", _e206)
+check("every recipe names a dll first, and nothing is placed under a name OptiScaler cannot avoid",
+      all(r.files[0][1].endswith(".dll") for r in _ofg.RECIPES.values())
+      and all(d in optiscaler.PROXY_NAMES or d.lower().startswith("dlss")
+              or d.endswith(".ini") for r in _ofg.RECIPES.values() for _s, d in r.files))
+
+with _ui_isolated():
+    _ofg.store("sm86", _f206)
+    check("the picked files are copied into the tool's own folder, not read from Downloads later",
+          set(_ofg.stored("sm86")) == {"version.dll", "dlssg_sm86.ini"}
+          and _ofg.store_dir("sm86").parent.parent == prefs.FILE.parent
+          and _ofg.available() == ["sm86"], _ofg.available())
+    shutil.rmtree(_d206a, ignore_errors=True)      # the download folder, cleaned
+
+    # install -> install again -> off -> uninstall, with the person's own
+    # hand-placed version.dll (the same bytes) in the folder first
+    _g206 = _fake_game("ownfg_")
+    _r206 = _g206.install_dir
+    (_r206 / "version.dll").write_bytes(_SM86_DLL)
+    installer.install(_g206, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="sm86"),
+                      on_log=lambda t: None)
+    _m206 = json.loads((_r206 / installer.MANIFEST).read_text(encoding="utf8"))
+    check("OptiScaler goes in under another name, and the files go beside the exe",
+          _m206["proxy"] != "version.dll" and (_r206 / "dlssg_sm86.ini").read_bytes() == _SM86_INI
+          and (_r206 / "version.dll").read_bytes() == _SM86_DLL, _m206["proxy"])
+    check("...recorded as files of this install and as the person's own frame generation files",
+          {"version.dll", "dlssg_sm86.ini"} <= set(_m206["files"])
+          and _m206["own_fg"] == {"recipe": "sm86", "files": ["version.dll", "dlssg_sm86.ini"]}
+          and any("experimental" in w for w in _m206["warnings"]), _m206.get("own_fg"))
+    check("...and the copy put there by hand is kept aside to come back",
+          (_r206 / ("version.dll" + installer.BACKUP_SUFFIX)).is_file()
+          and "version.dll" + installer.BACKUP_SUFFIX in _m206["files"])
+    check("the diagnosis and the install warning do not name them as another hook",
+          "dlssg_sm86.ini" not in installer.other_ngx_hooks(_r206)
+          and "dlssg_sm86" not in installer.hook_warning(_r206, dlss.OPTI))
+    _o206 = installer.options_from_manifest(_r206)
+    check("an update rebuilds the choice from the record", _o206.own_fg == "sm86", _o206.own_fg)
+    installer.install(_g206, _o206, on_log=lambda t: None)
+    _m206b = json.loads((_r206 / installer.MANIFEST).read_text(encoding="utf8"))
+    check("...and a second install keeps the backup on the record, not a backup of its own file",
+          "version.dll" + installer.BACKUP_SUFFIX in _m206b["files"]
+          and (_r206 / ("version.dll" + installer.BACKUP_SUFFIX)).read_bytes() == _SM86_DLL
+          and _m206b["own_fg"]["recipe"] == "sm86")
+    # the tool's copy gone (a cleaned LOCALAPPDATA): the ones in place stay
+    _ofg.forget("sm86")
+    _rep206 = installer.install(_g206, _o206, on_log=lambda t: None)
+    check("with the tool's copies gone, the same route keeps the files in place and on the record",
+          (_r206 / "version.dll").is_file() and (_r206 / "dlssg_sm86.ini").is_file()
+          and json.loads((_r206 / installer.MANIFEST).read_text(encoding="utf8"))["own_fg"]["recipe"] == "sm86")
+    installer.install(_g206, _rp206(_o206, own_fg=""), on_log=lambda t: None)
+    _m206c = json.loads((_r206 / installer.MANIFEST).read_text(encoding="utf8"))
+    check("set to none, the next install takes them out and puts the hand-placed file back",
+          not (_r206 / "dlssg_sm86.ini").exists() and (_r206 / "version.dll").read_bytes() == _SM86_DLL
+          and not (_r206 / ("version.dll" + installer.BACKUP_SUFFIX)).exists()
+          and "version.dll" not in _m206c["files"] and not _m206c["own_fg"], _m206c["files"])
+    (_r206 / "dlssg_sm86.ini").write_bytes(_SM86_INI)
+    check("...and a copy somebody puts there by hand, on no record, is named as another hook again",
+          "dlssg_sm86.ini" in installer.other_ngx_hooks(_r206))
+    (_r206 / "dlssg_sm86.ini").unlink()
+    _ofg.store("sm86", {"version.dll": _d206e / "version.dll",
+                        "dlssg_sm86.ini": _fg206_dir({"dlssg_sm86.ini": _SM86_INI}) / "dlssg_sm86.ini"})
+    installer.install(_g206, _rp206(_o206, own_fg="sm86"), on_log=lambda t: None)
+    installer.uninstall(_g206, on_log=lambda t: None)
+    check("uninstall takes them out and leaves the file that was there before, byte for byte",
+          not (_r206 / "dlssg_sm86.ini").exists() and (_r206 / "version.dll").read_bytes() == _SM86_DLL
+          and not (_r206 / "dxgi.dll").exists() and not (_r206 / installer.MANIFEST).exists())
+
+    # refusals: before the first write, and the same words in the preview
+    _g206b = _fake_game("ownfg_b_")
+    _r206b = _g206b.install_dir
+    installer.install(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True), on_log=lambda t: None)
+    (_r206b / "version.dll").write_bytes(_fpe206.dll("9.9.9") + b"ASI loader")
+    _before206 = sorted(p.name for p in _r206b.iterdir())
+    _err206 = ""
+    try:
+        installer.install(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="sm86"),
+                          on_log=lambda t: None)
+    except installer.InstallError as _e:
+        _err206 = str(_e)
+    check("another mod's version.dll is refused in words, naming the file and the way out",
+          "version.dll is already in the game folder" in _err206 and "none" in _err206, _err206)
+    check("...before a single file is touched: the working install is exactly as it was",
+          sorted(p.name for p in _r206b.iterdir()) == _before206
+          and optiscaler.is_optiscaler(_r206b / "dxgi.dll"))
+    _pv206 = installer.preview(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="sm86"))
+    check("...and the preview says the same before INSTALL is pressed",
+          any("version.dll is already in the game folder" in b for b in _pv206.blockers), _pv206.blockers)
+    (_r206b / "version.dll").unlink()
+    _err206b = ""
+    try:
+        installer.install(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="sm86",
+                                                     opti_proxy="version.dll"), on_log=lambda t: None)
+    except installer.InstallError as _e:
+        _err206b = str(_e)
+    check("OptiScaler picked by hand under version.dll is refused, naming 'loads as'",
+          "'loads as'" in _err206b and "version.dll" in _err206b, _err206b)
+    _ofg.forget("sm86")
+    _pv206b = installer.preview(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="sm86"))
+    check("...and with the tool's copies gone and nothing in place, the preview blocks with the way back",
+          any("'add your own...'" in b for b in _pv206b.blockers), _pv206b.blockers)
+    _ofg.store("enabler", _f206b)
+    _pv206c = installer.preview(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="enabler"))
+    installer.install(_g206b, installer.Options(path=dlss.OPTI, native_dlss=True, own_fg="enabler"),
+                      on_log=lambda t: None)
+    check("DLSS Enabler goes in as dlss-enabler-headless.dll, and the preview listed that name",
+          (_r206b / "dlss-enabler-headless.dll").read_bytes() == _ENAB_DLL
+          and "dlss-enabler-headless.dll" in _pv206c.writes and not _pv206c.blockers, _pv206c.blockers)
+    installer.uninstall(_g206b, on_log=lambda t: None)
+    check("...and out again on uninstall", not (_r206b / "dlss-enabler-headless.dll").exists())
+    _s206 = src_of(installer.install)
+    check("the slot check sits above the line that takes the previous route out",
+          _s206.index("_own_fg_refusal(root, opt)") < _s206.index("previous = _previous_route(root)"))
+    check("a ReShade route never places them, whatever Options says",
+          "if opt.path != OPTI or not opt.own_fg" in src_of(installer._own_fg_refusal)
+          and "_place_own_fg(root, opt, rep, log, begin)" in _s206
+          and _s206.index("_place_own_fg(") < _s206.index("# --- 1) ReShade"))
+    shutil.rmtree(_g206.folder, ignore_errors=True)
+    shutil.rmtree(_g206b.folder, ignore_errors=True)
+
+# The row: its own, on the OptiScaler route of a D3D12 game only, and the
+# link beside it with a real click.
+with _ui_isolated(), _ui_threads(run=False):
+    _c206 = _ui_ctl(_ui_game(name="FG Files"), _ui_support([dlss.FEEDER, dlss.OPTI], dlss.OPTI))
+    _c206.apply_route(dlss.OPTI)
+    _c206.settings["own_fg"] = "sm86"
+    _vis206 = [_c206.shown_setting("own_fg"), _c206.opts().own_fg, _c206.opts(dlss.FEEDER).own_fg]
+    _c206.apply_route(dlss.FEEDER)
+    _vis206 += [_c206.shown_setting("own_fg"), _c206.opts().own_fg, _c206.settings["own_fg"]]
+check("the row shows on the OptiScaler route and not the feeder's, and nothing leaks into a ReShade install",
+      _vis206 == [True, "sm86", "", False, "", ""], _vis206)
+with _ui_isolated(), _ui_threads(run=False):
+    _c206b = _ui_ctl(_ui_game(name="FG Eleven", api="DX11"), _ui_support([dlss.FEEDER, dlss.OPTI], dlss.OPTI))
+    _c206b.apply_route(dlss.OPTI)
+    _vis206b = _c206b.shown_setting("own_fg")
+check("...and not on a D3D11 game, which has no DLSS frame generation to act on", _vis206b is False)
+_ui_cleanup()
+
+_fg206 = {}
+_ui206 = _UiLive()
+try:
+    if not _ui206.ok:
+        check("2.0.6 window: the window opened", False, _ui206.error)
+        raise RuntimeError
+    _d206f = _fg206_dir({"version.dll": _SM86_DLL, "dlssg_sm86.ini": _SM86_INI})
+    _ui206.enter(_ui_game(name="Frame Gen", api="DX12"), _ui_support([dlss.FEEDER, dlss.OPTI], dlss.OPTI))
+    _ui206.press("settings", "button")
+    _ui206.settle(350)
+    _fg206["rows"] = [lab for lab in _ui206.labels("dropdown") if "frame generation files" in lab]
+    from tkinter import filedialog as _fd206
+    with patch.object(_fd206, "askopenfilenames",
+                      lambda **k: (str(_d206f / "version.dll"), str(_d206f / "dlssg_sm86.ini"))):
+        _fg206["clicked"] = _ui206.press("add your own...", "link")
+        _ui206.settle(200)
+    _ui206.press("frame generation files", "dropdown")
+    _fg206["menu"] = [t for t in _ui206.texts() if "your files" in t]
+    _ui206.kit.close_all() if hasattr(_ui206.kit, "close_all") else None
+    _fg206["opts"] = _ui206.app.opts().own_fg
+    _fg206["stored"] = _ofg.available()
+    _fg206["log"] = _ui206.log()
+finally:
+    _ui206.close()
+    _ui_cleanup()
+check("the settings panel has one 'frame generation files' dropdown on the OptiScaler route",
+      _fg206.get("rows") == ["frame generation files"], _fg206.get("rows"))
+check("...a real click on 'add your own...' takes the picked files and chooses them for the install",
+      _fg206.get("clicked") and _fg206.get("opts") == "sm86" and _fg206.get("stored") == ["sm86"]
+      and "go in with the next install" in _fg206.get("log", ""), {k: v for k, v in _fg206.items() if k != "log"})
+check("...and the dropdown then offers them by name",
+      any("dlssg_for_sm86" in t for t in _fg206.get("menu", [])), _fg206.get("menu"))
+section("2.0.6: a failed install is taken back out, and a failed connection says why (#434 #438)")
+import ssl as _ssl206  # noqa: E402
+import importlib.util as _ilu206  # noqa: E402
+import urllib.error as _ue206  # noqa: E402
+# The lines exactly as the two reports carry them.
+_L434 = ("urllib.error.URLError: <urlopen error [WinError 10013] An attempt was made to access a "
+         "socket in a way forbidden by its access permissions>")
+_L438 = ("urllib.error.URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred "
+         "in violation of protocol (_ssl.c:1010)>")
+_L026 = ("urllib.error.URLError: <urlopen error [WinError 10054] Eine vorhandene Verbindung wurde "
+         "vom Remotehost geschlossen>")
+check("a connection fault is named by its code and reason, in any language",
+      net.net_kind(_L434) == "blocked" and net.net_kind(_L438) == "cut"
+      and net.net_kind(_L026) == "cut"
+      and net.net_kind("urllib.error.URLError: <urlopen error [Errno 11001] getaddrinfo failed>") == "dns"
+      and net.net_kind("TimeoutError: The read operation timed out") == "timeout",
+      [net.net_kind(x) for x in (_L434, _L438, _L026)])
+check("...and a certificate, a scrambled record or an HTTP status is not one of them",
+      net.net_kind("URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] x>") == ""
+      and net.net_kind("ssl.SSLError: [SSL: DECRYPTION_FAILED_OR_BAD_RECORD_MAC] decryption failed") == ""
+      and net.net_kind(_ue206.HTTPError("https://x", 503, "Service Unavailable", {}, None)) == "")
+_e434 = OSError(13, "An attempt was made to access a socket in a way forbidden by its access "
+                    "permissions", None, 10013)
+_u434 = net.unreachable("api.github.com", _ue206.URLError(_e434))
+check("a blocked socket becomes an error that names the host and says installing again will not help",
+      isinstance(_u434, _ue206.URLError) and _u434.kind == "blocked"
+      and str(_u434).startswith("api.github.com: ") and "Installing again gets the same refusal" in str(_u434)
+      and "Windows Firewall" in str(_u434), str(_u434)[:140])
+
+
+def _eof206(req, timeout=None, context=None):
+    raise _ue206.URLError(_ssl206.SSLEOFError(8, "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred "
+                                                 "in violation of protocol (_ssl.c:1010)"))
+
+
+with patch.object(net.urllib.request, "urlopen", _eof206):
+    try:
+        net.download("https://reshade.me/downloads/ReShade_Setup_9.9.9_Addon.exe",
+                     "probe206-ReShade_Setup_9.9.9_Addon.exe", attempts=1)
+        _d206 = None
+    except Exception as _x206:
+        _d206 = _x206
+    try:
+        net.fetch_text("https://api.github.com/repos/doitsujin/dxvk/releases/latest")
+        _f206 = None
+    except Exception as _x206:
+        _f206 = _x206
+check("#438: an EOF in the handshake on a download names the host it could not finish with",
+      isinstance(_d206, net.Unreachable) and _d206.kind == "cut" and _d206.host == "reshade.me"
+      and "reshade.me" in str(_d206).split(":")[0], repr(_d206)[:140])
+check("...and on the version lists the same (#434 came through dxvk.resolve -> json_get)",
+      isinstance(_f206, net.Unreachable) and _f206.host == "api.github.com", repr(_f206)[:140])
+check("...and the list reader in sources gives the same answer",
+      "net.unreachable(" in src_of(sources._get))
+
+# The diagnosis, on the two reports as they were sent.
+_vs206 = _ilu206.spec_from_file_location("verdict_check206", SRC_DIR / "_tools" / "verdict_check.py")
+_vc206 = _ilu206.module_from_spec(_vs206)
+_vs206.loader.exec_module(_vc206)
+_a434 = _vc206._answer(SRC_DIR / "_tools" / "reports" / "434.txt")
+_a438 = _vc206._answer(SRC_DIR / "_tools" / "reports" / "438.txt")
+check("#434: an unfinished install whose socket Windows refused is not told 'install again'",
+      _a434["verdict"] == diagnose._NET_VERDICTS["blocked"] and "firewall" in _a434["verdict"], _a434["verdict"])
+check("#438: an install that died on a cut handshake says the connection was cut",
+      _a438["verdict"] == diagnose._NET_VERDICTS["cut"], _a438["verdict"])
+from core import verdicts as _vd206  # noqa: E402
+check("...and every connection verdict is still stage 1, the install that stopped",
+      all(_vd206.stage(v)[0] == "1 the install stopped" for v in diagnose._NET_VERDICTS.values()))
+check("...and the replay counts them as verdicts of an unfinished record",
+      all(v in _vc206.replay_report.UNFINISHED for v in diagnose._NET_VERDICTS.values()))
+
+# The install itself. REFramework is the first thing an RE Engine game gets,
+# so it stands in for "a file of ours went in before the download died" -
+# on #438 that was DXVK's d3d9.dll.
+_saved206 = (installer.reengine.detected, installer.refw.install,
+             sources.resolve_reshade, installer.net.download)
+
+
+def _refw206(root, log):
+    (root / ("dinput8.dll" + installer.BACKUP_SUFFIX)).write_bytes((root / "dinput8.dll").read_bytes())
+    (root / "dinput8.dll").write_bytes(b"MZ refw")
+    return ["dinput8.dll", "dinput8.dll" + installer.BACKUP_SUFFIX]
+
+
+def _cut206(url, name, progress=None, **k):
+    raise net.Unreachable("reshade.me", "cut", _ue206.URLError(
+        _ssl206.SSLEOFError(8, "[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol")))
+
+
+def _game206():
+    d = Path(tempfile.mkdtemp(prefix="rb206_"))
+    shutil.copyfile(X64, d / "Game.exe")
+    (d / "dinput8.dll").write_bytes(b"MZ the game's own")
+    return d, games.manual(d)
+
+
+installer.reengine.detected = lambda root: True
+installer.refw.install = _refw206
+sources.resolve_reshade = lambda: ("9.9.9", "https://reshade.me/downloads/ReShade_Setup_9.9.9_Addon.exe")
+installer.net.download = _cut206
+try:
+    _dr206, _gr206 = _game206()
+    try:
+        installer.install(_gr206, installer.Options(), on_log=lambda t: None)
+        _mr206 = ""
+    except installer.InstallError as _x206:
+        _mr206 = str(_x206)
+    check("#438: a fresh install that fails is taken back out whole - the game's own file back, no record",
+          (_dr206 / "dinput8.dll").read_bytes() == b"MZ the game's own"
+          and not (_dr206 / installer.MANIFEST).exists()
+          and sorted(p.name for p in _dr206.iterdir()) == ["Game.exe", "dinput8.dll"],
+          sorted(p.name for p in _dr206.iterdir()))
+    check("...it says so in words, with the host, and the cause is the last line the result card shows",
+          _mr206.startswith("Nothing of it was left in the game folder")
+          and _mr206.strip().splitlines()[-1].startswith("reshade.me: the connection to reshade.me was cut off")
+          and "Traceback" not in _mr206, _mr206[:160])
+    _v206 = diagnose.analyse(_dr206, installer.last_failure(_dr206))
+    check("...and the diagnosis of that folder names the same cause",
+          _v206.verdict == diagnose._NET_VERDICTS["cut"] and not _v206.ran, _v206.verdict)
+    shutil.rmtree(_dr206, ignore_errors=True)
+
+    # Over an install of ours (the same route again, an "update all"), a
+    # failure keeps what is there: rolling back would take a working
+    # install away over a network blip.
+    _dk206, _gk206 = _game206()
+    (_dk206 / "ReShade.ini").write_text("[GENERAL]\n", encoding="utf8")
+    (_dk206 / installer.MANIFEST).write_text(json.dumps(
+        {"version": 1, "complete": True, "path": installer.FEEDER, "files": ["ReShade.ini"]}),
+        encoding="utf8")
+    try:
+        installer.install(_gk206, installer.Options(), on_log=lambda t: None)
+    except installer.InstallError as _x206:
+        _mk206 = str(_x206)
+    _rk206 = json.loads((_dk206 / installer.MANIFEST).read_text(encoding="utf8"))
+    check("...an install over one of ours keeps its files and records the new ones for 'Uninstall'",
+          (_dk206 / "ReShade.ini").is_file() and (_dk206 / "dinput8.dll").read_bytes() == b"MZ refw"
+          and _rk206.get("complete") is False and "dinput8.dll" in _rk206.get("files", [])
+          and _mk206.startswith("What was written so far is recorded"), (_mk206[:80], _rk206.get("files")))
+    shutil.rmtree(_dk206, ignore_errors=True)
+
+    # The install's own refusal after a file went in (the step after
+    # REFramework refuses): taken back out, and the reason kept in a record
+    # with nothing else in it.
+    def _refuse206():
+        raise installer.InstallError("No suitable nvngx_dlssnr build found for your card.")
+
+    sources.resolve_reshade = _refuse206
+    _ds206, _gs206 = _game206()
+    try:
+        installer.install(_gs206, installer.Options(), on_log=lambda t: None)
+    except installer.InstallError:
+        pass
+    _rs206 = json.loads((_ds206 / installer.MANIFEST).read_text(encoding="utf8"))
+    _vs206r = diagnose.analyse(_ds206)
+    check("...a refusal after a file went in: the file is gone, the reason stays for the diagnosis",
+          (_ds206 / "dinput8.dll").read_bytes() == b"MZ the game's own"
+          and _rs206.get("files") == [] and net.ROLLED_BACK_NOTE in _rs206.get("notes", [])
+          and _vs206r.verdict == "The install stopped for a reason of its own - see below."
+          and any("taken back out" in f.detail for f in _vs206r.findings)
+          and not any("is in place" in f.detail for f in _vs206r.findings),
+          (_rs206.get("files"), _vs206r.verdict))
+    shutil.rmtree(_ds206, ignore_errors=True)
+finally:
+    (installer.reengine.detected, installer.refw.install,
+     sources.resolve_reshade, installer.net.download) = _saved206
+check("the rollback reads 'fresh' after the previous route is out and before the first step",
+      src_of(installer.install).find("previous = _previous_route(root)")
+      < src_of(installer.install).find("fresh = not _previously_ours(root)")
+      < src_of(installer.install).find("--- 0) REFramework first"))
+check("...and the game holding a file open is not rolled back: that would fail the same way",
+      "_roll_back(" not in src_of(installer.install).split("except PermissionError as e:")[1]
+      .split("except (sources.RateLimited")[0])
+
+# Gate 2.0.5 leftovers: the MFG package refused and warned about before install().
+_dm206 = Path(tempfile.mkdtemp(prefix="mfg206_"))
+shutil.copyfile(X64, _dm206 / "Game.exe")
+_gm206 = games.manual(_dm206)
+_om206 = installer.Options(path=installer.OPTI, opti_build=optiscaler.PRESR_MFG, fg=True)
+with patch.object(installer.gpu, "detect", lambda: ("NVIDIA GeForce RTX 5080", 120)):
+    _pm50 = installer.preview(_gm206, _om206)
+with patch.object(installer.gpu, "detect", lambda: ("NVIDIA GeForce RTX 4060 Ti", 89)):
+    _pm40 = installer.preview(_gm206, _om206)
+check("the preview refuses the RTX 40 MFG package on an RTX 50, as install() does",
+      any("RTX 40 cards only" in b for b in _pm50.blockers)
+      and not any("RTX 40 cards only" in b for b in _pm40.blockers), _pm50.blockers)
+check("...and warns before the install that the game ships no frame generation to unlock",
+      installer.MFG_NO_DLSSG in _pm40.warnings, _pm40.warnings)
+shutil.rmtree(_dm206, ignore_errors=True)
+_osrc206 = src_of(installer.install)
+check("the FSR frame-generation warning for the MFG package comes only once FSR FG was switched on",
+      _osrc206.find("if optiscaler.enable_fg(root, log):")
+      < _osrc206.find("rep.warnings.append(MFG_FSR_FG)")
+      and _osrc206.count("MFG_FSR_FG") == 1)
+check("...and an unlock that could not be written is said, not dropped",
+      "if not optiscaler.enable_mfg_unlock(root, log):" in _osrc206)
+_dg206 = Path(tempfile.mkdtemp(prefix="dlssg206_"))
+(_dg206 / "nvngx_dlssg.dll").write_bytes(b"MZ")
+check("a frame-generation file this install just wrote is not the game's own",
+      _m141.has_dlssg(_dg206) == "nvngx_dlssg.dll"
+      and _m141.has_dlssg(_dg206, _dg206, written=["nvngx_dlssg.dll"]) == "")
+shutil.rmtree(_dg206, ignore_errors=True)
+section("2.0.6: games like this one, and the driver within its route")
+import importlib.util as _ilu206  # noqa: E402
+from core import autopilot as _ap206m, community as _comm  # noqa: E402
+from core.ui import ctl_game as _uig, ctl_library as _uil  # noqa: E402
+
+_spec206 = _ilu206.spec_from_file_location(
+    "_agg206", SRC_DIR / ".github" / "scripts" / "compatibility.py")
+_agg = _ilu206.module_from_spec(_spec206)
+_spec206.loader.exec_module(_agg)
+_shared = json.loads((Path("docs") / "compatibility.json").read_text(encoding="utf8"))
+
+
+class _FakeGame:
+    def __init__(self, exe="rdr2.exe"):
+        self.exe = Path(exe)
+        self.name = "test"
+
+
+# --- 2.0.6: games like this one, and the driver within its route ------------
+# brain.py said feeder 44 of 110 against optiscaler 55 of 73, and the first
+# idea was "put optiscaler first for games with an upscaler". Measured from
+# the records, only 3 of the 110 feeder results were on games shown to have
+# one; 53 of 69 optiscaler DX12 results were games with their own DLSS and
+# 9 of 27 feeder DX12 results games without. The api alone compares two
+# kinds of game. So a result says what the game ships ("up"), the list
+# counts by that class, and a class moves the pick only on MIN_CLASS results
+# per route with ranges that do not overlap.
+def _rec206(exe, route, result, api="DX11", up="none", driver="616.92"):
+    g = _FakeGame(exe)
+    return _comm.block(_comm.record(g, route, result, api=api, driver=driver, upscaler=up))
+
+
+_b206 = ([_rec206("a.exe", "feeder", "worked")] * 10 + [_rec206("a.exe", "feeder", "failed")] * 30
+         + [_rec206("b.exe", "standalone", "worked")] * 28 + [_rec206("b.exe", "standalone", "failed")] * 2
+         # an old result with no class: counted for its game and its driver only
+         + [_comm.block({"v": 1, "exe": "old.exe", "game": "O", "route": "feeder", "api": "DX11",
+                         "driver": "616.64", "result": "failed"})]
+         # hand-written blocks with keys the tool never writes
+         + [_comm.block({"v": 1, "exe": "h.exe", "game": "H", "route": "feeder", "api": "DX99",
+                         "up": "gpu", "driver": "latest", "result": "worked"}),
+            _comm.block({"v": 1, "exe": "h.exe", "game": "H", "route": "Feed er!", "api": "DX11",
+                         "up": "none", "driver": "616.92", "result": "worked"})])
+with tempfile.TemporaryDirectory() as _td:
+    _agg.issues = lambda repo, token: [{"body": b} for b in _b206]
+    _agg.OUT = Path(_td) / "compatibility.json"
+    _agg.main()
+    _l206 = json.loads(_agg.OUT.read_text(encoding="utf8"))
+check("the published list counts results by the kind of game, split by route",
+      _l206.get("by_class", {}).get("DX11/none", {}).get("feeder") == {"worked": 10, "failed": 30}
+      and _l206["by_class"]["DX11/none"].get("standalone") == {"worked": 28, "failed": 2},
+      _l206.get("by_class"))
+check("...a result that does not say what the game ships has no class, and a made-up key none",
+      set(_l206["by_class"]) == {"DX11/none"}
+      and "feed er!" not in str(_l206["by_class"]) + str(_l206.get("by_driver"))
+      and "latest" not in _l206.get("by_driver", {}), (_l206.get("by_class"), list(_l206.get("by_driver", {}))))
+check("...and by driver, split by route, old results included",
+      _l206.get("by_driver", {}).get("616.64", {}).get("feeder") == {"worked": 0, "failed": 1}
+      and _l206["by_driver"]["616.92"]["feeder"] == {"worked": 10, "failed": 30}, _l206.get("by_driver"))
+_r206 = _comm.record(_FakeGame("x.exe"), "feeder", "worked", upscaler="fsr")
+check("a shared result says what the game ships, and only in the words the list reads",
+      _r206.get("up") == "fsr" and "up" not in _comm.record(_FakeGame("x.exe"), "feeder", "worked",
+                                                             upscaler="FSR3")
+      and "the game ships: FSR, no DLSS" in urllib.parse.unquote(_comm.issue_url(_r206, "Working.")),
+      _r206)
+check("...and the verdict line is still read back from a body that carries it",
+      _comm.said_verdict(urllib.parse.unquote(_comm.issue_url(_r206, "Working.")).split("body=", 1)[1])
+      == "Working.")
+
+_off206 = [dlss.FEEDER, dlss.BRIDGE, dlss.STANDALONE, dlss.RENODX]
+check("a class moves the pick on MIN_CLASS results per route and ranges that do not overlap",
+      _comm.class_pick(_l206, "DX11/none", _off206, dlss.FEEDER)[0] == dlss.STANDALONE
+      and "28 of 30" in _comm.class_pick(_l206, "DX11/none", _off206, dlss.FEEDER)[1]
+      and "10 of 40" in _comm.class_pick(_l206, "DX11/none", _off206, dlss.FEEDER)[1])
+_thin206 = {"by_class": {"DX11/none": {"feeder": {"worked": 10, "failed": 30},
+                                       "standalone": {"worked": 11, "failed": 0}}}}
+_near206 = {"by_class": {"DX11/none": {"feeder": {"worked": 20, "failed": 20},
+                                       "standalone": {"worked": 26, "failed": 14}}}}
+check("...not on eleven results, however good they look",
+      _comm.class_pick(_thin206, "DX11/none", _off206, dlss.FEEDER) == ("", ""))
+check("...not when the two ranges overlap (20 of 40 against 26 of 40)",
+      _comm.class_pick(_near206, "DX11/none", _off206, dlss.FEEDER) == ("", ""))
+check("...never a route this game is not offered, and never from another class",
+      _comm.class_pick(_l206, "DX11/none", [dlss.FEEDER, dlss.BRIDGE], dlss.FEEDER) == ("", "")
+      and _comm.class_pick(_l206, "DX12/none", _off206, dlss.FEEDER) == ("", "")
+      and _comm.class_pick({}, "DX11/none", _off206, dlss.FEEDER) == ("", ""))
+check("...and the counts are said where they do not move anything",
+      _comm.class_line(_thin206, "DX11/none", dlss.FEEDER, _off206)
+      == "Shared results for DirectX 11 games with no DLSS, FSR or XeSS: the feeder route worked in 10 of 40. "
+         "The standalone route: 11 of 11.",
+      _comm.class_line(_thin206, "DX11/none", dlss.FEEDER, _off206))
+
+# detect() is where the page, the library, the command line and the watcher
+# all get the recommendation - so the class steer lives there, behind two
+# arguments nobody has to pass.
+_d206 = Path(tempfile.mkdtemp(prefix="cls206_"))
+try:
+    (_d206 / "Game.exe").write_bytes(b"MZ")
+    _plain206 = dlss.detect(_d206, _d206, "DX11", 64, 89)
+    _moved206 = dlss.detect(_d206, _d206, "DX11", 64, 89, shared=_l206, exe=_d206 / "Game.exe")
+    _own206 = dict(_l206, games={"game.exe": {"routes": {"feeder": {"worked": 3, "failed": 2}}}})
+    _kept206 = dlss.detect(_d206, _d206, "DX11", 64, 89, shared=_own206, exe=_d206 / "Game.exe")
+    _off206b = dlss.detect(_d206, _d206, "DX11", 64, 89, shared={}, exe=_d206 / "Game.exe")
+finally:
+    shutil.rmtree(_d206, ignore_errors=True)
+check("detect: games like this one move the recommendation, and say it with both counts",
+      _plain206.recommended == dlss.FEEDER and _moved206.recommended == dlss.STANDALONE
+      and _moved206.shared_from == dlss.FEEDER and "28 of 30" in _moved206.reason
+      and "would pick feeder" in _moved206.reason,
+      (_plain206.recommended, _moved206.recommended, _moved206.reason))
+check("...a game with five results of its own is steered by those, not by its class",
+      _kept206.recommended == dlss.FEEDER, _kept206.recommended)
+check("...and with no list (offline, first run) the tool's own rules stand",
+      _off206b.recommended == dlss.FEEDER and _off206b.shared_from == "", _off206b.recommended)
+check("every caller that shows a recommendation passes the list, or none does",
+      all("shared=" in src_of(f) for f in (_uig.GameControl.enter_game,
+                                            _uil.LibraryControl.inspect_row))
+      and "shared=community.cached()" in Path("dlss5_autopilot.py").read_text(encoding="utf8"))
+
+# Two paths, one answer: the autopilot's order after the first route reads
+# the same class table the recommendation read.
+_rank206 = community.rank_routes(_l206, _FakeGame("nobody.exe"), [dlss.FEEDER, dlss.STANDALONE],
+                                 "DX11/none")
+check("the autopilot orders routes by the same games-like-this table",
+      [n for n, _ in _rank206] == [dlss.STANDALONE, dlss.FEEDER]
+      and "in DirectX 11 games with no DLSS, FSR or XeSS" in _rank206[0][1], _rank206)
+check("...and the what-next line after a failure does too",
+      "Across DirectX 11 games with no DLSS, FSR or XeSS, the standalone route worked in 28 of 30"
+      in community.next_route(_l206, _FakeGame("nobody.exe"), "feeder", _off206, "DX11/none"),
+      community.next_route(_l206, _FakeGame("nobody.exe"), "feeder", _off206, "DX11/none"))
+_ap206 = _ap206m.plan(dlss.STANDALONE, [dlss.FEEDER, dlss.BRIDGE, dlss.STANDALONE], _l206,
+                        _FakeGame("nobody.exe"), klass="DX11/none")
+check("...and a pass starts on the route the page recommends",
+      _ap206[0] == _moved206.recommended, _ap206)
+
+# F6: the driver, inside the route. Across all routes 616.64 was 7 of 28 and
+# 617.14 16 of 22 - but 22 of 616.64's results were feeder ones and 5 of
+# 617.14's; the comparison was the route mix.
+_dl206 = {"by_driver": {"616.56": {"feeder": {"worked": 21, "failed": 12}},
+                        "616.64": {"feeder": {"worked": 4, "failed": 18},
+                                   "optiscaler": {"worked": 3, "failed": 1}},
+                        "616.92": {"feeder": {"worked": 11, "failed": 32}},
+                        "617.14": {"feeder": {"worked": 3, "failed": 2}},
+                        "618.01": {"feeder": {"worked": 18, "failed": 2}}}}
+check("a driver's note counts inside the route, with its denominator",
+      community.driver_note(_dl206, "616.92", "feeder")
+      == "Shared results with the feeder route on driver 616.92: 11 of 43 worked. On 618.01: 18 of 20.",
+      community.driver_note(_dl206, "616.92", "feeder"))
+check("...never names an older driver, however much better it did (616.56: 21 of 33)",
+      "616.56" not in community.driver_note(_dl206, "616.64", "feeder")
+      and "616.56" not in community.driver_note(_dl206, "616.92", "feeder"))
+check("...never a newer one on thin results (617.14: 3 of 5)",
+      "617.14" not in community.driver_note(_dl206, "616.64", "feeder"))
+check("...and says nothing below MIN_DRIVER results on that route",
+      community.driver_note(_dl206, "616.64", "optiscaler") == ""
+      and community.driver_note(_dl206, "999.99", "feeder") == "")
+_old206 = {k: v for k, v in _shared.items() if k not in ("by_driver", "by_class")}
+check("...and on a list from before 2.0.6 it gives the plain count, nothing compared",
+      "all routes" in (community.driver_note(_old206, "616.92", "feeder") or "all routes")
+      and " On " not in community.driver_note(_old206, "616.92", "feeder"),
+      community.driver_note(_old206, "616.92", "feeder"))
+check("the driver note is shown before the install, for the route on the page",
+      "driver_note(data, drv, route)" in src_of(_uig.GameControl.community_note)
+      and "class_line(" in src_of(_uig.GameControl.community_note))
+
+# community.cached() is the offline read: disk only, never the network.
+_saved206 = community._cache
+try:
+    community._CACHED = None
+    community._cache = lambda: Path(tempfile.gettempdir()) / "no-such-dir-206" / "compatibility.json"
+    with patch.object(net, "fetch_text", lambda *a, **k: (_ for _ in ()).throw(AssertionError("net"))):
+        _c206 = community.cached()
+finally:
+    community._cache = _saved206
+    community._CACHED = None
+check("the recommendation reads the list from disk only, {} when there is none", _c206 == {})
+
+# The page itself: pick a game nobody has reported, and the note before the
+# install carries the class counts and the driver inside the route.
+with _ui_isolated():
+    with _ui_threads(run=False) as _th206:
+        _cc206 = _ui_ctl(_ui_game(name="Class Note", api="DX11"),
+                         _ui_support([dlss.FEEDER, dlss.STANDALONE], dlss.FEEDER, native_dlss=False))
+        with patch.object(community, "fetch", lambda *a, **k: _l206), \
+                patch.object(gpu, "driver_version", lambda: "616.92"):
+            _cc206.community_note()
+            _th206.go()
+            _cc206.pump()
+        _t206 = _cc206.text()
+_ui_cleanup()
+check("the page says what games like this one did, and the driver inside the route",
+      "the feeder route worked in 10 of 40. The standalone route: 28 of 30." in _t206
+      and "Shared results with the feeder route on driver 616.92: 10 of 40 worked." in _t206,
+      _t206[-400:])
+
+section("2.0.6: the build before an update goes (#450), and a laptop's game draws on the NVIDIA card (#427)")
+# #450: the swap kept dlss5-autopilot.old.exe "until the next update" - for
+# good, in practice - and people read the leftover as a failed update. It
+# now goes the second time the new build's window comes up.
+from core import selfupdate as _su450, gpupref as _gp427  # noqa: E402
+from dataclasses import replace  # noqa: E402
+with tempfile.TemporaryDirectory() as _td450, \
+        patch.object(prefs, "FILE", Path(_td450) / "settings" / "settings.json"):
+    _d450 = Path(_td450)
+    _exe450 = _d450 / "dlss5-autopilot.exe"
+    _exe450.write_bytes(b"MZ new")
+    (_d450 / "dlss5-autopilot.old.exe").write_bytes(b"MZ old")
+    (_d450 / "_internal.old").mkdir()
+    (_d450 / "_internal.old" / "python313.dll").write_bytes(b"x")
+    with patch.object(_su450, "running_exe", lambda: _exe450):
+        _r1 = _su450.settle("2.0.6")
+        _kept1 = (_d450 / "dlss5-autopilot.old.exe").is_file() and (_d450 / "_internal.old").is_dir()
+        _r2 = _su450.settle("2.0.6")
+        _gone2 = not (_d450 / "dlss5-autopilot.old.exe").exists() and not (_d450 / "_internal.old").exists()
+        # the next update: its first start keeps the old build again
+        (_d450 / "dlss5-autopilot.old.exe").write_bytes(b"MZ 2.0.6")
+        _r3 = _su450.settle("2.0.7")
+        _kept3 = (_d450 / "dlss5-autopilot.old.exe").is_file()
+        # an .old.exe that cannot go (running: stood in for by a folder of
+        # that name) keeps its _internal.old - the old build may be in use
+        (_d450 / "dlss5-autopilot.old.exe").unlink()
+        (_d450 / "dlss5-autopilot.old.exe").mkdir()
+        (_d450 / "_internal.old").mkdir()
+        _r4 = _su450.settle("2.0.7")
+        _kept4 = (_d450 / "_internal.old").is_dir()
+    with patch.object(_su450, "running_exe", lambda: None):
+        _r5 = _su450.settle("9.9.9")
+    from core import prefs as _pr450
+    _flag5 = _pr450.get(_su450.SETTLED)
+check("#450: the first start of a new build keeps the old one (it records that it came up)",
+      _r1 == [] and _kept1, (_r1, _kept1))
+check("...the next start of the same build removes .old.exe and _internal.old",
+      len(_r2) == 2 and _gone2, _r2)
+check("...a newer update starts the count again", _r3 == [] and _kept3, _r3)
+check("...and _internal.old stays while the .old.exe beside it cannot be removed", _kept4 and _r4 == [], _r4)
+check("...running from source removes nothing and records nothing", _r5 == [] and _flag5 == "2.0.7", _flag5)
+check("...the window runs it a few seconds after it is up, off the Tk thread",
+      "root.after(3000, self._settle_update)" in src_of(__import__("core.ui.app", fromlist=["x"]))
+      and "threading.Thread(target=work" in src_of(__import__("core.ui.app", fromlist=["x"]).App._settle_update))
+check("...and the update question says how long the old build is kept",
+      "removed when the new version starts a second time" in src_of(__import__("core.ui.app", fromlist=["x"]))
+      and "so you can go back.\"" not in src_of(__import__("core.ui.app", fromlist=["x"])))
+
+# #427: the value is shared with Windows' own switches; only our token moves.
+_m427 = _gp427.Memory()
+with patch.object(_gp427, "backend", _m427):
+    _m427.values = {r"C:\g\a.exe": "AppStatus=4;", r"C:\g\mine.exe": "GpuPreference=1; "}
+    _rec427, _th427 = _gp427.apply([r"C:\g\a.exe", r"C:\g\b.exe", r"C:\g\mine.exe"])
+    _after1 = dict(_m427.values)
+    _rec427b, _th427b = _gp427.apply([r"C:\g\a.exe", r"C:\g\b.exe", r"C:\g\mine.exe"], _rec427)
+    _gp427.restore(_rec427b)
+    _after2 = dict(_m427.values)
+    # changed since the install: Windows added a switch, the person picked Power saving
+    _rec427c, _ = _gp427.apply([r"C:\g\c.exe", r"C:\g\d.exe"])
+    _m427.values[r"C:\g\c.exe"] = "GpuPreference=2;SwapEffectUpgradeEnable=1;"
+    _m427.values[r"C:\g\d.exe"] = "GpuPreference=1;"
+    _gp427.restore(_rec427c)
+    _after3 = dict(_m427.values)
+check("#427: High performance is added beside the switches Windows keeps in the same value",
+      _after1.get(r"C:\g\a.exe") == "AppStatus=4;GpuPreference=2;"
+      and _after1.get(r"C:\g\b.exe") == "GpuPreference=2;", _after1)
+check("...a choice the person made is left alone and named", _after1.get(r"C:\g\mine.exe") == "GpuPreference=1; "
+      and _th427 == [r"C:\g\mine.exe"], _th427)
+check("...a reinstall keeps the first record, not our own 2 read as theirs",
+      _rec427b == _rec427 and _th427b == [r"C:\g\mine.exe"], (_rec427b, _th427b))
+check("...uninstall puts each value back byte for byte, and theirs stays",
+      _after2 == {r"C:\g\a.exe": "AppStatus=4;", r"C:\g\mine.exe": "GpuPreference=1; "}, _after2)
+check("...changed since: only our token comes out, and a changed preference is theirs",
+      _after3.get(r"C:\g\c.exe") == "SwapEffectUpgradeEnable=1;"
+      and _after3.get(r"C:\g\d.exe") == "GpuPreference=1;", _after3)
+_hyb427 = [hex(v) for v in (_gp427._dxgi_vendors() or [])]
+check("...the machine is asked through DXGI (present adapters), not the registry's history",
+      "CreateDXGIFactory1" in src_of(_gp427._dxgi_vendors) and isinstance(_hyb427, list), _hyb427)
+
+# the install: preview, record, reinstall, turn off, uninstall - on a hybrid
+# machine and on one with a single card
+_m427i = _gp427.Memory()
+_d427 = Path(tempfile.mkdtemp(prefix="gpupref_"))
+shutil.copyfile(X64, _d427 / "Game.exe")
+_g427 = games.manual(_d427)
+_key427 = str(_g427.exe)
+_o427 = installer.Options(path=dlss.NATIVE, native_dlss=True)
+_s427: dict = {}
+try:
+    with patch.object(_gp427, "backend", _m427i), patch.object(_gp427, "other_gpu", lambda: "Intel"):
+        _s427["pv"] = [o for o in installer.preview(_g427, _o427).outside if "graphics setting" in o]
+        _s427["pv_off"] = [o for o in installer.preview(_g427, replace(_o427, gpu_pref=False)).outside
+                           if "graphics setting" in o]
+        installer.install(_g427, _o427, on_log=lambda t: None)
+        _s427["v1"] = _m427i.values.get(_key427)
+        _s427["man1"] = installer._previous_manifest(_g427.install_dir).get("gpu_pref")
+        installer.install(_g427, installer.options_from_manifest(_g427.install_dir), on_log=lambda t: None)
+        _s427["man2"] = installer._previous_manifest(_g427.install_dir).get("gpu_pref")
+        # an install that stops part way keeps the record
+        installer._write_manifest(_g427.install_dir, _g427, _o427, installer.Report(), "dxgi.dll",
+                                  "stable", complete=False)
+        _s427["man_fail"] = installer._previous_manifest(_g427.install_dir).get("gpu_pref")
+        installer.install(_g427, replace(_o427, gpu_pref=False), on_log=lambda t: None)
+        _s427["off"] = (_m427i.values.get(_key427), installer.options_from_manifest(_g427.install_dir).gpu_pref)
+        installer.install(_g427, _o427, on_log=lambda t: None)
+        _s427["removed"] = installer.uninstall(_g427, on_log=lambda t: None)
+        _s427["v_end"] = dict(_m427i.values)
+        # the person's own choice survives install and uninstall
+        _m427i.values[_key427] = "GpuPreference=1;"
+        _rep427 = installer.install(_g427, _o427, on_log=lambda t: None)
+        _s427["theirs_note"] = [n for n in _rep427.notes if "left as it is" in n]
+        installer.uninstall(_g427, on_log=lambda t: None)
+        _s427["theirs_end"] = _m427i.values.get(_key427)
+        _m427i.values.clear()
+    with patch.object(_gp427, "backend", _m427i), patch.object(_gp427, "other_gpu", lambda: ""):
+        _s427["pv_one"] = [o for o in installer.preview(_g427, _o427).outside if "graphics setting" in o]
+        installer.install(_g427, _o427, on_log=lambda t: None)
+        _s427["one"] = dict(_m427i.values)
+        installer.uninstall(_g427, on_log=lambda t: None)
+except Exception as e:
+    _s427["error"] = f"{type(e).__name__}: {e}"
+shutil.rmtree(_d427, ignore_errors=True)
+check("#427: the preview says it before the install, and not with the box off",
+      len(_s427.get("pv") or []) == 1 and "Game.exe" in _s427["pv"][0] and "Intel" in _s427["pv"][0]
+      and _s427.get("pv_off") == [], _s427)
+check("...the install sets it and records what it found", _s427.get("v1") == "GpuPreference=2;"
+      and _s427.get("man1") == [{"exe": _key427, "was": None, "wrote": "GpuPreference=2;"}], _s427)
+check("...a second install keeps that record", _s427.get("man2") == _s427.get("man1"), _s427)
+check("...an install that stops part way keeps it too", _s427.get("man_fail") == _s427.get("man1"), _s427)
+check("...turning the box off and installing again takes it back out, and the choice is remembered",
+      _s427.get("off") == (None, False), _s427.get("off"))
+check("...uninstall leaves the registry as it was, and says so",
+      _s427.get("v_end") == {} and any("graphics setting" in r for r in _s427.get("removed") or []), _s427)
+check("...a GPU the person chose is kept through install and uninstall",
+      _s427.get("theirs_note") and _s427.get("theirs_end") == "GpuPreference=1;", _s427)
+check("...one GPU: nothing is written and nothing is said", _s427.get("one") == {}
+      and _s427.get("pv_one") == [], _s427)
+import types as _types427  # noqa: E402
+_host427 = installer._gpu_exes(Path("C:/g"), _types427.SimpleNamespace(exe=Path("C:/g/Game.exe"), bitness=32),
+                               installer.Options(path=dlss.FEEDER))
+check("...the 32-bit feeder's 64-bit helper is set as well - NGX runs in it",
+      [p.name for p in _host427] == ["Game.exe", installer.FEEDER_HOST]
+      and _host427[1].parent.name == installer.HOST_DIR, _host427)
+_suites427 = {n: (SRC_DIR / n).read_text(encoding="utf8") for n in
+              ("test_all.py", "test_install.py", "test_scan.py", "test_clean_machine.py",
+               "_tools/dryrun_section.py")}
+_ta427 = _suites427["test_all.py"]
+check("...the test suites never write the machine's own registry (a dict stands in, before any install)",
+      isinstance(_gp427.backend, _gp427.Memory)
+      and all("_gpupref.backend = _gpupref.Memory()" in t for t in _suites427.values())
+      and 0 < _ta427.find("_gpupref.backend = _gpupref.Memory()")
+      < _ta427.find('section("3. install and uninstall on every route")'),
+      [n for n, t in _suites427.items() if "_gpupref.backend = _gpupref.Memory()" not in t])
+from core.ui import setpanel as _sp427, ctl_game as _sp427_ctl  # noqa: E402
+_rows427 = {r[0]: r[1] for _grp, rows in _sp427.GROUPS for r in rows}
+check("...the row is in the game's settings under the name the README gives it",
+      _rows427.get("gpu_pref") == "use the NVIDIA card (Windows setting)"
+      and "use the NVIDIA card (Windows\nsetting)" in (SRC_DIR / "README.md").read_text(encoding="utf8"),
+      _rows427.get("gpu_pref"))
+check("...shown only where there is a second GPU, and sent with the install",
+      '"gpu_pref": lambda: bool(g) and gpupref.hybrid()' in src_of(_sp427_ctl)
+      and 'gpu_pref=bool(s.get("gpu_pref", True))' in src_of(_sp427_ctl))
+
+
+section("2.0.6 round 2: the new reports' own lines (#480 #497 #479 #482 #460 #348 #439)")
+from core import wincrash as _wc2r  # noqa: E402
+import fake_pe as _fpe2r  # noqa: E402
+# #480: Windows gave the faulting module as a full path, and the game's own
+# exe was "neither the game's executable nor anything this tool installs".
+_c2r = _wc2r.Crash("2026-09-25 01:00:00", "GettingUp.exe",
+                   r"F:\SteamLibrary\steamapps\common\Marc Ecko's Getting Up 2\_Bin\GettingUp.exe",
+                   "0xC0000005", "Application Error")
+check("#480: a fault in the game's own exe given as a full path is the game's own code",
+      "faulting in its own code" in _wc2r.describe(_c2r)[0], _wc2r.describe(_c2r)[0])
+check("...and the proxy and the record's files match by file name too",
+      _wc2r.Crash("x", "Game.exe", r"C:\g\dxgi.dll", "", "").ambiguous("dxgi.dll")
+      and _wc2r.Crash("x", "Game.exe", r"C:\g\d3d9.dll", "", "").ours(("bin\\d3d9.dll",))
+      and not _wc2r.Crash("x", "Game.exe", r"C:\dlss5 mods\overlay.dll", "", "").ours())
+
+# #497: the extras app beside the game won the tie of two -Shipping exes.
+_d2r = Path(tempfile.mkdtemp(prefix="halo2r_"))
+for _p2r in ("Halo/Binaries/Win64/HaloCE-Win64-Shipping.exe",
+             "HCEDigitalExtras/Binaries/Win64/HCEDigitalExtrasApp-Win64-Shipping.exe"):
+    (_d2r / _p2r).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(X64, _d2r / _p2r)
+_ex2r = pe.find_game_exes(_d2r)
+check("#497: a game folder's extras app does not win the tie with the game",
+      _ex2r and _ex2r[0].name == "HaloCE-Win64-Shipping.exe"
+      and not pe.looks_like_game(_ex2r[-1]), [p.name for p in _ex2r])
+shutil.rmtree(_d2r, ignore_errors=True)
+
+# #479: a 32-bit Unreal Engine 3 exe names d3d11.dll and imports no renderer.
+def _ue3_2r(ini: str = "", bits64: bool = False) -> Path:
+    d = Path(tempfile.mkdtemp(prefix="ue3_2r_"))
+    exe = d / "Binaries" / ("Win64" if bits64 else "Win32") / "LifeIsStrange.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_bytes(_fpe2r.dll("1.0.0", machine=0x8664 if bits64 else 0x14C)
+                    + b"\0d3d11.dll\0d3d9.dll\0")
+    (d / "LifeIsStrangeGame" / "CookedPCConsole").mkdir(parents=True)
+    if ini:
+        (d / "LifeIsStrangeGame" / "Config").mkdir()
+        (d / "LifeIsStrangeGame" / "Config" / "DefaultEngine.ini").write_text(ini, encoding="utf8")
+    return exe
+
+
+_u2r = [_ue3_2r(), _ue3_2r("[SystemSettings]\nAllowD3D11=True\n"), _ue3_2r(bits64=True)]
+_a2r = [pe.detect_api(p)[0] for p in _u2r]
+check("#479: a 32-bit UE3 game is DirectX 9, unless its Engine.ini allows D3D11",
+      _a2r[0] == "DX9" and _a2r[1] == "DX11", _a2r)
+check("...and a 64-bit exe in the same layout is not touched by that rule",
+      "Unreal Engine 3" not in pe.detect_api(_u2r[2])[1], pe.detect_api(_u2r[2]))
+for _p2r in _u2r:
+    shutil.rmtree(_p2r.parent.parent.parent, ignore_errors=True)
+
+# The reports themselves, through the replay.
+import importlib.util as _ilu2r  # noqa: E402
+_vs2r = _ilu2r.spec_from_file_location("verdict_check2r", SRC_DIR / "_tools" / "verdict_check.py")
+_vc2r = _ilu2r.module_from_spec(_vs2r)
+_vs2r.loader.exec_module(_vc2r)
+_r2r = {n: _vc2r._answer(SRC_DIR / "_tools" / "reports" / f"{n}.txt") for n in (482, 460, 479)}
+check("#482: the feed gave up on a helper that came up 3 s later - the feeder's wait, not 'look in the log'",
+      _r2r[482]["verdict"].startswith("The feed stopped waiting for the 64-bit helper while it was still starting"),
+      _r2r[482]["verdict"])
+check("...and 1200 frames fed are not 'closed before it drew a single frame'",
+      _r2r[482]["findings"] and not any("closed before it drew a single frame" in f
+                                         for f in _r2r[482]["findings"]), _r2r[482]["findings"])
+check("#460: a Windows event in the report is not 'nothing here recorded why'",
+      _r2r[460]["verdict"].startswith("Windows recorded the game faulting"), _r2r[460]["verdict"])
+check("#479: a D3D9 device on a D3D11 install is the verdict, not buried under 'Inconclusive'",
+      _r2r[479]["verdict"].startswith("ReShade found a Direct3D 9 device"), _r2r[479]["verdict"])
+from core import verdicts as _vd2r  # noqa: E402
+check("...every new verdict has a stage",
+      all(_vd2r.stage(v)[0] for v in (_r2r[482]["verdict"], _r2r[460]["verdict"], _r2r[479]["verdict"],
+                                      "ReShade loaded as the game's d3d9.dll in front of DXVK, so x")))
+
+# #348: ReShade's own d3d9.dll in front of DXVK's, the log lines as attached.
+_d348 = Path(tempfile.mkdtemp(prefix="dm348_"))
+(_d348 / "ReShade.log").write_text(
+    "21:52:47:259 [12948] | INFO  | Initializing crosire's ReShade version '6.8.0.2156' (32-bit) "
+    "loaded from 'F:\\SteamLibrary\\steamapps\\common\\Dark Messiah Might and Magic Single Player\\d3d9.dll' "
+    "into 'F:\\SteamLibrary\\steamapps\\common\\Dark Messiah Might and Magic Single Player\\mm.exe' ...\n"
+    "21:52:47:431 [12948] | INFO  | Redirecting Direct3DCreate9(SDKVersion = 0x20) ...\n"
+    "21:52:51:577 [12948] | INFO  | Registered add-on \"DLSS 5 Feed (32-bit) 0.15.1\" v0.0.0.0 using ReShade API version 20.\n"
+    "21:52:52:719 [19520] | ERROR | Failed to compile 'F:\\x\\reshade-shaders\\Shaders\\DLSS5_Feed.fx':\n"
+    "F:\\x\\DLSS5_Feed.fx(69, 5): preprocessor error: DLSS5_Feed needs D3D10 or newer, and ReShade has "
+    "loaded its DirectX 9 backend\n", encoding="utf8")
+(_d348 / "mm.exe").write_bytes(b"MZ")
+(_d348 / "d3d9.dll").write_bytes(b"MZ")
+# The record as install() writes it for a DXVK route: api "Vulkan" (the game
+# as via_dxvk() hands it on) and DXVK's version.
+(_d348 / installer.MANIFEST).write_text(json.dumps(
+    {"version": 1, "complete": True, "path": installer.FEEDER, "api": "Vulkan",
+     "dxvk": "2.7.1", "files": ["bin/d3d9.dll"]}), encoding="utf8")
+_v348 = diagnose.analyse(_d348)
+check("#348: ReShade loaded as d3d9.dll on a DXVK install is named, and the file is not called ours",
+      _v348.verdict.startswith("ReShade loaded as the game's d3d9.dll in front of DXVK")
+      and any("did not write that file" in f.detail for f in _v348.findings), _v348.verdict)
+# renodx on a DirectX 9 game puts ReShade in as d3d9.dll on purpose.
+(_d348 / installer.MANIFEST).write_text(json.dumps(
+    {"version": 1, "complete": True, "path": installer.ROUTE_RENODX, "api": "DX9",
+     "reshade_proxy": "d3d9.dll", "files": ["d3d9.dll"]}), encoding="utf8")
+_v348b = diagnose.analyse(_d348)
+check("...and never on renodx, where ReShade as d3d9.dll is the loader",
+      not _v348b.verdict.startswith("ReShade loaded as the game's d3d9.dll")
+      and not any("in front of DXVK" in f.title for f in _v348b.findings), _v348b.verdict)
+shutil.rmtree(_d348, ignore_errors=True)
+# Gate 2.0.6 pass 2.
+from core.ui import ctl_library as _cl2g  # noqa: E402
+_d2g = Path(tempfile.mkdtemp(prefix="manual2g_"))
+shutil.copyfile(X64, _d2g / "Game.exe")
+with _ui_isolated():
+    _cl2g.remember_manual(_d2g)
+    _cl2g.remember_manual(_d2g)
+    _n2g = len(prefs.get(_cl2g.MANUAL_KEY, []))
+    _m2g = _cl2g.with_manual([])
+    _m2g2 = _cl2g.with_manual(_m2g)
+check("#441: a folder added by hand is remembered once and comes back on a full scan",
+      _n2g == 1 and len(_m2g) == 1 and _m2g[0].folder == _d2g and len(_m2g2) == 1,
+      (_n2g, [g.folder for g in _m2g]))
+check("...the full scan's worker puts them back, off the Tk thread",
+      "gs = with_manual(games.scan_all(" in src_of(_cl2g.LibraryControl)
+      and "remember_manual(g.folder)" in src_of(_cl2g.LibraryControl.pick_folder))
+shutil.rmtree(_d2g, ignore_errors=True)
+from core import verdicts as _vd2g  # noqa: E402
+from core.diagnose import helper as _hp2g, model as _md2g  # noqa: E402
+_feed2g = ("01:20:34.841  [feed32] host spawned (pid 1): \"x\\host64\\dlss5-feed-host64.exe\" 1\n"
+           "01:20:49.889  [feed32] host lost: pipe never appeared\n"
+           "01:40:00.000  [feed32] shut down cleanly\n")
+_now2g = "01:20:34.848  [host] started\n01:20:52.842  [host] NVSDK_NGX_D3D12_Init -> 0x00000001 (Success)\n"
+_old2g = "22:05:00.000  [host] started\n22:05:09.000  [host] NVSDK_NGX_D3D12_Init -> 0x00000001 (Success)\n"
+_ra2g, _rb2g = _md2g.Report(route="feeder"), _md2g.Report(route="feeder")
+_hp2g._fed_the_helper(_ra2g, _feed2g, _now2g)
+_hp2g._fed_the_helper(_rb2g, _feed2g, _old2g)
+check("#482: the helper log is judged by its own clock - played on for 20 minutes, still the same launch",
+      _ra2g.verdict.startswith("The feed stopped waiting for the 64-bit helper while it was still starting"),
+      _ra2g.verdict)
+check("...and a log from another evening is said to be from an earlier launch",
+      "before it started" in _rb2g.verdict
+      and any("from an earlier launch" in f.detail for f in _rb2g.findings), _rb2g.verdict)
+check("#479: a D3D9 device on a D3D11/12 install does not send the watcher to another route",
+      not _vd2g.route_failed("ReShade found a Direct3D 9 device, not the D3D11/12 this install "
+                                "set up - set 'graphics api' to DirectX 9 and install again."))
+_ap2g = ("12:00:00:000 [1] | INFO  | Initializing crosire's ReShade version '6.8.0' (32-bit) loaded from "
+         "'F:\\Games\\Assassin's Creed\\d3d9.dll' into 'F:\\Games\\Assassin's Creed\\AC.exe' ...")
+check("#348: a game folder with an apostrophe still matches ReShade's 'loaded from' line",
+      "(.*?\\\\d3d9\\.dll)' into" in _diag_src()
+      and re.search(r"loaded from '(.*?\\d3d9\.dll)' into", _ap2g).group(1).endswith("Creed\\d3d9.dll"))
+check("#439: the older bridge add-on is deleted only once its copy is really there",
+      "kept_copy = (root / (LEGACY_BRIDGE_ADDON + BACKUP_SUFFIX)).is_file()" in src_of(installer.install))
+check("gate 2.0.6: install() keeps 'fresh' for the rollback - the Vulkan layer's own flag has its own name",
+      "manifest, layer_new = vulkan.install_layer(" in src_of(installer.install)
+      and len(re.findall(r"(?<![\w.])fresh\s*=(?!=)", src_of(installer.install))) == 1)
+
+# #439: the bridge's old add-on name on another ReShade route.
+check("#439: every ReShade route moves the older bridge add-on aside, and the preview says so",
+      "elif (root / LEGACY_BRIDGE_ADDON).is_file():" in src_of(installer.install)
+      and "_backup(root / LEGACY_BRIDGE_ADDON, rep, root)" in src_of(installer.install)
+      and "elif present(LEGACY_BRIDGE_ADDON):" in src_of(installer.preview))
+_g439 = _fake_game("br439_")
+(_g439.install_dir / installer.LEGACY_BRIDGE_ADDON).write_bytes(b"MZ old bridge")
+_pv439 = installer.preview(_g439, installer.Options(path=installer.FEEDER))
+check("...listed in the preview of a feeder install",
+      any(installer.LEGACY_BRIDGE_ADDON in r for r in _pv439.removes), _pv439.removes)
+shutil.rmtree(_g439.folder, ignore_errors=True)
 
 
 section("RESULT")

@@ -1,0 +1,57 @@
+**Did the game start?** it started and ran
+
+**What happened**
+glitches in shaders
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 4080 (sm_89), driver 616.56
+- game: ACII
+- exe: AssassinsCreedIIGame.exe
+- arch/api: 32-bit / DX9 (imports d3d9.dll, no DXGI)
+- route: feeder
+
+**Files in the folder**
+- ReShade.ini: MISSING
+- nvngx_dlssnr.dll: MISSING
+- reshade-shaders/Shaders/DLSS5_Feed.fx: MISSING
+- install record: MISSING (no install recorded in this folder)
+
+**What ran, and what it loaded** (seen at 23 Sep 12:29)
+- process: AssassinsCreedIIGame.exe
+- DLLs in the process: 111
+- ours, loaded: d3d9.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**Last error**
+```
+
+  File "ssl.py", line 455, in wrap_socket
+  File "ssl.py", line 1041, in _create
+  File "ssl.py", line 1319, in do_handshake
+ssl.SSLEOFError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "core\installer.py", line 3110, in install
+  File "core\installer.py", line 2673, in dl
+  File "core\net.py", line 279, in download
+  File "urllib\request.py", line 215, in urlopen
+  File "urllib\request.py", line 515, in open
+  File "urllib\request.py", line 532, in _open
+  File "urllib\request.py", line 492, in _call_chain
+  File "urllib\request.py", line 1392, in https_open
+  File "urllib\request.py", line 1347, in do_open
+urllib.error.URLError: <urlopen error [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)>
+
+```

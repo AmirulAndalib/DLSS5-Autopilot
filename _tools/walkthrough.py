@@ -439,6 +439,27 @@ def main() -> int:
         ok("...another route hides it and drops the choice",
            k.find("swap the Remix runtime", "toggle") is None and app.opts().remix_swap is False)
 
+        # #427: the Windows graphics setting, on a machine with two GPUs only
+        from core import gpupref
+        with patch.object(gpupref, "other_gpu", lambda: "Intel"):
+            shell.redraw()
+            sb.pump(root, 0.15)
+            gp_t = k.find("use the NVIDIA card (Windows setting)", "toggle")
+            ok("a machine with two GPUs shows 'use the NVIDIA card (Windows setting)', on by default",
+               gp_t is not None and app.opts().gpu_pref is True)
+            if gp_t:
+                sb.reveal(shell, gp_t)
+                sb.click(c, gp_t)
+                ok("...a click reaches the install options", app.opts().gpu_pref is False)
+                sb.click(c, k.find("use the NVIDIA card (Windows setting)", "toggle"))
+        with patch.object(gpupref, "other_gpu", lambda: ""):
+            shell.redraw()
+            sb.pump(root, 0.15)
+            ok("...one GPU: the row is not there",
+               k.find("use the NVIDIA card (Windows setting)", "toggle") is None)
+        shell.redraw()
+        sb.pump(root, 0.15)
+
         # the wheel over an open menu that is longer than it shows
         key_dd = k.find("overlay key", "dropdown")
         ok("the overlay key dropdown is there on feeder", key_dd is not None)
@@ -728,9 +749,9 @@ def main() -> int:
             sb.click(c, scan_btn)
             menu = the_menu()
             labels = [it[0] for it in (menu.items if menu else []) if it]
-            ok("the scan button opens rescan, full rescan and choose a folder",
+            ok("the scan button opens rescan, full rescan and add a game",
                any(x.startswith("rescan") for x in labels) and any(x.startswith("full rescan") for x in labels)
-               and any(x.startswith("choose a folder") for x in labels), labels)
+               and any(x.startswith("add a game") for x in labels), labels)
             pick(next((i for i, x in enumerate(labels) if x.startswith("rescan")), 0))
             sb.until(root, lambda: quick and not app.scanning, 20)
             sb.pump(root, 0.3)
