@@ -80,7 +80,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 11
+    "worked": 12
    },
    "remix": {
     "failed": 2,
@@ -3197,14 +3197,14 @@
    "drivers": {
     "616.56": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
-   "name": "Train Sim World 7",
+   "name": "Train Sim World\u00ae 7",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -3416,6 +3416,6 @@
    }
   }
  },
- "generated": "2026-09-26T18:31:34Z",
- "reports": 278
+ "generated": "2026-09-26T19:22:28Z",
+ "reports": 279
 }
