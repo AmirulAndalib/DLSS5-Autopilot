@@ -2951,6 +2951,28 @@
     }
    }
   },
+  "townfall-win64-shipping.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 4.35,
+     "n": 1,
+     "res": 67
+    }
+   },
+   "name": "SILENT HILL: Townfall",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "trainsimworld.exe": {
    "drivers": {
     "616.56": {
@@ -3189,6 +3211,6 @@
    }
   }
  },
- "generated": "2026-09-26T10:56:40Z",
- "reports": 276
+ "generated": "2026-09-26T12:09:21Z",
+ "reports": 277
 }
