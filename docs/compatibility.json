@@ -2832,6 +2832,28 @@
     }
    }
   },
+  "swzerocompany.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 2.95,
+     "n": 1,
+     "res": 50
+    }
+   },
+   "name": "STAR WARS Zero Company\u2122",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "tanki.exe": {
    "drivers": {
     "610.74": {
@@ -3152,6 +3174,6 @@
    }
   }
  },
- "generated": "2026-09-26T10:45:11Z",
- "reports": 274
+ "generated": "2026-09-26T10:46:17Z",
+ "reports": 275
 }
