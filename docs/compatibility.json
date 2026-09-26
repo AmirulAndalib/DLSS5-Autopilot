@@ -978,6 +978,21 @@
     }
    }
   },
+  "ds2.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "DEATH STRANDING 2: ON THE BEACH",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "dsclient-win64-shipping.exe": {
    "drivers": {
     "616.92": {
@@ -3174,6 +3189,6 @@
    }
   }
  },
- "generated": "2026-09-26T10:46:17Z",
- "reports": 275
+ "generated": "2026-09-26T10:56:40Z",
+ "reports": 276
 }
