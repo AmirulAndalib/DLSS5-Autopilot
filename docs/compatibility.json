@@ -44,6 +44,12 @@
     "worked": 0
    }
   },
+  "UNKNOWN/dlss": {
+   "optiscaler": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
   "VULKAN/dlss": {
    "bridge": {
     "failed": 1,
@@ -222,7 +228,7 @@
     "worked": 4
    },
    "optiscaler": {
-    "failed": 2,
+    "failed": 3,
     "worked": 18
    },
    "renodx": {
@@ -537,6 +543,21 @@
    "name": "The Vanishing of Ethan Carter.SteamGG.NET",
    "routes": {
     "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
+  "avowed.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Avowed.Premium.Edition-InsaneRamZes",
+   "routes": {
+    "optiscaler": {
      "failed": 1,
      "worked": 0
     }
@@ -3715,6 +3736,6 @@
    }
   }
  },
- "generated": "2026-09-27T15:27:30Z",
- "reports": 308
+ "generated": "2026-09-27T16:08:55Z",
+ "reports": 309
 }
