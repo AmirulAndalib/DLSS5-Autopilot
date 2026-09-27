@@ -17,7 +17,7 @@
    },
    "optiscaler": {
     "failed": 1,
-    "worked": 10
+    "worked": 11
    },
    "renodx": {
     "failed": 1,
@@ -189,7 +189,7 @@
    },
    "optiscaler": {
     "failed": 12,
-    "worked": 42
+    "worked": 43
    },
    "remix": {
     "failed": 2,
@@ -479,6 +479,28 @@
     }
    },
    "name": "Aniimo",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
+  "anno117.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 6.45,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Anno 117 - Pax Romana",
    "routes": {
     "optiscaler": {
      "failed": 0,
@@ -3648,6 +3670,6 @@
    }
   }
  },
- "generated": "2026-09-27T10:58:12Z",
- "reports": 302
+ "generated": "2026-09-27T11:00:29Z",
+ "reports": 303
 }
