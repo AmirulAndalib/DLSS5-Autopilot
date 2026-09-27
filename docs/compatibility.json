@@ -7,6 +7,10 @@
    }
   },
   "DX12/dlss": {
+   "native": {
+    "failed": 1,
+    "worked": 0
+   },
    "optiscaler": {
     "failed": 0,
     "worked": 5
@@ -92,7 +96,7 @@
     "worked": 28
    },
    "native": {
-    "failed": 1,
+    "failed": 2,
     "worked": 1
    },
    "optiscaler": {
@@ -3066,6 +3070,21 @@
     }
    }
   },
+  "stalker2-win64-shipping.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "S.T.A.L.K.E.R. 2: Heart of Chornobyl",
+   "routes": {
+    "native": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "starfield.exe": {
    "drivers": {
     "616.92": {
@@ -3497,6 +3516,6 @@
    }
   }
  },
- "generated": "2026-09-27T06:34:14Z",
- "reports": 288
+ "generated": "2026-09-27T06:50:18Z",
+ "reports": 289
 }
