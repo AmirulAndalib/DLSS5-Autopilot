@@ -47,7 +47,7 @@
   "OPENGL/none": {
    "feeder": {
     "failed": 1,
-    "worked": 0
+    "worked": 1
    }
   },
   "UNKNOWN/dlss": {
@@ -237,7 +237,7 @@
    },
    "feeder": {
     "failed": 3,
-    "worked": 4
+    "worked": 5
    },
    "optiscaler": {
     "failed": 3,
@@ -759,6 +759,21 @@
     "feeder": {
      "failed": 0,
      "worked": 3
+    }
+   }
+  },
+  "breezeofpassion.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Breeze of Passion",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3793,6 +3808,6 @@
    }
   }
  },
- "generated": "2026-09-27T20:55:55Z",
- "reports": 314
+ "generated": "2026-09-27T21:24:29Z",
+ "reports": 315
 }
