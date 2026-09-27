@@ -17,7 +17,7 @@
    },
    "optiscaler": {
     "failed": 1,
-    "worked": 5
+    "worked": 6
    },
    "upstream": {
     "failed": 1,
@@ -185,7 +185,7 @@
    },
    "optiscaler": {
     "failed": 12,
-    "worked": 39
+    "worked": 40
    },
    "remix": {
     "failed": 2,
@@ -948,7 +948,7 @@
     },
     "616.92": {
      "failed": 1,
-     "worked": 5
+     "worked": 6
     },
     "617.14": {
      "failed": 0,
@@ -970,7 +970,7 @@
     },
     "optiscaler": {
      "failed": 3,
-     "worked": 6
+     "worked": 7
     },
     "upstream": {
      "failed": 0,
@@ -3584,6 +3584,6 @@
    }
   }
  },
- "generated": "2026-09-27T08:40:29Z",
- "reports": 296
+ "generated": "2026-09-27T08:41:44Z",
+ "reports": 297
 }
