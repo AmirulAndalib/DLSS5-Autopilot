@@ -17,7 +17,7 @@
    },
    "optiscaler": {
     "failed": 1,
-    "worked": 9
+    "worked": 10
    },
    "renodx": {
     "failed": 1,
@@ -219,7 +219,7 @@
    },
    "optiscaler": {
     "failed": 2,
-    "worked": 15
+    "worked": 16
    },
    "renodx": {
     "failed": 1,
@@ -2572,10 +2572,25 @@
     "616.92": {
      "failed": 1,
      "worked": 0
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
     }
    },
-   "name": "Star Wars Outlaws (2024)",
+   "measured": {
+    "optiscaler": {
+     "ms": 3.5,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Star Wars Outlaws",
    "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    },
     "standalone": {
      "failed": 1,
      "worked": 0
@@ -3633,6 +3648,6 @@
    }
   }
  },
- "generated": "2026-09-27T10:07:22Z",
- "reports": 301
+ "generated": "2026-09-27T10:27:58Z",
+ "reports": 302
 }
