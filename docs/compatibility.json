@@ -20,7 +20,7 @@
     "worked": 5
    },
    "upstream": {
-    "failed": 0,
+    "failed": 1,
     "worked": 1
    }
   }
@@ -120,7 +120,7 @@
     "worked": 0
    },
    "upstream": {
-    "failed": 2,
+    "failed": 3,
     "worked": 1
    }
   },
@@ -3092,13 +3092,17 @@
   "stalker2-win64-shipping.exe": {
    "drivers": {
     "616.56": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "S.T.A.L.K.E.R. 2: Heart of Chornobyl",
    "routes": {
     "native": {
+     "failed": 1,
+     "worked": 0
+    },
+    "upstream": {
      "failed": 1,
      "worked": 0
     }
@@ -3535,6 +3539,6 @@
    }
   }
  },
- "generated": "2026-09-27T07:13:31Z",
- "reports": 290
+ "generated": "2026-09-27T07:15:01Z",
+ "reports": 291
 }
