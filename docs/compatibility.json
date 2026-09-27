@@ -3,7 +3,7 @@
   "DX12/dlss": {
    "optiscaler": {
     "failed": 0,
-    "worked": 1
+    "worked": 2
    }
   }
  },
@@ -87,7 +87,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 13
+    "worked": 14
    },
    "remix": {
     "failed": 2,
@@ -1986,6 +1986,21 @@
     }
    }
   },
+  "hogwartslegacy.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Hogwarts Legacy",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "homefront.exe": {
    "drivers": {
     "616.56": {
@@ -3438,6 +3453,6 @@
    }
   }
  },
- "generated": "2026-09-26T21:54:18Z",
- "reports": 282
+ "generated": "2026-09-27T01:04:22Z",
+ "reports": 283
 }
