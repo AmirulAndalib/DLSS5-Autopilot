@@ -3,7 +3,7 @@
   "DX12/dlss": {
    "optiscaler": {
     "failed": 0,
-    "worked": 2
+    "worked": 3
    }
   }
  },
@@ -149,7 +149,7 @@
    },
    "optiscaler": {
     "failed": 11,
-    "worked": 37
+    "worked": 38
    },
    "remix": {
     "failed": 2,
@@ -2924,14 +2924,14 @@
    "drivers": {
     "616.92": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    },
    "name": "Shadow of the Tomb Raider",
    "routes": {
     "optiscaler": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    }
   },
@@ -3453,6 +3453,6 @@
    }
   }
  },
- "generated": "2026-09-27T01:04:22Z",
- "reports": 283
+ "generated": "2026-09-27T03:23:41Z",
+ "reports": 284
 }
