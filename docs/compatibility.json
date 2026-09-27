@@ -3,7 +3,7 @@
   "DX12/dlss": {
    "optiscaler": {
     "failed": 0,
-    "worked": 4
+    "worked": 5
    },
    "upstream": {
     "failed": 0,
@@ -153,7 +153,7 @@
    },
    "optiscaler": {
     "failed": 11,
-    "worked": 38
+    "worked": 39
    },
    "remix": {
     "failed": 2,
@@ -2631,6 +2631,21 @@
     }
    }
   },
+  "re4.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Resident Evil 4",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "re8.exe": {
    "drivers": {
     "617.14": {
@@ -3461,6 +3476,6 @@
    }
   }
  },
- "generated": "2026-09-27T04:58:03Z",
- "reports": 286
+ "generated": "2026-09-27T05:01:44Z",
+ "reports": 287
 }
