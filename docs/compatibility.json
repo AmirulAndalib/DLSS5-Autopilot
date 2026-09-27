@@ -1,5 +1,11 @@
 {
  "by_class": {
+  "DX11/none": {
+   "standalone": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
   "DX12/dlss": {
    "optiscaler": {
     "failed": 0,
@@ -165,7 +171,7 @@
    },
    "standalone": {
     "failed": 5,
-    "worked": 8
+    "worked": 9
    },
    "upstream": {
     "failed": 1,
@@ -928,6 +934,21 @@
     "upstream": {
      "failed": 0,
      "worked": 2
+    }
+   }
+  },
+  "darksoulsii.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "DARK SOULS\u2122 II: Scholar of the First Sin",
+   "routes": {
+    "standalone": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3476,6 +3497,6 @@
    }
   }
  },
- "generated": "2026-09-27T05:01:44Z",
- "reports": 287
+ "generated": "2026-09-27T06:34:14Z",
+ "reports": 288
 }
