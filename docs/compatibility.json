@@ -44,6 +44,12 @@
     "worked": 0
    }
   },
+  "OPENGL/none": {
+   "feeder": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
   "UNKNOWN/dlss": {
    "optiscaler": {
     "failed": 1,
@@ -84,6 +90,12 @@
    "optiscaler": {
     "failed": 0,
     "worked": 1
+   }
+  },
+  "596.21": {
+   "feeder": {
+    "failed": 1,
+    "worked": 0
    }
   },
   "610.47": {
@@ -2016,6 +2028,21 @@
     }
    }
   },
+  "grimrock2.exe": {
+   "drivers": {
+    "596.21": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Legend of Grimrock 2",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "grw.exe": {
    "drivers": {
     "617.14": {
@@ -3766,6 +3793,6 @@
    }
   }
  },
- "generated": "2026-09-27T19:27:56Z",
- "reports": 313
+ "generated": "2026-09-27T19:31:27Z",
+ "reports": 314
 }
