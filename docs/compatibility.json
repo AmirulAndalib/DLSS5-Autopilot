@@ -24,6 +24,12 @@
     "worked": 1
    }
   },
+  "DX12/none": {
+   "feeder": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
   "DX9/none": {
    "feeder": {
     "failed": 1,
@@ -103,7 +109,7 @@
    },
    "feeder": {
     "failed": 13,
-    "worked": 29
+    "worked": 30
    },
    "native": {
     "failed": 2,
@@ -2365,6 +2371,10 @@
   },
   "needforspeedheat.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.64": {
      "failed": 1,
      "worked": 0
@@ -2374,7 +2384,7 @@
    "routes": {
     "feeder": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    }
   },
@@ -3549,6 +3559,6 @@
    }
   }
  },
- "generated": "2026-09-27T07:27:46Z",
- "reports": 292
+ "generated": "2026-09-27T08:08:06Z",
+ "reports": 293
 }
