@@ -3,7 +3,7 @@
   "DX12/dlss": {
    "optiscaler": {
     "failed": 0,
-    "worked": 3
+    "worked": 4
    },
    "upstream": {
     "failed": 0,
@@ -183,7 +183,7 @@
    },
    "optiscaler": {
     "failed": 2,
-    "worked": 14
+    "worked": 15
    },
    "renodx": {
     "failed": 1,
@@ -814,21 +814,21 @@
     },
     "617.14": {
      "failed": 1,
-     "worked": 4
+     "worked": 5
     }
    },
    "measured": {
     "optiscaler": {
-     "ms": 5.47,
-     "n": 2,
-     "res": 88
+     "ms": 6.16,
+     "n": 3,
+     "res": 75
     }
    },
    "name": "CONTROL Resonant",
    "routes": {
     "optiscaler": {
      "failed": 2,
-     "worked": 4
+     "worked": 5
     },
     "upstream": {
      "failed": 0,
@@ -3461,6 +3461,6 @@
    }
   }
  },
- "generated": "2026-09-27T03:36:15Z",
- "reports": 285
+ "generated": "2026-09-27T04:58:03Z",
+ "reports": 286
 }
