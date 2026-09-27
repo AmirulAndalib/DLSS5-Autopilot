@@ -26,7 +26,7 @@
   },
   "DX12/none": {
    "feeder": {
-    "failed": 0,
+    "failed": 1,
     "worked": 1
    }
   },
@@ -176,7 +176,7 @@
     "worked": 3
    },
    "feeder": {
-    "failed": 30,
+    "failed": 31,
     "worked": 11
    },
    "native": {
@@ -3418,6 +3418,21 @@
     }
    }
   },
+  "warhammer3.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Total War: WARHAMMER III",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "watchdogs2.exe": {
    "drivers": {
     "617.14": {
@@ -3569,6 +3584,6 @@
    }
   }
  },
- "generated": "2026-09-27T08:28:43Z",
- "reports": 294
+ "generated": "2026-09-27T08:39:22Z",
+ "reports": 295
 }
