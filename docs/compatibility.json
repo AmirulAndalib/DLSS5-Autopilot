@@ -4,6 +4,10 @@
    "optiscaler": {
     "failed": 0,
     "worked": 3
+   },
+   "upstream": {
+    "failed": 0,
+    "worked": 1
    }
   }
  },
@@ -191,7 +195,7 @@
    },
    "upstream": {
     "failed": 0,
-    "worked": 1
+    "worked": 2
    }
   }
  },
@@ -810,7 +814,7 @@
     },
     "617.14": {
      "failed": 1,
-     "worked": 3
+     "worked": 4
     }
    },
    "measured": {
@@ -825,6 +829,10 @@
     "optiscaler": {
      "failed": 2,
      "worked": 4
+    },
+    "upstream": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3453,6 +3461,6 @@
    }
   }
  },
- "generated": "2026-09-27T03:23:41Z",
- "reports": 284
+ "generated": "2026-09-27T03:36:15Z",
+ "reports": 285
 }
