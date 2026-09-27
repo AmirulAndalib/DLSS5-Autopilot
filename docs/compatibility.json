@@ -16,7 +16,7 @@
     "worked": 0
    },
    "optiscaler": {
-    "failed": 0,
+    "failed": 1,
     "worked": 5
    },
    "upstream": {
@@ -184,7 +184,7 @@
     "worked": 1
    },
    "optiscaler": {
-    "failed": 11,
+    "failed": 12,
     "worked": 39
    },
    "remix": {
@@ -597,14 +597,14 @@
   "bg3.exe": {
    "drivers": {
     "616.92": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "Baldur's Gate 3",
    "routes": {
     "optiscaler": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    }
@@ -3584,6 +3584,6 @@
    }
   }
  },
- "generated": "2026-09-27T08:39:22Z",
- "reports": 295
+ "generated": "2026-09-27T08:40:29Z",
+ "reports": 296
 }
