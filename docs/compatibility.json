@@ -23,7 +23,7 @@
    },
    "optiscaler": {
     "failed": 1,
-    "worked": 19
+    "worked": 20
    },
    "renodx": {
     "failed": 1,
@@ -167,7 +167,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 16
+    "worked": 17
    },
    "remix": {
     "failed": 2,
@@ -3625,6 +3625,10 @@
   },
   "townfall-win64-shipping.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "617.14": {
      "failed": 0,
      "worked": 1
@@ -3641,7 +3645,7 @@
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -3898,6 +3902,6 @@
    }
   }
  },
- "generated": "2026-09-28T20:47:45Z",
- "reports": 328
+ "generated": "2026-09-28T22:23:29Z",
+ "reports": 329
 }
