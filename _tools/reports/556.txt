@@ -1,0 +1,61 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+game starts, black fullscreen, then closes and nothing shows in the Autopilot logs
+
+---
+- version: 2.0.6
+- gpu: NVIDIA GeForce RTX 5090 (sm_120), driver 617.14
+- game: CONTROL Resonant
+- exe: CONTROLResonant.exe
+- arch/api: 64-bit / DX12 (no graphics DLL imported statically, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: Neural rendering ran, then the game closed itself - see below for what to take out first.
+- [bad] You said the game closed itself.
+- [ok] ReShade loaded add-on: DLSS5 NR Pre-Upscale 0.0.0.0
+- [ok] The add-on hooked the game's DLSS call (4 entry points).
+- [ok] NGX created the neural feature.
+- [warn] The game hands the add-on no exposure value.
+- [info] Neural pass at 2560x1440, the game presents 3840x2160.
+- [ok] Neural rendering is running (16081 heartbeats, 2560x1440).
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- optiscaler build: Dagherbou (v0.2.0-dlssnr)
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+[12:37:56.026887] [I] DlssNr.WorkingScale: 0.75
+[12:37:57.615098] [I] StreamlineHooks::streamlineLogCallback [12-37-57][streamline][info][tid:34648][1s:570ms:899us]pluginManager.cpp:883[mapPlugins] Loaded plugin 'sl.common' - version 2.12.128.26059
+[12:37:57.703491] [I] LibraryLoadHooks::LoadLibraryCheckW nvngx call: C:\Program Files (x86)\Steam\steamapps\common\CONTROL Resonant\nvngx.dll, returning this dll!
+[12:37:57.704264] [I] StreamlineHooks::streamlineLogCallback [12-37-57][streamline][info][tid:34648][1s:660ms:047us]commonEntry.cpp:999[getNGXFeatureRequirements] NGX feature 1 requirements - minOS 10
+[12:37:57.704307] [I] StreamlineHooks::streamlineLogCallback [12-37-57][streamline][info][tid:34648][1s:660ms:107us]commonEntry.cpp:1356[updateCommonEmbeddedJSONConfig] Registering required tag 'kBuff
+```
+
+**Last error in this session (not from an install into this folder)**
+```
+rllib\request.py", line 1347, in do_open
+urllib.error.URLError: <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate is not yet valid (_ssl.c:1010)>
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "core\ui\ctl_game.py", line 1067, in work
+  File "core\installer.py", line 3432, in install
+  File "core\installer.py", line 2979, in dl
+  File "core\net.py", line 481, in download
+RuntimeError: reshade.me: the certificate is outside its dates as far as this PC is concerned (<urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: certificate is not yet valid (_ssl.c:1010)>). That is almost always the PC's own clock: check the date and time in Windows settings (turn 'Set time automatically' on), then install again. A wrong date makes every HTTPS site untrusted, not only this one.
+```

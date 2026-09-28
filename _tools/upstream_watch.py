@@ -64,6 +64,7 @@ INSTALLED = {
     "OptiScaler (Dagherbou)": (optiscaler.API, ()),
     "OptiScaler fork (y4my4my4m)": (optiscaler.FORK_API, ()),
     "OptiScaler fork (wilsjo2)": (optiscaler.PRESR_API, ()),
+    "OptiScaler fork (Janblade)": (optiscaler.JANBLADE_API, ()),
     "dxvk-remix-plus-dlssnr": (sources.REMIX_RUNTIME_API, sources.REMIX_RUNTIME_ASSETS),
     "ffmpeg (BtbN)": (video.FFMPEG_API, (video.FFMPEG_ASSET,)),
     # The unlock resolves by prefix across its release list and skips a
@@ -261,7 +262,8 @@ def main() -> int:
     print("=" * 78)
     known = {r.lower() for r in WATCHED} | {
         "kizzuwatnaa/dlss5-autopilot", "y4my4my4m/optiscaler_dlssnr_multipass_mfg",
-        "wilsjo2/optiscaler-dlssnr-presr-multipass", "dagherbou/optiscaler_dlssnr"}
+        "wilsjo2/optiscaler-dlssnr-presr-multipass", "dagherbou/optiscaler_dlssnr",
+        "janblade/optiscaler-f5-dlssnr-multipass"}
     hits: dict[str, dict] = {}
     for q in SEARCHES:
         r = _get("https://api.github.com/search/repositories?sort=updated&order=desc&q="

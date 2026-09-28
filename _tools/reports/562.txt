@@ -1,0 +1,44 @@
+**Did the game start?** it started and ran
+
+**What happened**
+ReShade didn't start
+
+---
+- version: 2.0.6
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 617.14
+- game: NFS ProStreet
+- exe: nfs.exe
+- arch/api: 32-bit / DX9 (imports d3d9.dll, no DXGI)
+- route: feeder
+- this tool: running as administrator
+
+**Diagnosis**: DXVK ran and ReShade did not - if anything starts the game as administrator, start it normally.
+- [bad] DXVK ran, and ReShade did not.
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+- nfs_d3d9.log: present (written since the install)
+
+**What ran, and what it loaded** (seen at 27 Sep 23:48)
+- process: nfs.exe
+- DLLs in the process: 141
+- ours, loaded: d3d9.dll
+- ours, not loaded: dlss5-feed.addon32
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

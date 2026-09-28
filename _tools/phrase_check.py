@@ -101,6 +101,24 @@ PHRASES = {
         ("EvaluateFeature", "vtable::Hook"),
         ("DLSS 5 Neural Rendering", "DLSS 5 Neural Rendering"),
     ],
+    # 2.0.7: core/diagnose/live.py reads the bridge's own dlss5-bridge.log,
+    # with the patterns in model.py.
+    "dlss5-bridge": [
+        ("dlss5-bridge %s (built %s %s) attached.", r"\(built [^)\n]*\) attached\."),
+        ("[bridge] frame %llu delivered (%ux%u)", r"frame (\d+) delivered"),
+        ("[synth] D3D12 frame %llu delivered", r"(?:D3D12 |Vulkan )?frame (\d+) delivered"),
+        ("[bridge] %ld frames delivered so far.", r"(\d+) frames delivered so far\."),
+        ("frames: bridge CPU %.2f ms/frame | frame interval %.2f ms (%.1f fps)",
+         r"frames: bridge CPU [\d.,]+ ms/frame"),
+        ("stopped: %s. The game renders normally", r"stopped: (.+?)\. The game renders normally"),
+        ("[bridge] evaluate raised exception 0x%08X -- disabling",
+         r"(evaluate raised exception 0x[0-9A-Fa-f]{8}) -- disabling"),
+        ("[bridge] evaluate failed with result 0x%08X, %s",
+         r"evaluate failed with result (0x[0-9A-Fa-f]{8}), (\S+)"),
+        ("### CRASH RECORDED ###", "### CRASH RECORDED ###"),
+        ("[bridge]   it faulted in %ls", r"\]\s+it faulted in "),
+        ("DLSS 5 Bridge", r'Registered add-on \"DLSS 5 Bridge'),
+    ],
 }
 
 # A component the tool installs in more than one build: the phrase has to be
@@ -112,8 +130,15 @@ ALSO = {"DLSS5-Feeder": "DLSS5-Feeder (pre-release)"}
 
 
 def _files(archive: Path):
-    """Every binary inside an archive, as bytes."""
+    """Every binary inside an archive, as bytes - or the file itself, when
+    the component ships as one (the bridge's .addon64)."""
     out = b""
+    if archive.suffix.lower() != ".zip":
+        try:
+            return archive.read_bytes()
+        except OSError as e:
+            print(f"   !! cannot read {archive.name}: {e}")
+            return out
     try:
         with zipfile.ZipFile(archive) as z:
             for n in z.namelist():
@@ -157,6 +182,12 @@ def _archives() -> dict:
                                                 f"phrasecheck-renodx-{cat[0]['label']}.zip"))
     except Exception as e:
         print(f"   !! renodx: {e}")
+    try:
+        tag, u = sources.resolve_bridge()
+        # The installer's own cache name, so a build it downloaded is reused.
+        got["dlss5-bridge"] = (tag, net.download(u, f"dlss5-bridge-{tag}.addon64"))
+    except Exception as e:
+        print(f"   !! bridge: {e}")
     try:
         tag, u = optiscaler.resolve()
         if u.lower().endswith(".zip"):

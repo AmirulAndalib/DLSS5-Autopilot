@@ -165,7 +165,7 @@ OpenGL); the choice is remembered for that folder.
 |---|---|---|---|
 | **native** | Krish's `renodx-dlss5` add-on hooks the DLSS calls the game already makes | 64-bit D3D12 games with DLSS; on an RTX card optiscaler is recommended first, native is one click away | the game's DLSS mode |
 | **neural-upstream** | matiasLombo's add-on runs the network at render resolution, *before* the game's DLSS upscales | 64-bit D3D12 games with DLSS | cadence (every 1st/2nd/3rd frame) |
-| **optiscaler** | Dagherbou's OptiScaler fork (or y4my4my4m's, or wilsjo2's - which is installed with its neural pass before the upscaler, the placement it exists for - or wilsjo2's RTX 40 multi-frame generation package, on RTX 40 cards only; none of those three is tested) replaces the upscaler and runs the model over its output; no ReShade | 64-bit D3D11/12 with DLSS, or with FSR 2/3 / XeSS redirected into DLSS | **model resolution 25-100 %** - cost falls with the square; optional **frame generation** (FSR 3.1, any card, D3D12) |
+| **optiscaler** | Dagherbou's OptiScaler fork (or y4my4my4m's, or wilsjo2's - which is installed with its neural pass before the upscaler, the placement it exists for - or wilsjo2's RTX 40 multi-frame generation package, on RTX 40 cards only, or Janblade's fork of wilsjo2's, with the same placement; none of those four is tested) replaces the upscaler and runs the model over its output; no ReShade | 64-bit D3D11/12 with DLSS, or with FSR 2/3 / XeSS redirected into DLSS | **model resolution 25-100 %** - cost falls with the square; optional **frame generation** (FSR 3.1, any card, D3D12) |
 | **bridge** | NIGos' `dlss5-bridge` mirrors the game's DLSS contract onto a private D3D12 session | D3D11 and Vulkan games with DLSS; offered without one too, from the driver's optical flow | the game's DLSS mode |
 | **feeder** | jlrouzies-fr's `DLSS5-Feeder` builds a DLAA contract from ReShade's depth buffer and shader motion vectors | games with **no** DLSS: D3D10/11/12, Vulkan, OpenGL, 32-bit (host64 helper, DirectX 8 and 9 through DXVK) | work area 50-100 % (64-bit D3D11) |
 | **standalone-dlssnr** | kibblerz's add-on: own feed, DLAA or DLSS Super Resolution, frame generation, shown through its own window | 64-bit D3D11/12, with or without DLSS; experimental | run the game below native |
@@ -224,10 +224,12 @@ Three options, all off by default:
   For DLSS Frame Generation on RTX 30 (dlssg_for_sm86) or RTX 20/30 (DLSS
   Enabler) through a project this tool cannot download - **frame
   generation files** -> **add your own...** takes the `version.dll` you
-  downloaded (for dlssg_for_sm86, with its `dlssg_sm86.ini` beside it).
-  The install places them beside the game and records them, OptiScaler
-  never takes the name those files need, and uninstall takes them out
-  again. The tool only uses the copy you give it.
+  downloaded (for dlssg_for_sm86, with its `dlssg_sm86.ini` beside it; a
+  proxy from its `alternatives` folder keeps its own name - copy the ini
+  beside it first). The install places them beside the game and records
+  them, OptiScaler never takes the name those files need, and uninstall
+  takes them out again. The tool only uses the copy you give it; **forget
+  frame generation files** deletes that copy.
   Not run in a game here; experimental.
 
 The first works in any D3D12 game on the optiscaler route; the second only
@@ -259,7 +261,9 @@ The parts a game was set up with are recorded, and **check versions** reads
 that record against what the publishers offer now: a game whose DLSS - or
 ReShade, or the neural-rendering runtime, or OptiScaler - has moved on is
 marked **update**, with how many of its parts need installing again - a
-newer build, or the same version in a package that changed. Pressing
+newer build, or the same version in a package that changed. A game whose
+update or "verify files" removed files the tool wrote is marked **update** as
+well. Pressing
 **update** on the game's page fetches the newest of everything and keeps your
 settings and backups.
 
@@ -525,7 +529,7 @@ a report from somebody with a headset is the only thing that can change it.
 ## When it does not work
 
 **did it work?** reads `ReShade.log`, `dlss5-feed.log`, `OptiScaler.log`,
-the DXVK and Remix logs, what the game had loaded while the tool watched it
+`dlss5-bridge.log`, the DXVK and Remix logs, what the game had loaded while the tool watched it
 run, and - when the game left no log at all - Windows' own Application Error
 record, and names the cause. The watcher reads the same logs, and Windows'
 crash record, when a game closes.
@@ -699,6 +703,8 @@ dlss5-autopilot.exe "D:\Games\Game" --no-gpu-pref   leave Windows' graphics sett
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build y4my4my4m   another OptiScaler build than Dagherbou's (untested)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2     ...the neural pass before the upscaler, 1-3 passes (untested)
 dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build wilsjo2-mfg   ...the same with RTX 40 multi-frame generation (RTX 40 only, untested)
+dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --opti-build janblade     ...Janblade's fork of wilsjo2's, the same placement (untested)
+dlss5-autopilot.exe "D:\Games\Game" --route optiscaler --own-fg "D:\Downloads\version.dll"   your dlssg_for_sm86 / DLSS Enabler files, D3D12 (after the first time its name: sm86, sm86-winmm, enabler...; experimental)
 dlss5-autopilot.exe --video ["D:\DLSS5 Player"]     set up the video player
 ```
 
@@ -783,6 +789,7 @@ component stays under its own licence, fetched from its own publisher.
 | OptiScaler DLSS-NR fork | [Dagherbou/OptiScaler_DLSSNR](https://github.com/Dagherbou/OptiScaler_DLSSNR) | GPL-3.0 |
 | OptiScaler fork, multi-frame generation | [y4my4my4m/OptiScaler_DLSSNR_Multipass_MFG](https://github.com/y4my4my4m/OptiScaler_DLSSNR_Multipass_MFG) | GPL-3.0 |
 | OptiScaler fork, neural pass before the upscaler | [wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass](https://github.com/wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass) | GPL-3.0 |
+| OptiScaler fork of wilsjo2's fork | [Janblade/OptiScaler-F5-DLSSNR-Multipass](https://github.com/Janblade/OptiScaler-F5-DLSSNR-Multipass) | GPL-3.0 |
 | LumeniteFX · VORT shaders | [umar-afzaal/LumeniteFX](https://github.com/umar-afzaal/LumeniteFX) · [vortigern11/vort_Shaders](https://github.com/vortigern11/vort_Shaders) | AGNYA · MIT |
 | DXVK | [doitsujin/dxvk](https://github.com/doitsujin/dxvk) | zlib/libpng |
 | REFramework (RE Engine games only) | [praydog/REFramework-nightly](https://github.com/praydog/REFramework-nightly) | MIT |

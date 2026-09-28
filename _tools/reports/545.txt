@@ -1,0 +1,44 @@
+**Did the game start?** it never started
+
+**What happened**
+No supported DirectX version found
+
+---
+- version: 2.0.6
+- gpu: NVIDIA GeForce RTX 5080 (sm_120), driver 617.14
+- game: Star Wars Outlaws
+- exe: Outlaws.exe
+- arch/api: 64-bit / DX12 (imports dxgi.dll (DX11/DX12; proxy is dxgi.dll either way))
+- route: upstream
+- this tool: running as administrator
+
+**Diagnosis**: The game never started with this install in - see below for what to take out first.
+- [bad] You said the game never started.
+- [bad] ReShade loaded no add-ons.
+- [info] If the picture only gets darker, switch the route to native.
+- [warn] When it last ran (27 Sep 13:56), the process did not have nvngx.dll.addon64 loaded.
+- [info] nvngx_dlssnr.dll was not loaded yet when the game was seen.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx.dll.addon64: present
+- ReShade.ini: present
+- nvngx_dlssnr.dll: present
+- d3dcompiler_47.dll: renamed aside
+
+**What ran, and what it loaded** (seen at 27 Sep 13:56)
+- process: Outlaws.exe
+- DLLs in the process: 74
+- ours, loaded: none
+- same name, loaded from elsewhere: C:\WINDOWS\SYSTEM32\dxgi.dll
+- ours, not loaded: nvngx.dll.addon64, nvngx_dlssnr.dll
+
+**ReShade.log**
+```
+13:57:06:010 [ 9436] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+(none)
+```

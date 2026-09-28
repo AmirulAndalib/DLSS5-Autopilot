@@ -1272,7 +1272,7 @@ check("rate-limit fallback message exists", hasattr(sources, "last_fallback"))
 check("api cache path set", "api-cache" in str(sources._API_CACHE))
 check("download supports retry", "attempts" in net.download.__code__.co_varnames)
 check("update points at the right repo", update.REPO.endswith("DLSS5-Autopilot"))
-check("version is 2.0.6", update.VERSION == "2.0.6", update.VERSION)
+check("version is 2.0.7", update.VERSION == "2.0.7", update.VERSION)
 
 from core import log as _log  # noqa: E402
 _log.write("test run")
@@ -11217,8 +11217,19 @@ from core import diagnose as _dpkg  # noqa: E402
 # (the loaded d3d9.dll's path against the record, apostrophes in paths).
 # Gate 2.0.6 pass 3: helper +10 (whether the helper's log is from this launch,
 # read off the logs' own clocks instead of the files' times).
-_parts = {"model": 423, "layer": 104, "evidence": 1137, "process": 230,  # evidence +3: its own words for a renderer no route reaches
-          "helper": 219, "routes": 978, "body": 778, "chain": 1547}  # routes +5: a dump the session went on after (gate 2.0.5)
+# 2.0.7: live.py is new, 243 - the bridge's own dlss5-bridge.log, tied to
+# ReShade's session by the two logs' clocks, and the verdict it gives; model
+# +45 for the bridge's format strings as patterns, chain +20 for reading it
+# in the bridge branch (and the D3D9 answer no longer replacing its frames),
+# body +8 for the report's dlss5-bridge.log block.
+# 2.0.7: helper +26 for the helper's log tied to the feed's launch by the
+# logs' clocks (the file-time twin of #482's check), chain +1 for its call.
+# Gate 2.0.7 passes 1-2: live 325 (the Vulkan mirror, the synthetic path's
+# own stops, the crash handler said as a game crash, DLSS called with no
+# frame), model +15 (their patterns), helper +6 (the last run only), process
+# +2, body +1, chain +14 (the bridge's missing log said as that, #127 kept).
+_parts = {"model": 488, "layer": 104, "evidence": 1137, "process": 232,  # evidence +3: its own words for a renderer no route reaches
+          "helper": 251, "live": 372, "routes": 978, "body": 787, "chain": 1583}  # routes +5: a dump the session went on after (gate 2.0.5)
 _sizes = {n: sum(1 for _ in open(SRC_DIR / "core" / "diagnose" / f"{n}.py",
                                  encoding="utf8"))
           for n in _parts}
@@ -11231,10 +11242,11 @@ _ALLOWED = {"model": set(), "layer": {"model"},
             "evidence": {"model", "layer"},
             "process": {"model", "layer", "evidence"},
             "helper": {"model", "layer", "evidence"},
+            "live": {"model", "layer", "evidence", "helper"},
             "routes": {"model", "layer", "evidence", "process"},
-            "body": {"model", "layer", "evidence", "helper"},
+            "body": {"model", "layer", "evidence", "helper", "live"},
             "chain": {"model", "layer", "evidence", "process", "helper",
-                      "routes", "body"}}
+                      "live", "routes", "body"}}
 _upward = []
 for _n in _parts:
     _txt = (SRC_DIR / "core" / "diagnose" / f"{_n}.py").read_text(encoding="utf8")
@@ -16561,8 +16573,10 @@ check("the rollback reads 'fresh' after the previous route is out and before the
       src_of(installer.install).find("previous = _previous_route(root)")
       < src_of(installer.install).find("fresh = not _previously_ours(root)")
       < src_of(installer.install).find("--- 0) REFramework first"))
-check("...and the game holding a file open is not rolled back: that would fail the same way",
-      "_roll_back(" not in src_of(installer.install).split("except PermissionError as e:")[1]
+# 2.0.7: a locked file is rolled back too; _roll_back says so itself when
+# the lock keeps one file in (the gate's open item; see the 2.0.7 section).
+check("...and a fresh install stopped by a file the game holds open is rolled back as well",
+      "_roll_back(" in src_of(installer.install).split("except PermissionError as e:")[1]
       .split("except (sources.RateLimited")[0])
 
 # Gate 2.0.5 leftovers: the MFG package refused and warned about before install().
@@ -16681,7 +16695,7 @@ check("...never a route this game is not offered, and never from another class",
 check("...and the counts are said where they do not move anything",
       _comm.class_line(_thin206, "DX11/none", dlss.FEEDER, _off206)
       == "Shared results for DirectX 11 games with no DLSS, FSR or XeSS: the feeder route worked in 10 of 40. "
-         "The standalone route: 11 of 11.",
+         "The standalone-dlssnr route: 11 of 11.",
       _comm.class_line(_thin206, "DX11/none", dlss.FEEDER, _off206))
 
 # detect() is where the page, the library, the command line and the watcher
@@ -16719,7 +16733,7 @@ check("the autopilot orders routes by the same games-like-this table",
       [n for n, _ in _rank206] == [dlss.STANDALONE, dlss.FEEDER]
       and "in DirectX 11 games with no DLSS, FSR or XeSS" in _rank206[0][1], _rank206)
 check("...and the what-next line after a failure does too",
-      "Across DirectX 11 games with no DLSS, FSR or XeSS, the standalone route worked in 28 of 30"
+      "Across DirectX 11 games with no DLSS, FSR or XeSS, the standalone-dlssnr route worked in 28 of 30"
       in community.next_route(_l206, _FakeGame("nobody.exe"), "feeder", _off206, "DX11/none"),
       community.next_route(_l206, _FakeGame("nobody.exe"), "feeder", _off206, "DX11/none"))
 _ap206 = _ap206m.plan(dlss.STANDALONE, [dlss.FEEDER, dlss.BRIDGE, dlss.STANDALONE], _l206,
@@ -16783,7 +16797,7 @@ with _ui_isolated():
         _t206 = _cc206.text()
 _ui_cleanup()
 check("the page says what games like this one did, and the driver inside the route",
-      "the feeder route worked in 10 of 40. The standalone route: 28 of 30." in _t206
+      "the feeder route worked in 10 of 40. The standalone-dlssnr route: 28 of 30." in _t206
       and "Shared results with the feeder route on driver 616.92: 10 of 40 worked." in _t206,
       _t206[-400:])
 
@@ -17111,6 +17125,797 @@ _pv439 = installer.preview(_g439, installer.Options(path=installer.FEEDER))
 check("...listed in the preview of a feeder install",
       any(installer.LEGACY_BRIDGE_ADDON in r for r in _pv439.removes), _pv439.removes)
 shutil.rmtree(_g439.folder, ignore_errors=True)
+
+
+section("2.0.7: the bridge's own log - frames delivered, the line it stopped on, this launch only")
+# Every bridge report ended "Add-ons loaded ... This route logs no frames, so
+# the panel is the only live picture" (#27 #127 #198 #217 #287 #352), while
+# the bridge wrote dlss5-bridge.log beside itself. The lines below are made
+# from the bridge's own format strings, as printf would fill them in.
+import re as _re21b  # noqa: E402
+from core import verdicts as _vd21b, reshade_ini as _ini21b  # noqa: E402
+import state as _st21b  # noqa: E402
+
+
+def _c21b(fmt: str, *args) -> str:
+    """A C format string of the bridge's, filled in the way printf does."""
+    py = _re21b.sub(r"%([-\d.]*)(?:ll|l)?u", r"%\1d", fmt)
+    py = py.replace("%lld", "%d").replace("%ld", "%d").replace("%ls", "%s")
+    return py % args
+
+
+_F21B = {  # dlss5-bridge 1.4.12: bridge.inc, dlss5-bridge.cpp, bridge.h
+    "attached": "dlss5-bridge %s (built %s %s) attached.",
+    "frame": "[bridge] frame %llu delivered (%ux%u)",
+    "so_far": "[bridge] %ld frames delivered so far.",
+    "stats": ("[bridge] %.0f frames: bridge CPU %.2f ms/frame | frame interval %.2f ms (%.1f fps) "
+              "| spread %.2f-%.2f ms | bridge is %.0f%% of the frame | d3d12 %llu/%llu (%lld behind)%s%s"),
+    "raised": "[bridge] evaluate raised exception 0x%08X -- disabling to protect the game",
+    "stopped": ("stopped: %s. The game renders normally. See dlss5-bridge.log "
+                "in the game folder for the detail."),
+    "failed": "[bridge] evaluate failed with result 0x%08X, %s",
+    "synth_frame": "[synth] D3D12 frame %llu delivered (%ux%u)",
+}
+# The bridge actually downloaded, when this machine has one cached: every
+# format string above has to be in its bytes, or the tests read a log nobody
+# writes. Never run - only read.
+_cache21b = sorted((net.CACHE).glob("dlss5-bridge-v*.addon64"),
+                   key=lambda p: [int(x) for x in _re21b.findall(r"\d+", p.stem)])
+if _cache21b:
+    _bin21b = _cache21b[-1].read_bytes()
+    _gone21b = [k for k, f in _F21B.items() if f.encode() not in _bin21b]
+    check(f"the bridge's format strings these tests use are in {_cache21b[-1].name}",
+          not _gone21b, _gone21b)
+
+
+def _line21b(clock: str, kind: str, *args) -> str:
+    return f"{clock}  {_c21b(_F21B[kind], *args)}\n"
+
+
+_ATT21B = _line21b("21:51:50.051", "attached", "1.4.12", "Sep  5 2026", "16:20:11")
+_FRAMES21B = (_line21b("21:51:58.101", "frame", 1, 1920, 1080)
+              + _line21b("21:52:08.200", "stats", 600.0, 0.41, 16.6, 60.2, 15.9, 17.4, 2.0,
+                         600, 600, 0, "", "")
+              + _line21b("21:52:18.300", "so_far", 600)
+              + _line21b("21:52:38.200", "stats", 600.0, 0.40, 16.7, 59.9, 15.8, 17.6, 2.0,
+                         1800, 1800, 0, "", "")
+              + _line21b("21:52:38.500", "frame", 1800, 1920, 1080))
+_FAULT21B = (_line21b("21:52:40.000", "raised", 0xC0000005)
+             + _line21b("21:52:40.001", "stopped",
+                        "NGX raised an exception inside the D3D12 evaluate"))
+_RS21B = ("21:51:50:045 [20292] | INFO  | Registered add-on \"DLSS 5 Bridge 1.4.12\" v1.4.12.0 "
+          "using ReShade API version 18.\n"
+          "21:51:50:057 [20292] | INFO  | Registered add-on \"DLSS 5 Neural Rendering\" "
+          "v0.2026.828.517 using ReShade API version 18.\n"
+          "21:51:52:100 [20292] | INFO  | Redirecting IDXGIFactory::CreateSwapChain(...) ...\n")
+
+
+def _bridge21b(bridge_log: str | None, switch: str = "1", rs: str = _RS21B) -> Path:
+    d = Path(tempfile.mkdtemp(prefix="bridgelog21_"))
+    (d / installer.MANIFEST).write_text(json.dumps(
+        {"version": 1, "complete": True, "exe": "Game.exe", "bitness": 64, "api": "DX11",
+         "proxy": "dxgi.dll", "path": "bridge",
+         "files": ["dxgi.dll", installer.BRIDGE_ADDON, "renodx-dlss5.addon64"]}), encoding="utf8")
+    for _n in ("dxgi.dll", installer.BRIDGE_ADDON, "renodx-dlss5.addon64", "nvngx_dlssnr.dll"):
+        (d / _n).write_bytes(b"MZ")
+    (d / "ReShade.log").write_text(rs, encoding="utf8")
+    (d / "ReShade.ini").write_text(f"[{_ini21b.ADDON_SECTION}]\n{_ini21b.ADDON_SWITCH}={switch}\n",
+                                   encoding="utf8")
+    if bridge_log is not None:
+        (d / diagnose.BRIDGE_LOG).write_text(bridge_log, encoding="utf8")
+    return d
+
+
+def _run21b(bridge_log: str | None, **kw):
+    d = _bridge21b(bridge_log, **kw)
+    try:
+        with patch.object(watch, "last_sighting", lambda *a, **k: {}):
+            return diagnose.analyse(d)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
+_none21b = _run21b(None)
+check("no bridge log from this launch: said so, not 'this route logs no frames'",
+      _none21b.verdict.startswith("Add-ons loaded and the switch is on. The bridge's log has nothing "
+                                  "from this launch")
+      and "dlss5-bridge.log has nothing from this launch." in [f.title for f in _none21b.findings]
+      and _vd21b.stage(_none21b.verdict)[0] == "7 loaded, and we cannot see", _none21b.verdict)
+
+_ok21b = _run21b(_ATT21B + _FRAMES21B)
+check("frames only: the bridge's count is the verdict, at stage 7 - not 'Working.'",
+      _ok21b.verdict.startswith("The bridge delivered at least 1800 frames; whether the "
+                                "neural pass drew them is in no log")
+      and _vd21b.stage(_ok21b.verdict)[0] == "7 loaded, and we cannot see"
+      and not _vd21b.route_failed(_ok21b.verdict), _ok21b.verdict)
+check("...with the frame rate the bridge measured, and no 'leaves no frame log' beside it",
+      any("at least 1800 frames in this launch, 59.9 fps" in f.title for f in _ok21b.findings)
+      and not any("leaves no frame log" in f.title for f in _ok21b.findings),
+      [f.title for f in _ok21b.findings])
+check("...its next step names the add-on's own panel, and it has a class of its own",
+      "switch the pass off and on in the DLSS 5 Neural Rendering panel" in _ok21b.verdict
+      and _st21b.classify(_ok21b.verdict) == "frames reach the add-on, and no log says if the pass drew them",
+      _st21b.classify(_ok21b.verdict))
+
+_bad21b = _run21b(_ATT21B + _FRAMES21B + _FAULT21B)
+check("frames, then the bridge's own stop line: 'it started, then the bridge stopped', stage 8",
+      _bad21b.verdict == "It started, then the bridge stopped - see why below."
+      and _vd21b.stage(_bad21b.verdict)[0] == "8 the add-on crashed"
+      and _st21b.classify(_bad21b.verdict) == "it ran and then something stopped", _bad21b.verdict)
+check("...and the reason is a finding, in the bridge's words with the exception code",
+      any(f.level == diagnose.BAD and f.title == "The bridge stopped after delivering at least 1800 "
+          "frames: NGX raised an exception inside the D3D12 evaluate (0xC0000005)."
+          # the fault's module is not claimed to be the bridge: it names the owner it logged
+          and "not the install" not in f.detail and "turned itself off" in f.detail
+          for f in _bad21b.findings),
+      [(f.title, f.detail) for f in _bad21b.findings])
+
+_old21b = _run21b(_ATT21B.replace("21:51:50.051", "20:10:03.000") + _FRAMES21B)
+check("a bridge log from an earlier launch (its clock outside ReShade's session) is ignored",
+      _old21b.verdict == _none21b.verdict
+      and [f.title for f in _old21b.findings] == [f.title for f in _none21b.findings],
+      (_old21b.verdict, [f.title for f in _old21b.findings]))
+_unreg21b = _run21b(_ATT21B + _FRAMES21B, rs=_RS21B.split("\n", 1)[1])
+check("...and so is one ReShade never registered the bridge beside",
+      _unreg21b.verdict == _run21b(None, rs=_RS21B.split("\n", 1)[1]).verdict, _unreg21b.verdict)
+
+_off21b = _run21b(_ATT21B + _FRAMES21B + _FAULT21B, switch="0")
+check("the add-on's switch turned off stays the verdict, the bridge's lines below it",
+      _off21b.verdict.startswith("The add-ons are loaded and the neural pass is switched off")
+      and any(f.title.startswith("The bridge stopped after delivering at least 1800")
+              for f in _off21b.findings),
+      _off21b.verdict)
+
+# Past midnight: ReShade registered at 23:59:59.900 and the bridge wrote its
+# first line at 00:00:00.010.
+_mid21b = _run21b(_line21b("00:00:00.010", "attached", "1.4.12", "x", "y")
+                  + _line21b("00:00:05.000", "synth_frame", 1, 2560, 1440),
+                  rs=_RS21B.replace("21:51:50:045", "23:59:59:900"))
+check("a launch across midnight is tied by the clocks all the same, and the synthetic path counts",
+      _mid21b.verdict.startswith("The bridge delivered at least 1 frame;"), _mid21b.verdict)
+
+_nof21b = _run21b(_ATT21B + _line21b("21:51:51.000", "stopped", "the DLSS feature could not be created"))
+check("stopped before the first frame: said as that, with the reason",
+      _nof21b.verdict == "The bridge stopped before it delivered a frame - see why below."
+      and _vd21b.stage(_nof21b.verdict)[0] == "8 the add-on crashed"
+      and any("the DLSS feature could not be created" in f.title for f in _nof21b.findings),
+      _nof21b.verdict)
+
+_crash21b = _run21b(_ATT21B + _FRAMES21B
+                    + "21:53:00.000  \n21:53:00.001  ### CRASH RECORDED ###\n"
+                    + "21:53:00.002    recorded by dlss5-bridge 1.4.12 (built x y)\n"
+                    + "21:53:00.003    exception 0xC0000005 at 00007FFA12345678\n"
+                    + "21:53:00.004    in: C:\\Windows\\System32\\DriverStore\\nvngx_dlssnr.dll+0x1234\n")
+check("the bridge's crash handler after its frames: the game crashed, naming the module",
+      _crash21b.verdict == "It started, then the game crashed - see below."
+      and _vd21b.stage(_crash21b.verdict)[0] == "8 the add-on crashed"
+      and any("The game crashed after the bridge delivered at least 1800 frames: exception "
+              "0xC0000005 in nvngx_dlssnr.dll" in f.title
+              for f in _crash21b.findings), [f.title for f in _crash21b.findings])
+# The next launch reprints that block without its marker: not this launch's crash.
+_carry21b = _run21b(_ATT21B + "21:51:50.052  The previous run crashed. What it recorded at the time:\n"
+                    + "21:51:50.053  21:40:00.003    exception 0xC0000005 at 0\n" + _FRAMES21B)
+check("...and a crash the previous run recorded, reprinted at attach, is not this launch's",
+      _carry21b.verdict.startswith("The bridge delivered at least 1800 frames"), _carry21b.verdict)
+
+_fail21b = _run21b(_ATT21B + _FRAMES21B + _line21b("21:52:39.000", "failed", 0xBAD00005, "NVSDK_NGX_Result_Fail"))
+check("an evaluate that failed without the bridge stopping is a warning, not a stop",
+      _fail21b.verdict.startswith("The bridge delivered at least 1800 frames")
+      and any(f.level == diagnose.WARN and "0xBAD00005" in f.title for f in _fail21b.findings),
+      [f.title for f in _fail21b.findings])
+
+# Gate 2.0.7 pass 1. The verdict matched the finding under it: an attached
+# bridge with no frame line kept "this route logs no frames" above "its log
+# has no delivered-frame line".
+_att21b = _run21b(_ATT21B)
+check("attached and no frame: the verdict says so, not 'this route logs no frames'",
+      _att21b.verdict.startswith("The bridge attached and delivered no frame - turn DLSS on")
+      and "logs no frames" not in _att21b.verdict and "does not log frames" not in _att21b.verdict
+      and _vd21b.stage(_att21b.verdict)[0] == "6 set up, not switched on", _att21b.verdict)
+# Three failed evaluates are BridgeFail's "stopped: evaluate": said in words,
+# with the last NGX code, and the module a fault named is carried.
+_three21b = _run21b(_ATT21B + _FRAMES21B + "".join(
+    _line21b("21:52:39.%03d" % i, "failed", 0xBAD00001, "FeatureNotSupported") for i in range(3))
+    + _line21b("21:52:39.100", "stopped", "evaluate"))
+_own21b = _run21b(_ATT21B + _FRAMES21B + "21:52:39.999  [bridge]   it faulted in "
+                  "C:\\Windows\\System32\\DriverStore\\nvngx_dlssnr.dll+0x1234\n" + _FAULT21B)
+check("three failures read as that, with the last code; a logged fault owner is named",
+      any("it failed three times in a row, the last in its evaluate (0xBAD00001, FeatureNotSupported)"
+          in f.title for f in _three21b.findings)
+      and any("It faulted in nvngx_dlssnr.dll+0x1234." in f.detail for f in _own21b.findings),
+      ([f.title for f in _three21b.findings], [f.detail for f in _own21b.findings]))
+# The excerpt keeps the crash's exception line over scattered failures.
+_ex21b = diagnose.live._bridge_excerpt(
+    _ATT21B + _FRAMES21B + "".join(_line21b("21:52:%02d.500" % (41 + i), "failed", 0xBAD00005, "Fail")
+                                   for i in range(8))
+    + "21:53:00.001  ### CRASH RECORDED ###\n21:53:00.002    recorded by dlss5-bridge 1.4.12 (built x y)\n"
+    + "21:53:00.003    exception 0xC0000005 at 00007FFA12345678\n"
+    + "21:53:00.004    in: C:\\x\\nvngx_dlssnr.dll+0x1234\n", budget=700)
+# Gate 2.0.7 pass 2: the game called DLSS and nothing was delivered is not
+# "turn DLSS on"; the Vulkan mirror records frames and stands down in its
+# own words; a crash the previous run recorded lends this stop no code; the
+# substitute-off verdict (#127) stays the headline.
+_called21b = _run21b(_ATT21B + _line21b("21:51:52.000", "failed", 0xBAD00001, "FeatureNotSupported")
+                     + _line21b("21:51:52.100", "failed", 0xBAD00001, "FeatureNotSupported"))
+check("DLSS called and no frame delivered: not 'turn DLSS on'",
+      _called21b.verdict.startswith("The game called DLSS and the bridge delivered no frame")
+      and _vd21b.stage(_called21b.verdict)[0] == "5 loaded, the feed never got going"
+      and any("in this launch (0xBAD00001, FeatureNotSupported)" in f.title for f in _called21b.findings),
+      (_called21b.verdict, [f.title for f in _called21b.findings]))
+_vkm21b = _run21b(_ATT21B + "21:51:58.000  [vkmirror] frame 1 recorded (1280x720 -> 2560x1440), stage=3\n"
+                  + "21:52:18.000  [bridge] 600 frames delivered so far.\n"
+                  + "21:52:20.000  [vkmirror] five consecutive D3D12 evaluates were refused -- the results "
+                  "are not used. The game's own DLSS was forwarded and is what is on screen, so the picture "
+                  "is correct; the mirror does nothing for the rest of this session.\n")
+check("the Vulkan mirror: its recorded frames count, and its stand-down is the stop, in its words",
+      _vkm21b.verdict == "It started, then the bridge stopped - see why below."
+      and any("at least 600 frames: five consecutive D3D12 evaluates were refused" in f.title
+              and "Vulkan mirror stood down" in f.detail for f in _vkm21b.findings),
+      [(f.title, f.detail) for f in _vkm21b.findings])
+_prev21b = _run21b(_ATT21B + "21:51:50.052  The previous run crashed. What it recorded at the time:\n"
+                   + "21:51:50.053  21:40:00.003    exception 0xC0000005 at 0\n"
+                   + _line21b("21:51:51.000", "stopped", "the D3D12 session failed to start"))
+# Gate 2.0.7 pass 3: the reprinted block's later lines carry one clock
+# each, and it ends in a blank line - all of it is the previous run's.
+_prev21c = _run21b(_ATT21B + "21:51:50.052  The previous run crashed. What it recorded at the time:\n"
+                   + "21:40:00.001  ### CRASH RECORDED ###\n21:40:00.003    exception 0xC0000005 at 0\n"
+                   + "\n" + _line21b("21:51:51.000", "stopped", "the D3D12 session failed to start"))
+_ref21b = _run21b(_ATT21B + "21:51:52.000  [bridge] CreateFeature failed with result 0xBAD00001, "
+                  "FeatureNotSupported\n")
+check("NGX refusing the feature: said with its result, and the verdict points where the reason is",
+      _ref21b.verdict.startswith("The game called DLSS and the bridge delivered no frame - the DLSS 5 "
+                                 "Bridge panel in the overlay says why")
+      and any(f.title == "NVIDIA's runtime would not create the game's DLSS feature (0xBAD00001, "
+              "FeatureNotSupported)." for f in _ref21b.findings)
+      and not any(f.title.startswith("The game crashed") for f in _prev21c.findings)
+      and any(f.title == "The bridge stopped before it delivered a frame: the D3D12 session failed to "
+              "start." for f in _prev21c.findings),
+      (_ref21b.verdict, [f.title for f in _ref21b.findings], [f.title for f in _prev21c.findings]))
+# A regex for "the carried block, up to its blank line" backtracked for
+# minutes on a log with no blank line after it (gate 2.0.7 pass 3): every
+# reader runs over hostile logs within a second.
+_t0_21b = time.time()
+for _h21b in (_ATT21B + "x" * 1000000,
+              _ATT21B + "21:51:50.052  The previous run crashed.\n" + "a b c\n" * 200000,
+              _ATT21B + "21:51:52.000  [bridge] evaluate failed with result 0xBAD00001, Fail\n" * 20000
+              + "stopped: " + "y" * 50000 + ". The game renders normally\n"):
+    diagnose.live.read_bridge(_h21b)
+    diagnose.live._bridge_excerpt(_h21b)
+check("the bridge log readers finish on hostile logs within seconds",
+      time.time() - _t0_21b < 5, round(time.time() - _t0_21b, 2))
+check("...and a crash the previous run recorded lends this launch's stop no exception code",
+      any(f.title == "The bridge stopped before it delivered a frame: the D3D12 session failed to start."
+          for f in _prev21b.findings), [f.title for f in _prev21b.findings])
+check("the report's excerpt keeps the crash block over earlier evaluate failures",
+      any("exception 0xC0000005" in ln for ln in _ex21b) and any("in: " in ln for ln in _ex21b),
+      _ex21b)
+
+# The report carries the block, and the replay rebuilds the same answer from it.
+import replay_report as _rr21b  # noqa: E402
+_d21b = _bridge21b(_ATT21B + _FRAMES21B + "".join(
+    _line21b("21:5%d:%02d.000" % (3 + i // 60, i % 60), "stats", 600.0, 0.4, 16.7, 59.9, 15.8, 17.6,
+             2.0, 600 * i, 600 * i, 0, "", "") for i in range(1, 40))
+    + _FAULT21B.replace("21:52:40", "21:54:00"))
+_body21b = diagnose.issue_body("2.1", "RTX", 89, "616.56", None, "bridge", None, "", "", _d21b)
+_blk21b = _rr21b._blocks(_body21b).get("bridge", "")
+check("the bug report carries dlss5-bridge.log: attached line, first frame, the stop - inside its budget",
+      "attached." in _blk21b and "frame 1 delivered" in _blk21b and "stopped: NGX raised" in _blk21b
+      and "evaluate raised exception 0xC0000005" in _blk21b and len(_blk21b) <= 901
+      and len([ln for ln in _blk21b.splitlines() if "frames: bridge CPU" in ln]) <= 3,
+      _blk21b)
+with patch.object(watch, "last_sighting", lambda *a, **k: {}):
+    _live21b_v = diagnose.analyse(_d21b).verdict
+    _rd21b = _rr21b.build("bridge", "DX11", "Game.exe", _rr21b._blocks(_body21b))
+    (_rd21b / "ReShade.ini").write_text((_d21b / "ReShade.ini").read_text(encoding="utf8"), encoding="utf8")
+    _replayed21b = diagnose.analyse(_rd21b).verdict
+check("...and the replay, rebuilt from the report alone, reads the verdict the machine read",
+      _replayed21b == _live21b_v == "It started, then the bridge stopped - see why below.",
+      (_live21b_v, _replayed21b))
+check("...writing back only the lines the report carried",
+      (_rd21b / diagnose.BRIDGE_LOG).read_text(encoding="utf8").strip() == _blk21b.strip())
+shutil.rmtree(_d21b, ignore_errors=True)
+shutil.rmtree(_rd21b, ignore_errors=True)
+check("a 'did the game start? it closed itself' answer replaces the frame count's panel step",
+      "whether the neural pass drew them" in diagnose.body._LOOK_IN_GAME
+      and diagnose.answered(_ok21b, "it closed itself").verdict.startswith("The game closed itself"))
+
+
+section("2.0.7: the 2.0.6 gate's open items - a rolled-back record, a locked file, forget, --own-fg, sm86's other names")
+from core import verdicts as _vd207, community as _cm207  # noqa: E402
+from core.diagnose import helper as _hp207  # noqa: E402
+from core import mfg as _mfg207, ownfg as _ofg207  # noqa: E402
+import fake_pe as _fpe207  # noqa: E402
+
+_SM86_207 = _fpe207.dll("0.3.5") + b"\0config: dlssg_sm86.ini\0"
+
+
+def _dir207(files: dict) -> Path:
+    d = Path(tempfile.mkdtemp(prefix="ownfg207_"))
+    for n, b in files.items():
+        (d / n).write_bytes(b)
+    return d
+
+
+def _game207():
+    d = Path(tempfile.mkdtemp(prefix="rb207_"))
+    shutil.copyfile(X64, d / "Game.exe")
+    (d / "dinput8.dll").write_bytes(b"MZ the game's own")
+    return d, games.manual(d)
+
+
+def _refw207(root, log):
+    (root / ("dinput8.dll" + installer.BACKUP_SUFFIX)).write_bytes((root / "dinput8.dll").read_bytes())
+    (root / "dinput8.dll").write_bytes(b"MZ refw")
+    return ["dinput8.dll", "dinput8.dll" + installer.BACKUP_SUFFIX]
+
+
+_dv207 = _dir207({"version.dll": _SM86_207, "dlssg_sm86.ini": b"[dlssg]\nEnable=1\n"})
+
+# A record a failed fresh install left holding only its reason is not an
+# install: the library showed 'play' and 'uninstall' over a folder the
+# rollback had already put back.
+_d207 = Path(tempfile.mkdtemp(prefix="rolled207_"))
+shutil.copyfile(X64, _d207 / "Game.exe")
+_man207 = _d207 / installer.MANIFEST
+_man207.write_text(json.dumps({"version": 1, "complete": False, "path": "feeder", "files": [],
+                               "notes": [net.ROLLED_BACK_NOTE, net.DISK_FULL_NOTE]}), encoding="utf8")
+_inst207 = [games.manual(_d207).installed]
+_man207.write_text(json.dumps({"version": 1, "complete": False, "path": "feeder",
+                               "files": ["ReShade.ini"],
+                               "notes": [net.ROLLED_BACK_NOTE]}), encoding="utf8")
+_inst207.append(games.manual(_d207).installed)
+_man207.write_text(json.dumps({"version": 1, "complete": True, "path": "feeder", "files": []}),
+                   encoding="utf8")
+_inst207.append(games.manual(_d207).installed)
+_man207.write_text("{not json", encoding="utf8")
+_inst207.append(games.manual(_d207).installed)
+check("a record holding only a rollback's reason is not installed; one with files, a plain one "
+      "and an unreadable one are",
+      _inst207 == [False, True, True, True], _inst207)
+shutil.rmtree(_d207, ignore_errors=True)
+
+# The record itself could not be written: 'recorded' sent people to an
+# uninstall that finds nothing.
+_d207b = Path(tempfile.mkdtemp(prefix="norec207_"))
+_r207 = installer.Report(written=["dxgi.dll" + installer.BACKUP_SUFFIX, "dxgi.dll", "ReShade.ini"],
+                         sidelined=["d3dcompiler_47.dll"])
+_m207 = installer._roll_back(games.manual(_d207b), _d207b, _r207, True, lambda t: None)
+_m207b = installer._roll_back(games.manual(_d207b), _d207b,
+                              installer.Report(sidelined=["d3dcompiler_47.dll"]), True, lambda t: None)
+check("no record on disk: our files to delete, the game's own backup to rename back - never on the "
+      "delete list - and what was renamed aside; not 'recorded'",
+      "Delete what it wrote: dxgi.dll, ReShade.ini." in _m207
+      and f"off the end: dxgi.dll{installer.BACKUP_SUFFIX}." in _m207
+      and "renamed d3dcompiler_47.dll by adding" in _m207 and "recorded" not in _m207
+      and "Delete what it wrote" not in _m207b and "renamed d3dcompiler_47.dll by adding" in _m207b,
+      (_m207, _m207b))
+shutil.rmtree(_d207b, ignore_errors=True)
+
+# A locked file stops a fresh install as surely as a failed download, and
+# the half chain came out only on a download failure (gate 2.0.6).
+_saved207 = (installer.reengine.detected, installer.refw.install,
+             sources.resolve_reshade, installer.net.download)
+
+
+def _locked207(url, name, progress=None, **k):
+    raise PermissionError(13, "The process cannot access the file because it is being used by "
+                              "another process", "ReShade_Setup.exe")
+
+
+installer.reengine.detected = lambda root: True
+installer.refw.install = _refw207
+sources.resolve_reshade = lambda: ("9.9.9", "https://reshade.me/downloads/ReShade_Setup_9.9.9_Addon.exe")
+installer.net.download = _locked207
+try:
+    _dl207, _gl207 = _game207()
+    try:
+        installer.install(_gl207, installer.Options(), on_log=lambda t: None)
+        _ml207 = ""
+    except installer.InstallError as _x207:
+        _ml207 = str(_x207)
+    check("a fresh install stopped by a locked file is taken back out whole - the game's own file back",
+          (_dl207 / "dinput8.dll").read_bytes() == b"MZ the game's own"
+          and not (_dl207 / installer.MANIFEST).exists()
+          and sorted(p.name for p in _dl207.iterdir()) == ["Game.exe", "dinput8.dll"],
+          sorted(p.name for p in _dl207.iterdir()))
+    check("...and the message says so first and the cause last, where the result card reads it",
+          _ml207.startswith("Nothing of it was left in the game folder")
+          and _ml207.strip().splitlines()[-1].startswith("Almost always this means the game"),
+          _ml207)
+    shutil.rmtree(_dl207, ignore_errors=True)
+finally:
+    (installer.reengine.detected, installer.refw.install,
+     sources.resolve_reshade, installer.net.download) = _saved207
+
+# Gate 2.0.7 pass 2: the autopilot and update all keep one line of the
+# error, and read a locked file off it; the rollback sentence went first.
+check("one line of a failed install is its cause, not the rollback sentence - the autopilot's lock "
+      "test reads it",
+      installer.cause_of(installer.InstallError(_ml207)).startswith("Windows refused to write a file:")
+      and "being used by another process" in installer.cause_of(installer.InstallError(_ml207))
+      and installer.cause_of(installer.InstallError("One line\nand more")) == "One line"
+      and "a.why = installer.cause_of(e)" in (SRC_DIR / "core" / "autopilot.py").read_text(encoding="utf8"),
+      installer.cause_of(installer.InstallError(_ml207)))
+# ...and an older attempt's record on disk is not this attempt's.
+_do207 = Path(tempfile.mkdtemp(prefix="oldrec207_"))
+shutil.copyfile(X64, _do207 / "Game.exe")
+(_do207 / "dxgi.dll").write_bytes(b"MZ ours")
+(_do207 / installer.MANIFEST).write_text(json.dumps(
+    {"version": 1, "complete": False, "path": "feeder", "files": [],
+     "notes": [net.ROLLED_BACK_NOTE, net.DISK_FULL_NOTE]}), encoding="utf8")
+_mo207 = installer._roll_back(games.manual(_do207), _do207, installer.Report(written=["dxgi.dll"]),
+                              True, lambda t: None, recorded=False)
+check("a record this attempt could not write is said as missing, whatever an older one on disk says",
+      _mo207.startswith(installer.NO_RECORD_HEAD) and (_do207 / "dxgi.dll").is_file(), _mo207)
+shutil.rmtree(_do207, ignore_errors=True)
+
+# #348's verdict is not a picture only the person can judge.
+check("a shared result read as ReShade's d3d9.dll in front of DXVK is filed as not working",
+      _vd207.outcome("ReShade loaded as the game's d3d9.dll in front of DXVK, so the game stays on "
+                     "DirectX 9 - take that d3d9.dll out and install again.") == "failed")
+
+# The game's own frame generation file, replaced by ours and kept as a backup.
+_dg207 = Path(tempfile.mkdtemp(prefix="dlssg207_"))
+(_dg207 / "nvngx_dlssg.dll").write_bytes(b"MZ ours")
+(_dg207 / ("nvngx_dlssg.dll" + installer.BACKUP_SUFFIX)).write_bytes(b"MZ the game's")
+(_dg207 / installer.MANIFEST).write_text(json.dumps({"files": ["nvngx_dlssg.dll"]}), encoding="utf8")
+_hd207 = [_mfg207.has_dlssg(_dg207, _dg207)]
+(_dg207 / ("nvngx_dlssg.dll" + installer.BACKUP_SUFFIX)).unlink()
+_hd207.append(_mfg207.has_dlssg(_dg207, _dg207))
+check("a frame-generation file of ours over the game's own (its backup beside it) still says the game "
+      "has one; without the backup it does not", _hd207 == ["nvngx_dlssg.dll", ""], _hd207)
+shutil.rmtree(_dg207, ignore_errors=True)
+
+# Shared results name routes as the route list does.
+_adv207 = _cm207.advice({"routes": {"standalone": {"worked": 4, "failed": 0},
+                                    "renodx": {"worked": 0, "failed": 2}}}, "renodx")
+check("shared results name the route the way the route list does",
+      _cm207.route_name("standalone") == "standalone-dlssnr"
+      and _cm207.route_name("renodx") == "renodx-dlss" and _cm207.route_name("feeder") == "feeder"
+      and _cm207.route_name("no-such") == "no-such"
+      and any("The standalone-dlssnr route worked in 4" in s for s in _adv207)
+      and any("(renodx-dlss) failed in all 2" in s for s in _adv207)
+      and not any(" standalone route" in s or "(renodx)" in s for s in _adv207), _adv207)
+
+# The helper's log of a long session: its first line near the feed's
+# spawn line is this launch, whatever the files' times say.
+_ft207 = ("10:00:00.000  [feed32] attached\n"
+          "10:00:01.500  [feed32] host spawned (pid 1): \"x\\host64\\dlss5-feed-host64.exe\" 2\n"
+          "11:30:00.000  [feed32] 600 frames: feed CPU 0.05 ms/frame\n")
+_df207 = Path(tempfile.mkdtemp(prefix="helper207_"))
+_pf207, _ph207 = _df207 / "feed.log", _df207 / "host.log"
+_pf207.write_text("x", encoding="utf8")
+_ph207.write_text("x", encoding="utf8")
+os.utime(_ph207, (time.time() - 5400, time.time() - 5400))     # 90 minutes older
+def _run207(clock: str) -> str:
+    return (f"{clock}  dlss5-feed-host64 commit a6c23bd (built Sep 14 2026 08:15:58)\n"
+            f"{clock}  [host] NeuralUplift=1 (user-set; leaving it alone)\n")
+
+
+_tie207 = [_hp207._helper_same_launch(_ft207, _run207("10:00:03.200"), _pf207, _ph207),
+           _hp207._helper_same_launch(_ft207, _run207("09:10:03.200"), _pf207, _ph207),
+           _hp207._helper_same_launch("23:59:59.000  [feed32] host spawned (pid 1)\n",
+                                      _run207("00:00:04.000"), _pf207, _ph207),
+           _hp207._helper_same_launch("", "no clock here\n", _pf207, _ph207),
+           # a helper respawned after a lost device: its LAST run is this launch
+           _hp207._helper_same_launch(
+               _ft207.replace("10:00:01.500", "10:05:01.500"),
+               _run207("10:00:03.200") + "10:04:59.000  [host] Present failed (0x887A0005)\n"
+               + _run207("10:05:03.000"), _pf207, _ph207),
+           # a tail or an excerpt without the run's start: the files' times
+           _hp207._helper_same_launch(_ft207, "10:40:00.000  [host] frame 1800 evaluated\n",
+                                      _pf207, _ph207)]
+check("the helper's last run is tied to the feed's launch by the logs' clocks, across midnight "
+      "too; without its start in the text, the files' times",
+      _tie207 == [True, False, True, False, True, False], _tie207)
+shutil.rmtree(_df207, ignore_errors=True)
+
+# dlssg_for_sm86's alternatives\ proxies keep the name they were picked under.
+_da207 = _dir207({"winmm.dll": _SM86_207, "dlssg_sm86.ini": b"[dlssg]\nEnable=1\n"})
+_ka207, _fa207 = _ofg207.identify([_da207 / "winmm.dll"])
+check("sm86 picked as winmm.dll goes in as winmm.dll with its ini, and OptiScaler steps off that name",
+      _ka207 == "sm86-winmm" and set(_fa207) == {"winmm.dll", "dlssg_sm86.ini"}
+      and _ofg207.dests(_ka207) == ["winmm.dll", "dlssg_sm86.ini"]
+      and optiscaler.suggest_proxy(Path(tempfile.gettempdir()) / "no-such-207",
+                                   avoid=_ofg207.dests(_ka207)) != "winmm.dll",
+      (_ka207, _fa207))
+_di207 = _dir207({"dinput8.dll": _SM86_207, "dlssg_sm86.ini": b"x"})
+try:
+    _ofg207.identify([_di207 / "dinput8.dll"])
+    _dinput207 = ""
+except _ofg207.OwnFgError as _e207:
+    _dinput207 = str(_e207)
+_dn207 = _dir207({"winmm.dll": _SM86_207})
+try:
+    _ofg207.identify([_dn207 / "winmm.dll"])
+    _noini207 = ""
+except _ofg207.OwnFgError as _e207:
+    _noini207 = str(_e207)
+shutil.rmtree(_di207, ignore_errors=True)
+shutil.rmtree(_dn207, ignore_errors=True)
+check("...every alternative is a name OptiScaler can avoid, and version.dll stays plain sm86",
+      all(a in optiscaler.PROXY_NAMES for a in _ofg207.SM86_ALTERNATIVES)
+      and _ofg207.identify([_dv207 / "version.dll"])[0] == "sm86")
+check("...a proxy it does not place (dinput8.dll) is refused rather than renamed, and a missing ini "
+      "says to copy it beside the picked file",
+      "dinput8.dll is a dlssg_for_sm86 proxy this tool does not place" in _dinput207
+      and "Copy it from the dlssg_for_sm86 download into the folder winmm.dll is in" in _noini207,
+      (_dinput207, _noini207))
+
+# 'forget frame generation files', its own row, with a real click, and --own-fg.
+_fg207 = {}
+_ui207 = _UiLive()
+try:
+    if not _ui207.ok:
+        check("2.0.7 window: the window opened", False, _ui207.error)
+        raise RuntimeError
+    _ui207.enter(_ui_game(name="Frame Gen Forget", api="DX12"),
+                 _ui_support([dlss.FEEDER, dlss.OPTI], dlss.OPTI))
+    _ui207.press("settings", "button")
+    _ui207.settle(350)
+    _fg207["before"] = [lab for lab in _ui207.labels("link") if lab == "forget frame generation files"]
+    from tkinter import filedialog as _fd207
+    with patch.object(_fd207, "askopenfilenames",
+                      lambda **k: (str(_dv207 / "version.dll"), str(_dv207 / "dlssg_sm86.ini"))):
+        _ui207.press("add your own...", "link")
+        _ui207.settle(200)
+    _fg207["after"] = [lab for lab in _ui207.labels("link") if lab == "forget frame generation files"]
+    _asked207 = []
+    with patch.object(_ui207.app.shell, "ask",
+                      lambda *a, **k: _asked207.append(a[0]) or True):
+        _fg207["clicked"] = _ui207.press("forget frame generation files", "link")
+        _ui207.settle(200)
+    _fg207["asked"] = _asked207
+    _ui207.settle(200)
+    _fg207["stored"] = _ofg207.available()
+    _fg207["opts"] = _ui207.app.opts().own_fg
+    _fg207["gone"] = [lab for lab in _ui207.labels("link") if lab == "forget frame generation files"]
+    _fg207["log"] = _ui207.log()
+    _fg207["forgotten"] = _ofg207.forgotten("sm86")
+    # a record naming the forgotten set rebuilds 'none', so the next install takes it out
+    _dr207 = Path(tempfile.mkdtemp(prefix="forget207_"))
+    (_dr207 / installer.MANIFEST).write_text(json.dumps(
+        {"version": 1, "complete": True, "exe": "Game.exe", "path": installer.OPTI,
+         "own_fg": {"recipe": "sm86", "files": ["version.dll", "dlssg_sm86.ini"]},
+         "files": ["version.dll", "dlssg_sm86.ini"]}), encoding="utf8")
+    _fg207["rebuilt"] = installer.options_from_manifest(_dr207).own_fg
+    shutil.rmtree(_dr207, ignore_errors=True)
+    _ofg207.store("sm86", {"version.dll": _dv207 / "version.dll", "dlssg_sm86.ini": _dv207 / "dlssg_sm86.ini"})
+    _fg207["added_again"] = _ofg207.forgotten("sm86")
+finally:
+    _ui207.close()
+    _ui_cleanup()
+check("'forget frame generation files' shows once a set is chosen, and a real click deletes the "
+      "tool's copy and the choice",
+      _fg207.get("before") == [] and _fg207.get("after") == ["forget frame generation files"]
+      and _fg207.get("clicked") and _fg207.get("asked") == ["forget frame generation files"]
+      and _fg207.get("stored") == [] and _fg207.get("opts") == ""
+      and _fg207.get("gone") == [] and "forgotten" in _fg207.get("log", ""),
+      {k: v for k, v in _fg207.items() if k != "log"})
+check("...and it stays forgotten: a record naming the set rebuilds none, until the set is added again",
+      _fg207.get("forgotten") is True and _fg207.get("rebuilt") == ""
+      and _fg207.get("added_again") is False, {k: v for k, v in _fg207.items() if k != "log"})
+
+import io as _io207  # noqa: E402
+import dlss5_autopilot as _cli207  # noqa: E402
+_dc207 = Path(tempfile.mkdtemp(prefix="cli207_"))
+shutil.copyfile(X64, _dc207 / "Game.exe")
+_out207 = {}
+with _ui_isolated():
+    for _k, _argv in (("enabler", [str(_dc207), "--check", "--own-fg", "enabler"]),
+                      ("path", [str(_dc207), "--check", "--own-fg", str(_da207 / "winmm.dll")]),
+                      ("key", [str(_dc207), "--check", "--own-fg", "sm86-winmm"])):
+        _buf207 = _io207.StringIO()
+        with patch.object(sys, "argv", ["dlss5-autopilot.exe"] + _argv), \
+                patch.object(_cli207, "_console", lambda: None), \
+                patch.object(sys, "stdout", _buf207), patch.object(sys, "stderr", _buf207):
+            try:
+                _rc207 = _cli207.main()
+            except SystemExit as _se207:
+                _rc207 = _se207.code
+        _out207[_k] = (_rc207, _buf207.getvalue())
+    _out207["stored"] = _ofg207.available()
+# The test game is not a D3D12 game with DLSS, so the route is not
+# optiscaler, and the option says it does not apply rather than vanishing.
+check("--own-fg: a key with nothing stored is refused in words, a path is identified and kept, "
+      "and the key works after it - said as not applying off the optiscaler route",
+      _out207["enabler"][0] == 2 and "no copy of DLSS Enabler is stored yet" in _out207["enabler"][1]
+      and _out207["path"][0] != 2 and _out207["key"][0] != 2
+      and "--own-fg applies to --route optiscaler only" in _out207["path"][1]
+      and "--own-fg applies to --route optiscaler only" in _out207["key"][1]
+      and _out207["stored"] == ["sm86-winmm"],
+      {k: (v if k == "stored" else (v[0], v[1][-300:])) for k, v in _out207.items()})
+shutil.rmtree(_dc207, ignore_errors=True)
+shutil.rmtree(_da207, ignore_errors=True)
+shutil.rmtree(_dv207, ignore_errors=True)
+
+
+section("2.0.7 gate 4: a successful install whose record cannot be saved says so - installer, autopilot, update all")
+try:
+    from core import installer as _in4, autopilot as _ap4
+    _r4 = _in4.Report()
+    _r4.written = ["nvngx_dlssnr.dll", "dxgi.dll.dlss5-backup"]
+    _r4.notes = ["registered ReShade as a Vulkan layer for this user - it now loads into EVERY Vulkan application, not just this game"]
+    _lines4 = []
+    _in4._finish_record(True, _r4, _lines4.append)
+    check("a saved record adds no warning", not _in4.record_lost(_r4) and not _lines4)
+    _in4._finish_record(False, _r4, _lines4.append)
+    _w4 = _r4.warnings[-1] if _r4.warnings else ""
+    check("a lost record warns, names what to delete and rename, and the global layer",
+          _in4.record_lost(_r4) and "Delete what it wrote: nvngx_dlssnr.dll" in _w4
+          and "dxgi.dll.dlss5-backup" in _w4 and "Vulkan layer" in _w4 and _lines4, _w4)
+    check("...and cause_of keeps the whole line for the autopilot and update all",
+          _in4.cause_of(_w4) == _w4, _in4.cause_of(_w4))
+    check("record_lost is safe with nothing", not _in4.record_lost(None) and not _in4.record_lost(_in4.Report()))
+    _a4 = _ap4.Attempt(route="optiscaler", installed=True, no_record=True, why=_w4)
+    _o4 = _ap4.Outcome(attempts=[_a4], stopped=_w4, installed="optiscaler", left="optiscaler")
+    _s4 = _ap4.summary(_o4)
+    check("the autopilot summary does not promise an uninstall that has no record",
+          "takes it back out" not in _s4 and "Delete what it wrote" in _s4, _s4)
+except Exception as _e4:
+    import traceback as _tb4
+    check("the 2.0.7 gate 4 section ran to its end", False, "".join(_tb4.format_exception(_e4))[-400:])
+
+
+section("2.0.7: an install a game update emptied is told apart from a healthy one (files_gone)")
+try:
+    import json as _js5
+    import tempfile as _tf5
+    from pathlib import Path as _P5
+    from core import components as _co5, installer as _in5, net as _net5
+    _d5 = _P5(_tf5.mkdtemp(prefix="gone_"))
+    def _man5(**kw):
+        m = {"complete": True, "path": "feeder", "notes": [],
+             "files": ["dxgi.dll", "dlss5-feed.addon64", "renodx-dlss5.addon64", "ReShade.ini",
+                       "nvngx_dlssnr.dll" + _in5.BACKUP_SUFFIX, "host64/", "ReShade.log"]}
+        m.update(kw)
+        (_d5 / "dlss5-autopilot.json").write_text(_js5.dumps(m), encoding="utf8")
+        return m
+    (_d5 / "dxgi.dll").write_bytes(b"x")
+    (_d5 / "dlss5-feed.addon64.off").write_bytes(b"x")       # switched off by the tool
+    m5 = _man5()
+    check("a switched-off add-on, config files, logs, backups and folders are not damage; a lost add-on is",
+          _co5.files_gone(_d5, m5) == ["renodx-dlss5.addon64"], _co5.files_gone(_d5, m5))
+    (_d5 / "renodx-dlss5.addon64").write_bytes(b"x")
+    check("...and a folder with everything in place reports nothing", _co5.files_gone(_d5, m5) == [])
+    (_d5 / "dxgi.dll").unlink()
+    (_d5 / "renodx-dlss5.addon64").unlink()
+    check("a game update that took the proxy and the add-on out lists both",
+          _co5.files_gone(_d5, m5) == ["dxgi.dll", "renodx-dlss5.addon64"], _co5.files_gone(_d5, m5))
+    check("an unfinished record (a failed or half-removed install) is not called damaged",
+          _co5.files_gone(_d5, _man5(complete=False)) == [])
+    check("a record that was rolled back is not called damaged",
+          _co5.files_gone(_d5, _man5(notes=[_net5.ROLLED_BACK_NOTE])) == [])
+    check("no record says nothing", _co5.files_gone(_d5, {}) == [])
+    _man5()
+    _its5 = _co5.check(_d5)
+    check("check() carries it as one part that needs installing again, worded for a person",
+          any(i.outdated and i.name == "files in the game folder" and "install again" in i.note
+              and "dxgi.dll" in i.note for i in _its5), [(i.name, i.note) for i in _its5])
+    check("...and stale_counts counts it, so the row says update and update all takes the game",
+          _co5.stale_counts([_d5]).get(str(_d5), 0) >= 1, _co5.stale_counts([_d5]))
+    check("a record whose file list is not a list of names says nothing instead of raising",
+          _co5.files_gone(_d5, {"complete": True, "files": 5}) == []
+          and _co5.files_gone(_d5, {"complete": True, "files": "abc"}) == []
+          and _co5.files_gone(_d5, {"complete": True, "files": [None, 3, {"a": 1}]}) == [])
+    shutil.rmtree(_d5, ignore_errors=True)
+except Exception as _e5:
+    import traceback as _tb5
+    check("the 2.1 files_gone section ran to its end", False, "".join(_tb5.format_exception(_e5))[-400:])
+
+
+section("2.0.7: Janblade fork as an optiscaler build (#561)")
+try:
+    import shutil as _sh6
+    import tempfile as _tf6
+    from pathlib import Path as _P6
+    from core import dlss as _dl6, games as _ga6, installer as _in6, optiscaler as _op6, profiles as _pr6, sources as _so6
+    _jn = _op6.JANBLADE
+
+    def _raises874(fn):
+        try:
+            fn()
+        except Exception:
+            return True
+        return False
+    _zip = "OptiScaler-DLSSNR-F5-v0.1.22-tune-for-this-scene-and-eye-adaptation.zip"
+    # The repo's page as it really is: the newest release is flagged
+    # prerelease, the two before it are not, one zip per release.
+    _rels6 = [
+        {"tag_name": "v0.1.20", "published_at": "2026-09-25T00:00:00Z", "prerelease": False,
+         "assets": [{"name": "OptiScaler-DLSSNR-F5-v0.1.20.zip",
+                     "browser_download_url": "https://x/v0.1.20.zip"}]},
+        {"tag_name": "v0.1.22", "published_at": "2026-09-27T00:00:00Z", "prerelease": True,
+         "assets": [{"name": _zip, "browser_download_url": "https://x/v0.1.22.zip"}]},
+        {"tag_name": "v0.1.21", "published_at": "2026-09-26T00:00:00Z", "prerelease": False,
+         "assets": [{"name": "OptiScaler-DLSSNR-F5-v0.1.21.zip",
+                     "browser_download_url": "https://x/v0.1.21.zip"}]},
+    ]
+    _seen6 = []
+
+    def _fake_json6(url):
+        _seen6.append(url)
+        return list(_rels6)
+
+    with patch.object(_so6, "_json", _fake_json6):
+        _got6 = _op6.resolve(_jn)
+    check("the newest release is picked although GitHub flags it a pre-release",
+          _got6 == ("v0.1.22", "https://x/v0.1.22.zip"), _got6)
+    check("...from Janblade's release list, not wilsjo2's",
+          _seen6 == [_op6.JANBLADE_API] and "Janblade/OptiScaler-F5-DLSSNR-Multipass" in _seen6[0], _seen6)
+    check("the one zip of the release is the archive chosen",
+          _op6._pick_archive(_rels6[1]["assets"], _op6.FORKS[_jn][1], _op6.WANT.get(_jn, ()))["name"] == _zip)
+    with patch.object(_so6, "cached_json", lambda url: list(_rels6)):
+        _an6 = _op6.archive_name(_jn)
+    check("the preview names the same archive from the cache alone",
+          _an6 == _op6._archive_name("v0.1.22", "https://x/v0.1.22.zip"), _an6)
+    # An unrelated program published on that page is passed over, the same as
+    # on the other forks (#364).
+    _other6 = [{"tag_name": "v0.1.23", "published_at": "2026-09-28T00:00:00Z", "prerelease": True,
+                "assets": [{"name": "display-filter-v0.2.0-preview.zip",
+                            "browser_download_url": "https://x/df.zip"}]}] + _rels6
+    with patch.object(_so6, "_json", lambda url: list(_other6)):
+        check("a release with no OptiScaler package is passed over for the one before it",
+              _op6.resolve(_jn) == ("v0.1.22", "https://x/v0.1.22.zip"), _op6.resolve(_jn))
+    with patch.object(_so6, "_json", lambda url: []):
+        check("a page with no package refuses in words, not a traceback",
+              _raises874(lambda: _op6.resolve(_jn)))
+
+    check("the build is in the table and the dropdown, after the older ones",
+          _jn in _op6.BUILDS and _jn in _op6.FORKS and list(_op6.BUILDS)[0] == ""
+          and list(_op6.BUILDS)[-1] == _jn, list(_op6.BUILDS))
+    check("its label says it was not run here",
+          _op6.BUILDS[_jn].endswith("not run here"), _op6.BUILDS[_jn])
+    check("its dropdown text is short, lower-case style and distinct from wilsjo2's",
+          _op6.BUILDS[_jn].split("  -  ")[0] == "Janblade's fork"
+          and len({v.split("  -  ")[0] for v in _op6.BUILDS.values()}) == len(_op6.BUILDS))
+    check("every label of a fork that was not run says so, the default does not",
+          all("not run here" in _op6.BUILDS[k] for k in (_op6.PRESR, _op6.PRESR_MFG, _jn))
+          and "not run here" not in _op6.BUILDS[""])
+    check("it behaves like wilsjo2's for the placement: is_presr and the RunBeforeSR key",
+          _op6.is_presr(_jn) == _op6.is_presr(_op6.PRESR) is True
+          and _op6.PRESR_BEFORE_SR == {"RunBeforeSR": True}
+          and not _op6.is_presr("") and not _op6.is_presr(_op6.FORK))
+    check("...and has no card, so an RTX 50 or an unknown card is not refused",
+          _op6.card_refusal(_jn, 120) == "" and _op6.card_refusal(_jn, 89) == ""
+          and _op6.card_refusal(_jn, None) == "")
+    check("it is not a variant: no skip list, no wanted word",
+          _op6.FORKS[_jn][1] == () and _jn not in _op6.WANT)
+
+    _d6 = _P6(_tf6.mkdtemp(prefix="janblade_"))
+    _exe6 = _d6 / "game.exe"
+    _exe6.write_bytes(b"MZ")
+    _g6 = _ga6.Game("X", _d6, exe=_exe6, bitness=64, api="DX12")
+    _plan6 = _in6.plan(_g6, _in6.Options(path=_dl6.OPTI, opti_build=_jn))
+    check("the plan names it", any("Janblade's fork" in s for s in _plan6), _plan6)
+    check("a profile names the build and its placement",
+          "optiscaler build: janblade (neural pass before the upscaler)" in
+          _pr6.describe(_in6.Options(path=_dl6.OPTI, opti_build=_jn)))
+    _isrc6 = src_of(_in6.install)
+    check("install() writes its own note and takes the placement through is_presr",
+          "optiscaler.JANBLADE" in _isrc6 and "optiscaler.is_presr(opt.opti_build)" in _isrc6)
+    check("the command line accepts it, as every key of the table",
+          "janblade" in Path("dlss5_autopilot.py").read_text(encoding="utf8"))
+    _sh6.rmtree(_d6, ignore_errors=True)
+
+    # The window: the dropdown still opens on the default, a pick reaches Options.
+    with _ui_isolated(), _ui_threads(run=False):
+        _c6 = _ui_ctl(_ui_game(name="Janblade"), _ui_support([_dl6.FEEDER, _dl6.OPTI], _dl6.OPTI))
+        _c6.apply_route(_dl6.OPTI)
+        _keys6 = [k for k, _l in _c6.choices("opti_build")]
+        _labels6 = dict(_c6.choices("opti_build"))
+        _def6 = (_c6.settings.get("opti_build", ""), _c6.opts().opti_build)
+        _c6.set_setting("opti_build", _jn)
+        _pick6 = (_c6.shown_setting("opti_build"), _c6.opts().opti_build, _c6.opts(_dl6.FEEDER).opti_build)
+    check("the dropdown offers it and still DEFAULTS to auto (the default build), never to a fork",
+          _keys6 == list(_op6.BUILDS) and _keys6[0] == "" and _def6 == ("", "")
+          and _jn in _keys6 and _labels6[_jn] == "Janblade's fork", (_keys6, _def6))
+    check("...and a pick reaches Options on the optiscaler route only",
+          _pick6 == (True, _jn, ""), _pick6)
+    _ui_cleanup()
+except Exception as _e6:
+    import traceback as _tb6
+    check("the 2.1 Janblade section ran to its end", False, "".join(_tb6.format_exception(_e6))[-400:])
 
 
 section("RESULT")

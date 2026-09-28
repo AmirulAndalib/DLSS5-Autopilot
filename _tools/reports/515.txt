@@ -1,0 +1,63 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+it keeps saying to close overlays, which I did, and to activate the games own dlss which is already on.
+sort of getting despaired here
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 5090 (sm_120), driver 617.14
+- game: CONTROL Resonant
+- exe: CONTROLResonant.exe
+- arch/api: 64-bit / DX12 (no graphics DLL imported statically, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: optiscaler
+- work area: 75%
+- windows event: CONTROLResonant.exe faulted in sl.dlss.dll 0xC0000005 at 2026-09-26 16:07:19 UTC
+
+**Diagnosis**: Neural rendering never ran - the game's own upscaler has to be on for this route.
+- [bad] Neural rendering was switched on, but the model never drew a frame.
+- [info] OptiScaler runs the model around the game's own upscaler. Turn DLSS (or FSR 2 or later, or XeSS) on in the game's graphics menu - FSR 1.0 does not count, it makes no call OptiScaler can take over. With no upscaler running there is nothing for neural rendering to attach to, which is what the overlay means by 'waiting for the upscaler to run'. If the game has no upscaler at all, use the feeder route.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.7.128 kept beside it)
+- nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.7.128 kept beside it)
+- nvngx_dlssd.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.7.128 kept beside it)
+- optiscaler build: Dagherbou (v0.2.0-dlssnr)
+
+**What ran, and what it loaded** (seen at 26 Sep 19:07)
+- process: CONTROLResonant.exe
+- DLLs in the process: 96
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll
+- ours, not loaded: nvngx_dlssnr.dll
+- also written, loaded only if the game asks: nvngx.dll_dlssnr.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[19:07:18.909465] [I] StreamlineHooks::streamlineLogCallback [19-07-18][streamline][info][tid:18424][0s:793ms:461us]commonEntry.cpp:2023[updateEmbeddedJSON] Detected Windows OS version 10.0.26200
+[19:07:18.909571] [I] StreamlineHooks::streamlineLogCallback [19-07-18][streamline][info][tid:18424][0s:793ms:573us]pluginManager.cpp:883[mapPlugins] Loaded plugin 'sl.common' - version 2.12.128.26059
+[19:07:18.967211] [I] LibraryLoadHooks::LoadLibraryCheckW nvngx call: C:\Program Files (x86)\Steam\steamapps\common\CONTROL Resonant\nvngx.dll, returning this dll!
+[19:07:18.967604] [I] StreamlineHooks::streamlineLogCallback [19-07-18][streamline][info][tid:18424][0s:851ms:591us]commonEntry.cpp:999[getNGXFeatureRequirements] NGX feature 1 requirements - minOS 10
+```
+
+**autopilot.log (`C:\Users\Main\AppData\Local\dlss5-autopilot\autopilot.log`)**
+```
+======================================================================
+2026-09-26 19:08:57 info  DLSS 5 Autopilot 2.0.5 starting
+2026-09-26 19:08:57 info    windows : Windows-11-10.0.26200-SP0
+2026-09-26 19:08:57 info    python  : 3.12.10  frozen=True
+2026-09-26 19:08:57 info    exe     : C:\Users\Main\Downloads\DLSS5-Autopilot-v2.0.5-win64\dlss5-autopilot.exe
+2026-09-26 19:08:57 info    gpu     : NVIDIA GeForce RTX 5090  sm_120
+```

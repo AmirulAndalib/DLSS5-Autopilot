@@ -1,0 +1,100 @@
+**Did the game start?** it started, then closed itself
+
+**What happened**
+=== diagnosis :: log 26 Sep 16:56 ===
+> The feed crashed after starting - a feeder bug; try another feeder build.
+[ok]   ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+[ok]   DLSS5_Feed.fx loaded and its textures were found.
+[ok]   Motion vectors: LumeniteFX Kernel is enabled.
+[ok]   The 32-bit helper process started.
+[ok]   The game and the helper are talking.
+[--]   On 32-bit the DLSS 5 page in the game's overlay drives the 64-bit helper; the helper's own window is there too, but do not alt-tab to it while playing - that minimizes the game and tears the feature down.
+[fail] The feed recorded a crash (0xC0000005) while signalling the host (Vulkan) (later faults in this process are not recorded).
+        That is the feeder itself going down, not the install. Two things to try in the game's settings: another 'feeder build' from the list (the stable release is the long-tested 32-bit path), and a lower work resolution. Then report it to the DLSS5-Feeder project with this log and the dump (F:\SteamLibrary\steamapps\common\Hard Truck 2 King of the Road\dlss5-feed-crash.dmp; zip it, it shrinks to a few MB).
+
+> stuck? 'report a bug' is under help - the diagnosis above and the log tail go into the report, you post it.
+
+=== what other people found ===
+> On driver 617.14, 21 of 32 shared results worked.
+
+=== what Windows recorded ===
+[fail] Windows recorded king.exe faulting in ReShade32.dll (0xC0000005).
+        That module is part of this install, at 2026-09-26 13:56:10 UTC. This is ours to fix: press 'report a bug' so the module, the exception code and the route go in together.
+
+---
+- version: 2.0.5
+- gpu: NVIDIA GeForce RTX 4070 Ti (sm_89), driver 617.14
+- game: Hard Truck 2: King of the Road
+- exe: king.exe
+- arch/api: 32-bit / DX9 (set by hand (detected Unknown))
+- route: feeder
+- windows event: king.exe faulted in ReShade32.dll 0xC0000005 at 2026-09-26 13:56:10 UTC
+- this tool: running as administrator
+
+**Diagnosis**: The feed crashed after starting - a feeder bug; try another feeder build.
+- [ok] ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0
+- [ok] DLSS5_Feed.fx loaded and its textures were found.
+- [ok] Motion vectors: LumeniteFX Kernel is enabled.
+- [ok] The 32-bit helper process started.
+- [ok] The game and the helper are talking.
+- [info] On 32-bit the DLSS 5 page in the game's overlay drives the 64-bit helper; the helper's own window is there too, but do not alt-tab to it while playing - that minimizes the game and tears the feature down.
+- [bad] The feed recorded a crash (0xC0000005) while signalling the host (Vulkan) (later faults in this process are not recorded).
+
+**Files in the folder**
+- dlss5-feed.addon32: present
+- host64\renodx-dlss5.addon64: present
+- ReShade.ini: present
+- d3d9.dll: present
+- host64/nvngx_dlssnr.dll: present
+- reshade-shaders/Shaders/DLSS5_Feed.fx: present
+- reshade-shaders/Shaders/lumenite_Kernel.fx: present
+- ReShade 32-bit Vulkan layer: registered
+- DLSS 5 add-on switch: NeuralUplift=1
+- king_d3d9.log: present (written since the install)
+
+**What ran, and what it loaded** (seen at 26 Sep 16:53)
+- process: king.exe
+- DLLs in the process: 142
+- ours, loaded: d3d9.dll, dlss5-feed.addon32
+
+**ReShade.log**
+```
+16:55:22:428 [19968] | INFO  | Registered add-on "DLSS 5 Feed (32-bit) 0.15.1" v0.0.0.0 using ReShade API version 20.
+16:56:10:921 [19968] | INFO  | Exiting ...
+```
+
+**dlss5-feed.log**
+```
+...
+16:55:57.858  [feed] present probe: 0 presents / 1916 frames fed since the last rebase (0.00x), last swapchain image index 0
+16:55:59.778  [feed] present probe: 0 presents / 2036 frames fed since the last rebase (0.00x), last swapchain image index 0
+16:56:01.699  [feed] present probe: 0 presents / 2156 frames fed since the last rebase (0.00x), last swapchain image index 0
+16:56:01.954  [feed32] 600 frames: feed CPU 0.06 ms/frame | frame interval 16.00 ms (62.5 fps) | feed is 0% of the frame | pipe write 0.01 ms mean, 0.02 ms worst
+16:56:03.618  [feed] present probe: 0 presents / 2276 frames fed since the last rebase (0.00x), last swapchain image index 0
+16:56:05.538  [feed] present probe: 0 presents / 2396 frames fed since the last rebase (0.00x), last swapchain image index 0
+16:56:05.629  [feed32] effect runtime 19490218 destroyed -- it was the bound one (0 runtimes left)
+16:56:05.634  [feed32] game device destroyed; shutting down
+16:56:09.635  ### CRASH RECORDED ###  exception 0xC0000005 (reading address 00000520) at 519CA1DB in C:\Users\quasar\AppData\Local\dlss5-autopilot\reshade-vulkan\ReShade32.dll; this add-on was last do
+16:56:10.011  [feed32] crash dump written: F:\SteamLibrary\steamapps\common\Hard Truck 2 King of the Road\dlss5-feed-crash.dmp -- attach it to the issue with this log
+16:56:10.920  [feed] vkCreateDevice hook removed
+16:56:10.921  shut down cleanly.
+```
+
+**dlss5-feed-host.log**
+```
+...
+16:55:22.962  [host] NeuralUplift=1 (user-set; leaving it alone)
+16:55:25.589  [host] NVSDK_NGX_D3D12_Init -> 0x00000001 (Success)
+16:55:26.484  [host] feature ready: 2560x1440 DLAA flags=74
+16:55:26.502  [host] frame 1 evaluated (0 presents skipped so far, 0 owed)
+16:55:26.515  [host] frame 2 evaluated (0 presents skipped so far, 0 owed, DLSS GPU 0.19 ms/frame)
+16:55:26.880  [host] frame 3 evaluated (0 presents skipped so far, 0 owed, DLSS GPU 0.17 ms/frame) | pace: 12.69 ms/evaluate (78.8/s), 1.00 presents per evaluate, client queued up to 0 frames ahead, r
+16:55:55.938  [host] frame 1800 evaluated (0 presents skipped so far, 0 owed, DLSS GPU 7.69 ms/frame) | pace: 16.36 ms/evaluate (61.1/s), 1.00 presents per evaluate, client queued up to 1 frames ahead
+```
+
+**autopilot.log (`C:\Users\quasar\AppData\Local\dlss5-autopilot\autopilot.log`)**
+```
+======================================================================
+2026-09-26 16:18:03 info  DLSS 5 Autopilot 2.0.5 starting
+2026-09-26 16:18:03 info    windows : Windows-11-10.0.26200-SP0
+2026-09-26 16:18:03 info    

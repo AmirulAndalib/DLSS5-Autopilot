@@ -68,7 +68,9 @@ CLASSES = (
     # D3D11/12 install (#479), or Remix never tried the pass (#211).
     ("the game does not draw the way the route needs",
      ("refused", "no d3d12 dlss call", "never called dlss",
-      "direct3d 9 device", "never even attempted")),
+      "direct3d 9 device", "never even attempted",
+      # 2.0.7: the bridge attached, nothing called DLSS, no frame
+      "delivered no frame - turn dlss on")),
     ("upstream: the driver's NGX runtime faults",
      ("driver 616.64", "faults inside", "no dlss 5 entry point")),
     # The person said the game closed itself or never started, and the
@@ -77,8 +79,14 @@ CLASSES = (
     ("they say it closed or never started - we name what to take out",
      ("closed itself", "never started with this install",
       "windows recorded the game faulting")),
+    # 2.0.7: the bridge's own log counts the frames it handed on, and no log
+    # says whether the neural pass drew them. Was the overlay ask below.
+    ("frames reach the add-on, and no log says if the pass drew them",
+     ("whether the neural pass drew them",)),
     ("we cannot tell from the logs",
      ("inconclusive", "did not get far enough",
+      # 2.0.7: the bridge's synthetic path handed on no frame
+      "delivered no frame from the driver",
       # #252: frames went to the 64-bit helper and its log was not there
       "only its own log says")),
     ("we ask the person to look in the overlay",
@@ -102,7 +110,10 @@ CLASSES = (
     ("the install is incomplete on disk",
      ("is missing - install again", "reinstall", "missing a runtime file")),
     ("it ran and then something stopped",
-     ("the feed stopped", "crashed", "no neural frame")),
+     ("the feed stopped", "crashed", "no neural frame",
+      # 2.0.7: the bridge's own stop line, after frames or before the first,
+      # and DLSS called with no frame handed on
+      "the bridge stopped", "the bridge delivered no frame")),
     ("working", ("working.",)),
 )
 

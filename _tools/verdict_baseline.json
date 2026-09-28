@@ -50,12 +50,12 @@
    "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
    "warn: The add-on flagged your nvngx_dlssnr as an untested build.",
    "warn: The add-on could not hook NVSDK_NGX_D3D12_EvaluateFeature_C.",
-   "info: This route leaves no frame log of its own."
+   "info: dlss5-bridge.log has nothing from this launch."
   ],
   "never_ran": false,
   "ran": true,
   "route": "bridge",
-  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
+  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - the bridge's log has nothing from this launch."
  },
  "13": {
   "findings": [
@@ -323,12 +323,12 @@
    "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
    "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.2110",
    "warn: The add-on flagged your nvngx_dlssnr as an untested build.",
-   "info: This route leaves no frame log of its own."
+   "info: dlss5-bridge.log has nothing from this launch."
   ],
   "never_ran": false,
   "ran": true,
   "route": "bridge",
-  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
+  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - the bridge's log has nothing from this launch."
  },
  "20": {
   "findings": [
@@ -392,12 +392,12 @@
    "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
    "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
    "warn: The add-on flagged your nvngx_dlssnr as an untested build.",
-   "info: This route leaves no frame log of its own."
+   "info: dlss5-bridge.log has nothing from this launch."
   ],
   "never_ran": false,
   "ran": true,
   "route": "bridge",
-  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
+  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - the bridge's log has nothing from this launch."
  },
  "218": {
   "findings": [
@@ -518,12 +518,12 @@
  "27": {
   "findings": [
    "warn: The add-on flagged your nvngx_dlssnr as an untested build.",
-   "info: This route leaves no frame log of its own."
+   "info: dlss5-bridge.log has nothing from this launch."
   ],
   "never_ran": false,
   "ran": true,
   "route": "bridge",
-  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - this route does not log frames."
+  "verdict": "Add-ons loaded. Confirm in the DLSS 5 Neural Rendering panel - the bridge's log has nothing from this launch."
  },
  "275": {
   "findings": [
@@ -544,12 +544,12 @@
    "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
    "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
    "ok: The add-on's own switch is on.",
-   "info: This route leaves no frame log of its own."
+   "info: dlss5-bridge.log has nothing from this launch."
   ],
   "never_ran": false,
   "ran": true,
   "route": "bridge",
-  "verdict": "Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture."
+  "verdict": "Add-ons loaded and the switch is on. The bridge's log has nothing from this launch, so the DLSS 5 Neural Rendering panel is the only live picture."
  },
  "289": {
   "findings": [
@@ -742,13 +742,13 @@
    "ok: ReShade loaded add-on: DLSS 5 Neural Rendering 0.2026.828.517",
    "ok: ReShade loaded add-on: DLSS 5 Bridge 1.4.12 1.4.12.0",
    "ok: The add-on's own switch is on.",
-   "info: This route leaves no frame log of its own.",
+   "info: dlss5-bridge.log has nothing from this launch.",
    "info: nvngx_dlssnr.dll was not loaded yet when the game was seen."
   ],
   "never_ran": false,
   "ran": true,
   "route": "bridge",
-  "verdict": "Add-ons loaded and the switch is on. This route logs no frames, so the DLSS 5 Neural Rendering panel is the only live picture."
+  "verdict": "Add-ons loaded and the switch is on. The bridge's log has nothing from this launch, so the DLSS 5 Neural Rendering panel is the only live picture."
  },
  "364": {
   "findings": [
@@ -1094,6 +1094,49 @@
   "route": "optiscaler",
   "verdict": "OptiScaler.ini is missing - install again."
  },
+ "511": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "ok: ReShade loaded add-on: DLSS 5 Feed (32-bit) 0.15.1 0.0.0.0",
+   "ok: NGX initialised successfully.",
+   "ok: Frames are being processed (4 logged, last was frame 1800).",
+   "info: 600 frames at 62.5 fps, 0.06 ms/frame spent on the feed."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "feeder",
+  "verdict": "Neural rendering ran, then the game closed itself - see below for what to take out first."
+ },
+ "512": {
+  "findings": [
+   "bad: You said the game never started.",
+   "warn: OptiScaler ran, but neural rendering was never asked for.",
+   "info: OptiScaler.ini: no [DlssNr] Enabled line (the file is not there).",
+   "info: nvngx_dlssnr.dll: present.",
+   "info: nvngx.dll_dlssnr.dll: not in this folder (this build may not use one).",
+   "info: the game's own upscaler, recorded at install: none recorded - the game was expected to use DLSS. It has to be running for the model to have anything to attach to.",
+   "info: driver 616.56: new enough"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "The game never started with this install in - see below for what to take out first."
+ },
+ "515": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "warn: OptiScaler ran, but neural rendering was never asked for.",
+   "info: OptiScaler.ini: no [DlssNr] Enabled line (the file is not there).",
+   "info: nvngx_dlssnr.dll: present.",
+   "info: nvngx.dll_dlssnr.dll: not in this folder (this build may not use one).",
+   "info: the game's own upscaler, recorded at install: none recorded - the game was expected to use DLSS. It has to be running for the model to have anything to attach to.",
+   "info: driver 617.14: new enough"
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "Windows recorded the game faulting - see below for what to take out first."
+ },
  "52": {
   "findings": [
    "ok: ReShade loaded add-on: DLSS5 NR Pre-Upscale 0.0.0.0",
@@ -1116,6 +1159,19 @@
   "route": "optiscaler",
   "verdict": "The install never finished - install again."
  },
+ "545": {
+  "findings": [
+   "bad: You said the game never started.",
+   "bad: ReShade loaded no add-ons.",
+   "info: If the picture only gets darker, switch the route to native.",
+   "warn: When it last ran (27 Sep 13:56), the process did not have nvngx.dll.addon64 loaded.",
+   "info: nvngx_dlssnr.dll was not loaded yet when the game was seen."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "upstream",
+  "verdict": "The game never started with this install in - see below for what to take out first."
+ },
  "55": {
   "findings": [
    "bad: Nothing of this tool is in this folder."
@@ -1125,6 +1181,17 @@
   "route": "",
   "verdict": "Nothing is installed in this folder - install first."
  },
+ "556": {
+  "findings": [
+   "bad: You said the game closed itself.",
+   "bad: Neural rendering was switched on, but the model never drew a frame.",
+   "info: OptiScaler runs the model around the game's own upscaler. Turn DLSS (or FSR 2 or later, or XeSS) on in the game's graphics menu - FSR 1.0 does not count, it makes no call OptiScaler can take over. With no upscaler running there is nothing for neural rendering to attach to, which is what the overlay means by 'waiting for the upscaler to run'. If the game has no upscaler at all, use the feeder route."
+  ],
+  "never_ran": false,
+  "ran": true,
+  "route": "optiscaler",
+  "verdict": "The game closed itself and nothing here recorded why - see below for what to take out first."
+ },
  "56": {
   "findings": [
    "bad: OptiScaler.ini is missing."
@@ -1133,6 +1200,15 @@
   "ran": false,
   "route": "optiscaler",
   "verdict": "OptiScaler.ini is missing - install again."
+ },
+ "562": {
+  "findings": [
+   "bad: DXVK ran, and ReShade did not."
+  ],
+  "never_ran": false,
+  "ran": false,
+  "route": "feeder",
+  "verdict": "DXVK ran and ReShade did not - if anything starts the game as administrator, start it normally."
  },
  "57": {
   "findings": [

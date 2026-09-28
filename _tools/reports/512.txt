@@ -1,0 +1,63 @@
+**Did the game start?** it never started
+
+**What happened**
+Exception: Parsing the JSON Document "data\appconfig\locales_config.json" failed on line 1: "Value is invalid!"
+
+---
+- version: 2.0.4
+- gpu: NVIDIA GeForce RTX 5090 (sm_120), driver 616.56
+- game: Alan Wake 2
+- exe: AlanWake2.exe
+- arch/api: 64-bit / DX12 (no graphics DLL imported statically, but ships a D3D12 Agility SDK or DLSS Frame Generation/Ray Reconstruction - the real renderer is D3D12)
+- route: optiscaler
+- work area: 75%
+
+**Diagnosis**: Neural rendering never ran - the game's own upscaler has to be on for this route.
+- [bad] Neural rendering was switched on, but the model never drew a frame.
+- [info] OptiScaler runs the model around the game's own upscaler. Turn DLSS (or FSR 2 or later, or XeSS) on in the game's graphics menu - FSR 1.0 does not count, it makes no call OptiScaler can take over. With no upscaler running there is nothing for neural rendering to attach to, which is what the overlay means by 'waiting for the upscaler to run'. If the game has no upscaler at all, use the feeder route.
+
+**Files in the folder**
+- dxgi.dll: present
+- nvngx_dlssnr.dll: present
+- nvngx_dlss.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.1.0 kept beside it)
+- nvngx_dlssg.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.1.0 kept beside it)
+- nvngx_dlssd.dll: present (updated on the dlss page to 310.9.1 (NVIDIA SDK); the game's own 310.1.0 kept beside it)
+- optiscaler build: Dagherbou (v0.2.0-dlssnr)
+
+**What ran, and what it loaded** (seen at 27 Sep 01:20)
+- process: AlanWake2.exe
+- DLLs in the process: 116
+- ours, loaded: amd_fidelityfx_framegeneration_dx12.dll, amd_fidelityfx_loader_dx12.dll, amd_fidelityfx_upscaler_dx12.dll, dxgi.dll, libxell.dll, libxess.dll, libxess_dx11.dll, libxess_fg.dll
+- ours, not loaded: nvngx_dlssnr.dll
+- also written, loaded only if the game asks: nvngx.dll_dlssnr.dll
+
+**ReShade.log**
+```
+(none)
+```
+
+**dlss5-feed.log**
+```
+(none)
+```
+
+**OptiScaler.log**
+```
+...
+[01:20:35.290649] [I] HookFSR3ExeInputs Trying to hook FSR3 methods
+[01:20:35.290710] [I]
+[01:20:35.290718] [I] Init done
+[01:20:35.290724] [I] ---------------------------------------------
+[01:20:35.290730] [I]
+[01:20:35.334409] [I] LibraryLoadHooks::LoadLibraryCheckW Calling CreateDxgiFactory methods for overlay!
+[01:20:35.454086] [I] Detected GPUs:
+                      NVIDIA GeForce RTX 5090
+                          vendorId: 10DE, deviceId: 2B85, VRAM: 32187MB
+                          dxvk: false, vkd3d-proton: false
+                          Upscaler support - fsr4: false, dlss: true
+                      Microsoft Basic Render Driver
+                          vendorId: 1414, deviceId: 8C, VRAM: 0MB
+                          dxvk: false, vkd3d-proton: false
+                          Upscaler support - fsr4: false, dlss: false
+
+```

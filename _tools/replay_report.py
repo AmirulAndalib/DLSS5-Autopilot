@@ -13,7 +13,7 @@ its ``` blocks) and point at it:
     python _tools\replay_report.py --issue 63 report.txt
 
 It pulls out the version/gpu/route header, the ReShade.log, dlss5-feed.log,
-OptiScaler.log and standalone-dlssnr.log blocks, builds a folder that looks
+OptiScaler.log, standalone-dlssnr.log and dlss5-bridge.log blocks, builds a folder that looks
 like that install, and prints the verdict the current code would give.
 
 **A log file downloaded from the issue.** GitHub attachments are plain URLs:
@@ -62,6 +62,9 @@ BLOCKS = {
     # The 64-bit helper of a 32-bit game, where its DLSS actually runs
     # (#252: the fault was only in this log).
     "dlss5-feed-host.log": "host",
+    # The bridge's own log (2.0.7): written back line for line, and read by
+    # the diagnosis only when its clock falls in the ReShade block's session.
+    "dlss5-bridge.log": "bridge",
 }
 ADDONS = ("dlss5-feed.addon64", "renodx-dlss5.addon64")
 
@@ -382,7 +385,7 @@ def build(route: str, api: str, exe: str, logs: dict, bitness: int = 64,
             f"[{_ini.ADDON_SECTION}]\n{_ini.ADDON_SWITCH}={switch}\n",
             encoding="utf8")
     for key, name in (("reshade", "ReShade.log"), ("feed", "dlss5-feed.log"),
-                      ("opti", "OptiScaler.log")):
+                      ("opti", "OptiScaler.log"), ("bridge", diagnose.BRIDGE_LOG)):
         if logs.get(key):
             (d / name).write_text(logs[key], encoding="utf8")
     if logs.get("host"):
@@ -575,7 +578,7 @@ def show(d: Path, label: str, text: str = "") -> None:
     for f in rep.findings:
         print(f"    [{f.level:4}] {f.title}")
         if f.detail:
-            print(f"           {f.detail[:150]}")
+            print(f"           {f.detail[:int(os.environ.get('REPLAY_WIDTH', '150'))]}")
 
 
 def main() -> int:
@@ -587,6 +590,7 @@ def main() -> int:
     p.add_argument("--exe", default="Game.exe")
     p.add_argument("--bitness", type=int, default=64)
     p.add_argument("--reshade"), p.add_argument("--feed"), p.add_argument("--opti")
+    p.add_argument("--bridge", help="a dlss5-bridge.log")
     p.add_argument("--keep", action="store_true", help="leave the folder behind")
     a = p.parse_args()
 
@@ -606,7 +610,8 @@ def main() -> int:
                 a.bitness = 32
         print("report header:", ", ".join(f"{k}={v}" for k, v in head.items()) or "(none)")
         print("log blocks found:", ", ".join(logs) or "(none)")
-    for key, path in (("reshade", a.reshade), ("feed", a.feed), ("opti", a.opti)):
+    for key, path in (("reshade", a.reshade), ("feed", a.feed), ("opti", a.opti),
+                      ("bridge", a.bridge)):
         if path:
             logs[key] = Path(path).read_text(encoding="utf8", errors="replace")
     if not logs and state is None:
