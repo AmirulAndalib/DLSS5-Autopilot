@@ -62,6 +62,12 @@
     "worked": 0
    }
   },
+  "UNKNOWN/none": {
+   "bridge": {
+    "failed": 1,
+    "worked": 0
+   }
+  },
   "VULKAN/dlss": {
    "bridge": {
     "failed": 1,
@@ -238,7 +244,7 @@
   },
   "617.14": {
    "bridge": {
-    "failed": 2,
+    "failed": 3,
     "worked": 1
    },
    "feeder": {
@@ -2425,6 +2431,21 @@
     }
    }
   },
+  "mandelbox explorer.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Mandelbox Explorer",
+   "routes": {
+    "bridge": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "masseffect1.exe": {
    "drivers": {
     "616.56": {
@@ -3844,6 +3865,6 @@
    }
   }
  },
- "generated": "2026-09-28T00:32:36Z",
- "reports": 318
+ "generated": "2026-09-28T00:58:55Z",
+ "reports": 319
 }
