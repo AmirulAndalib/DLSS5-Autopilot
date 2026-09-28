@@ -23,7 +23,7 @@
    },
    "optiscaler": {
     "failed": 1,
-    "worked": 17
+    "worked": 18
    },
    "renodx": {
     "failed": 1,
@@ -229,7 +229,7 @@
    },
    "optiscaler": {
     "failed": 12,
-    "worked": 44
+    "worked": 45
    },
    "remix": {
     "failed": 2,
@@ -1150,14 +1150,14 @@
     },
     "616.92": {
      "failed": 0,
-     "worked": 4
+     "worked": 5
     }
    },
    "measured": {
     "optiscaler": {
-     "ms": 4.75,
-     "n": 2,
-     "res": 62
+     "ms": 4.91,
+     "n": 3,
+     "res": 75
     }
    },
    "name": "The Blood of Dawnwalker",
@@ -1168,7 +1168,7 @@
     },
     "optiscaler": {
      "failed": 0,
-     "worked": 6
+     "worked": 7
     },
     "renodx": {
      "failed": 1,
@@ -3883,6 +3883,6 @@
    }
   }
  },
- "generated": "2026-09-28T05:38:03Z",
- "reports": 323
+ "generated": "2026-09-28T08:18:30Z",
+ "reports": 324
 }
