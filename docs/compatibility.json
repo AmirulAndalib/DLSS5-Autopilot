@@ -40,7 +40,7 @@
     "worked": 1
    },
    "standalone": {
-    "failed": 1,
+    "failed": 2,
     "worked": 0
    }
   },
@@ -254,7 +254,7 @@
     "worked": 0
    },
    "standalone": {
-    "failed": 5,
+    "failed": 6,
     "worked": 5
    },
    "upstream": {
@@ -1312,6 +1312,21 @@
    "name": "DOOM",
    "routes": {
     "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
+  "dragnwash.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Drag'n Wash",
+   "routes": {
+    "standalone": {
      "failed": 1,
      "worked": 0
     }
@@ -3829,6 +3844,6 @@
    }
   }
  },
- "generated": "2026-09-27T21:41:24Z",
- "reports": 317
+ "generated": "2026-09-28T00:32:36Z",
+ "reports": 318
 }
