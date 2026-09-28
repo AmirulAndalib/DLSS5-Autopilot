@@ -8,7 +8,7 @@
   },
   "DX11/none": {
    "feeder": {
-    "failed": 0,
+    "failed": 1,
     "worked": 1
    },
    "standalone": {
@@ -254,7 +254,7 @@
     "worked": 1
    },
    "feeder": {
-    "failed": 3,
+    "failed": 4,
     "worked": 6
    },
    "optiscaler": {
@@ -464,12 +464,16 @@
     "616.56": {
      "failed": 0,
      "worked": 2
+    },
+    "617.14": {
+     "failed": 1,
+     "worked": 0
     }
    },
    "name": "Alien: Isolation",
    "routes": {
     "feeder": {
-     "failed": 0,
+     "failed": 1,
      "worked": 2
     }
    }
@@ -3887,6 +3891,6 @@
    }
   }
  },
- "generated": "2026-09-28T13:53:39Z",
- "reports": 325
+ "generated": "2026-09-28T15:30:33Z",
+ "reports": 326
 }
