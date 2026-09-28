@@ -19,7 +19,7 @@
   "DX12/dlss": {
    "native": {
     "failed": 1,
-    "worked": 0
+    "worked": 1
    },
    "optiscaler": {
     "failed": 1,
@@ -163,7 +163,7 @@
    },
    "native": {
     "failed": 2,
-    "worked": 1
+    "worked": 2
    },
    "optiscaler": {
     "failed": 4,
@@ -3280,6 +3280,10 @@
   },
   "sottr.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.92": {
      "failed": 1,
      "worked": 1
@@ -3287,6 +3291,10 @@
    },
    "name": "Shadow of the Tomb Raider",
    "routes": {
+    "native": {
+     "failed": 0,
+     "worked": 1
+    },
     "optiscaler": {
      "failed": 1,
      "worked": 1
@@ -3875,6 +3883,6 @@
    }
   }
  },
- "generated": "2026-09-28T04:48:43Z",
- "reports": 322
+ "generated": "2026-09-28T05:38:03Z",
+ "reports": 323
 }
