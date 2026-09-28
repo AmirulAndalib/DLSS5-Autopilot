@@ -73,6 +73,12 @@
     "failed": 1,
     "worked": 0
    }
+  },
+  "VULKAN/none": {
+   "feeder": {
+    "failed": 0,
+    "worked": 1
+   }
   }
  },
  "by_driver": {
@@ -153,7 +159,7 @@
    },
    "feeder": {
     "failed": 13,
-    "worked": 30
+    "worked": 31
    },
    "native": {
     "failed": 2,
@@ -2132,6 +2138,10 @@
   },
   "gtaiv.exe": {
    "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.64": {
      "failed": 1,
      "worked": 0
@@ -2141,11 +2151,11 @@
      "worked": 0
     }
    },
-   "name": "GTAIV",
+   "name": "Grand Theft Auto IV",
    "routes": {
     "feeder": {
      "failed": 2,
-     "worked": 0
+     "worked": 1
     }
    }
   },
@@ -3865,6 +3875,6 @@
    }
   }
  },
- "generated": "2026-09-28T00:58:55Z",
- "reports": 319
+ "generated": "2026-09-28T01:23:32Z",
+ "reports": 320
 }
