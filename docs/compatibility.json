@@ -27,7 +27,7 @@
    },
    "optiscaler": {
     "failed": 3,
-    "worked": 24
+    "worked": 25
    },
    "renodx": {
     "failed": 1,
@@ -245,7 +245,7 @@
    },
    "optiscaler": {
     "failed": 12,
-    "worked": 45
+    "worked": 46
    },
    "remix": {
     "failed": 2,
@@ -275,7 +275,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 24
+    "worked": 25
    },
    "renodx": {
     "failed": 1,
@@ -3137,6 +3137,21 @@
     }
    }
   },
+  "readyornotsteam-win64-shipping.exe": {
+   "drivers": {
+    "616.92": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Ready or Not",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "realrtcw.x64.exe": {
    "drivers": {
     "616.56": {
@@ -3930,7 +3945,7 @@
     },
     "617.14": {
      "failed": 0,
-     "worked": 2
+     "worked": 3
     }
    },
    "measured": {
@@ -3940,11 +3955,11 @@
      "res": 75
     }
    },
-   "name": "The Witcher 3: Wild Hunt \u2014 Remastered",
+   "name": "The Witcher 3: Wild Hunt - Game of the Year Edition",
    "routes": {
     "optiscaler": {
      "failed": 1,
-     "worked": 5
+     "worked": 6
     },
     "upstream": {
      "failed": 0,
@@ -4043,6 +4058,6 @@
    }
   }
  },
- "generated": "2026-09-29T17:53:51Z",
- "reports": 344
+ "generated": "2026-09-29T18:57:52Z",
+ "reports": 346
 }
