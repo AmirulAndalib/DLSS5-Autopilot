@@ -13,7 +13,7 @@
    },
    "standalone": {
     "failed": 1,
-    "worked": 1
+    "worked": 2
    }
   },
   "DX12/dlss": {
@@ -271,7 +271,7 @@
    },
    "standalone": {
     "failed": 6,
-    "worked": 5
+    "worked": 6
    },
    "upstream": {
     "failed": 0,
@@ -2604,11 +2604,19 @@
     "616.56": {
      "failed": 0,
      "worked": 1
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
     }
    },
    "name": "Video player (MPC-HC)",
    "routes": {
     "feeder": {
+     "failed": 0,
+     "worked": 1
+    },
+    "standalone": {
      "failed": 0,
      "worked": 1
     }
@@ -3921,6 +3929,6 @@
    }
   }
  },
- "generated": "2026-09-29T01:20:29Z",
- "reports": 330
+ "generated": "2026-09-29T05:13:44Z",
+ "reports": 331
 }
