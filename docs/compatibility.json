@@ -26,7 +26,7 @@
     "worked": 1
    },
    "optiscaler": {
-    "failed": 1,
+    "failed": 2,
     "worked": 20
    },
    "renodx": {
@@ -274,7 +274,7 @@
     "worked": 6
    },
    "optiscaler": {
-    "failed": 3,
+    "failed": 4,
     "worked": 21
    },
    "renodx": {
@@ -297,12 +297,16 @@
     "616.92": {
      "failed": 0,
      "worked": 1
+    },
+    "617.14": {
+     "failed": 1,
+     "worked": 0
     }
    },
    "name": "007 First Light",
    "routes": {
     "optiscaler": {
-     "failed": 0,
+     "failed": 1,
      "worked": 1
     }
    }
@@ -3964,6 +3968,6 @@
    }
   }
  },
- "generated": "2026-09-29T07:17:09Z",
- "reports": 335
+ "generated": "2026-09-29T08:29:01Z",
+ "reports": 336
 }
