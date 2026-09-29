@@ -70,6 +70,10 @@
    "bridge": {
     "failed": 1,
     "worked": 0
+   },
+   "standalone": {
+    "failed": 1,
+    "worked": 0
    }
   },
   "VULKAN/dlss": {
@@ -270,7 +274,7 @@
     "worked": 0
    },
    "standalone": {
-    "failed": 6,
+    "failed": 7,
     "worked": 6
    },
    "upstream": {
@@ -1377,6 +1381,21 @@
    "name": "Dragon Age\u2122 Inquisition",
    "routes": {
     "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
+  "dreamsofdesire.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Dreams of Desire: Definitive Edition",
+   "routes": {
+    "standalone": {
      "failed": 1,
      "worked": 0
     }
@@ -3929,6 +3948,6 @@
    }
   }
  },
- "generated": "2026-09-29T05:13:44Z",
- "reports": 331
+ "generated": "2026-09-29T05:41:40Z",
+ "reports": 332
 }
