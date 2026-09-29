@@ -27,7 +27,7 @@
    },
    "optiscaler": {
     "failed": 2,
-    "worked": 22
+    "worked": 23
    },
    "renodx": {
     "failed": 1,
@@ -275,7 +275,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 22
+    "worked": 23
    },
    "renodx": {
     "failed": 1,
@@ -3912,20 +3912,24 @@
     "616.92": {
      "failed": 0,
      "worked": 2
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
     }
    },
    "measured": {
     "optiscaler": {
-     "ms": 7.3,
-     "n": 2,
+     "ms": 5.44,
+     "n": 3,
      "res": 75
     }
    },
-   "name": "The Witcher 3: Wild Hunt",
+   "name": "The Witcher 3: Wild Hunt \u2014 Remastered",
    "routes": {
     "optiscaler": {
      "failed": 0,
-     "worked": 3
+     "worked": 4
     },
     "upstream": {
      "failed": 0,
@@ -4024,6 +4028,6 @@
    }
   }
  },
- "generated": "2026-09-29T14:58:45Z",
- "reports": 340
+ "generated": "2026-09-29T15:10:03Z",
+ "reports": 341
 }
