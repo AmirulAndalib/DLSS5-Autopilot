@@ -52,7 +52,7 @@
     "worked": 1
    },
    "standalone": {
-    "failed": 2,
+    "failed": 3,
     "worked": 1
    }
   },
@@ -282,7 +282,7 @@
     "worked": 0
    },
    "standalone": {
-    "failed": 7,
+    "failed": 8,
     "worked": 8
    },
    "upstream": {
@@ -1652,6 +1652,21 @@
    "name": "PUBG: BATTLEGROUNDS",
    "routes": {
     "optiscaler": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
+  "exovia.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Exovia Demo",
+   "routes": {
+    "standalone": {
      "failed": 1,
      "worked": 0
     }
@@ -3968,6 +3983,6 @@
    }
   }
  },
- "generated": "2026-09-29T08:29:01Z",
- "reports": 336
+ "generated": "2026-09-29T08:30:32Z",
+ "reports": 337
 }
