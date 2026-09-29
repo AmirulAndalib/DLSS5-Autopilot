@@ -27,7 +27,7 @@
    },
    "optiscaler": {
     "failed": 3,
-    "worked": 27
+    "worked": 28
    },
    "renodx": {
     "failed": 1,
@@ -275,7 +275,7 @@
    },
    "optiscaler": {
     "failed": 5,
-    "worked": 26
+    "worked": 27
    },
    "renodx": {
     "failed": 1,
@@ -3997,6 +3997,21 @@
     }
    }
   },
+  "woth2-win64-shipping.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Way of the Hunter 2",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "wowb.exe": {
    "drivers": {
     "617.14": {
@@ -4058,6 +4073,6 @@
    }
   }
  },
- "generated": "2026-09-29T21:25:38Z",
- "reports": 349
+ "generated": "2026-09-29T21:43:36Z",
+ "reports": 350
 }
