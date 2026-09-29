@@ -9,7 +9,7 @@
   "DX11/none": {
    "feeder": {
     "failed": 1,
-    "worked": 2
+    "worked": 3
    },
    "standalone": {
     "failed": 1,
@@ -59,7 +59,7 @@
   "DX9/none": {
    "feeder": {
     "failed": 2,
-    "worked": 0
+    "worked": 1
    }
   },
   "OPENGL/none": {
@@ -126,6 +126,12 @@
     "worked": 1
    }
   },
+  "595.76": {
+   "feeder": {
+    "failed": 0,
+    "worked": 1
+   }
+  },
   "596.21": {
    "feeder": {
     "failed": 1,
@@ -175,7 +181,7 @@
    },
    "feeder": {
     "failed": 14,
-    "worked": 32
+    "worked": 33
    },
    "native": {
     "failed": 2,
@@ -1263,6 +1269,21 @@
     }
    }
   },
+  "deadisland-win64-shipping.exe": {
+   "drivers": {
+    "616.56": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "name": "Dead Island 2",
+   "routes": {
+    "feeder": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "deadspace3.exe": {
    "drivers": {
     "616.92": {
@@ -2200,6 +2221,10 @@
   },
   "gtaiv.exe": {
    "drivers": {
+    "595.76": {
+     "failed": 0,
+     "worked": 1
+    },
     "616.56": {
      "failed": 0,
      "worked": 1
@@ -2213,11 +2238,11 @@
      "worked": 0
     }
    },
-   "name": "Grand Theft Auto IV",
+   "name": "Grand Theft Auto IV: The Complete Edition",
    "routes": {
     "feeder": {
      "failed": 2,
-     "worked": 1
+     "worked": 2
     }
    }
   },
@@ -4088,6 +4113,6 @@
    }
   }
  },
- "generated": "2026-09-29T22:45:55Z",
- "reports": 352
+ "generated": "2026-09-29T23:42:12Z",
+ "reports": 354
 }
