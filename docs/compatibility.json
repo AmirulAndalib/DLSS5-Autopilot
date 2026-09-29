@@ -45,7 +45,7 @@
    },
    "standalone": {
     "failed": 2,
-    "worked": 0
+    "worked": 1
    }
   },
   "DX9/none": {
@@ -275,7 +275,7 @@
    },
    "standalone": {
     "failed": 7,
-    "worked": 6
+    "worked": 7
    },
    "upstream": {
     "failed": 0,
@@ -3722,7 +3722,7 @@
     },
     "617.14": {
      "failed": 0,
-     "worked": 1
+     "worked": 2
     }
    },
    "name": "UBOAT",
@@ -3733,7 +3733,7 @@
     },
     "standalone": {
      "failed": 0,
-     "worked": 3
+     "worked": 4
     }
    }
   },
@@ -3948,6 +3948,6 @@
    }
   }
  },
- "generated": "2026-09-29T05:41:40Z",
- "reports": 332
+ "generated": "2026-09-29T06:02:28Z",
+ "reports": 333
 }
