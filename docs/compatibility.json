@@ -43,6 +43,10 @@
    }
   },
   "DX12/none": {
+   "bridge": {
+    "failed": 1,
+    "worked": 0
+   },
    "feeder": {
     "failed": 2,
     "worked": 1
@@ -262,7 +266,7 @@
   },
   "617.14": {
    "bridge": {
-    "failed": 3,
+    "failed": 4,
     "worked": 1
    },
    "feeder": {
@@ -1393,12 +1397,16 @@
   "dreamsofdesire.exe": {
    "drivers": {
     "617.14": {
-     "failed": 1,
+     "failed": 2,
      "worked": 0
     }
    },
    "name": "Dreams of Desire: Definitive Edition",
    "routes": {
+    "bridge": {
+     "failed": 1,
+     "worked": 0
+    },
     "standalone": {
      "failed": 1,
      "worked": 0
@@ -3956,6 +3964,6 @@
    }
   }
  },
- "generated": "2026-09-29T06:10:45Z",
- "reports": 334
+ "generated": "2026-09-29T07:17:09Z",
+ "reports": 335
 }
