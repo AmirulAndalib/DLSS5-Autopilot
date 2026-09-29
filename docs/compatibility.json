@@ -27,7 +27,7 @@
    },
    "optiscaler": {
     "failed": 2,
-    "worked": 20
+    "worked": 21
    },
    "renodx": {
     "failed": 1,
@@ -275,7 +275,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 21
+    "worked": 22
    },
    "renodx": {
     "failed": 1,
@@ -2537,6 +2537,28 @@
     }
    }
   },
+  "manorlords-win64-shipping.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 0,
+     "worked": 1
+    }
+   },
+   "measured": {
+    "optiscaler": {
+     "ms": 5.39,
+     "n": 1,
+     "res": 75
+    }
+   },
+   "name": "Manor Lords",
+   "routes": {
+    "optiscaler": {
+     "failed": 0,
+     "worked": 1
+    }
+   }
+  },
   "masseffect1.exe": {
    "drivers": {
     "616.56": {
@@ -3998,6 +4020,6 @@
    }
   }
  },
- "generated": "2026-09-29T11:55:59Z",
- "reports": 338
+ "generated": "2026-09-29T12:44:16Z",
+ "reports": 339
 }
