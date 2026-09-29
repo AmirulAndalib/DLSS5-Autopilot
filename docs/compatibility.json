@@ -33,6 +33,10 @@
     "failed": 1,
     "worked": 1
    },
+   "standalone": {
+    "failed": 0,
+    "worked": 1
+   },
    "upstream": {
     "failed": 1,
     "worked": 3
@@ -275,7 +279,7 @@
    },
    "standalone": {
     "failed": 7,
-    "worked": 7
+    "worked": 8
    },
    "upstream": {
     "failed": 0,
@@ -2446,7 +2450,7 @@
    "drivers": {
     "617.14": {
      "failed": 1,
-     "worked": 0
+     "worked": 1
     }
    },
    "name": "Last Hope",
@@ -2454,6 +2458,10 @@
     "feeder": {
      "failed": 1,
      "worked": 0
+    },
+    "standalone": {
+     "failed": 0,
+     "worked": 1
     }
    }
   },
@@ -3948,6 +3956,6 @@
    }
   }
  },
- "generated": "2026-09-29T06:02:28Z",
- "reports": 333
+ "generated": "2026-09-29T06:10:45Z",
+ "reports": 334
 }
