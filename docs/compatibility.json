@@ -58,7 +58,7 @@
   },
   "DX9/none": {
    "feeder": {
-    "failed": 1,
+    "failed": 2,
     "worked": 0
    }
   },
@@ -270,7 +270,7 @@
     "worked": 1
    },
    "feeder": {
-    "failed": 5,
+    "failed": 6,
     "worked": 6
    },
    "optiscaler": {
@@ -3461,6 +3461,21 @@
     }
    }
   },
+  "speed.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Need for Speed - Most Wanted",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "speed2.exe": {
    "drivers": {
     "616.56": {
@@ -4028,6 +4043,6 @@
    }
   }
  },
- "generated": "2026-09-29T15:20:41Z",
- "reports": 342
+ "generated": "2026-09-29T15:33:52Z",
+ "reports": 343
 }
