@@ -17,6 +17,10 @@
    }
   },
   "DX12/dlss": {
+   "feeder": {
+    "failed": 1,
+    "worked": 0
+   },
    "native": {
     "failed": 1,
     "worked": 1
@@ -254,7 +258,7 @@
     "worked": 1
    },
    "feeder": {
-    "failed": 4,
+    "failed": 5,
     "worked": 6
    },
    "optiscaler": {
@@ -2419,6 +2423,21 @@
     }
    }
   },
+  "lasthope-win64-shipping.exe": {
+   "drivers": {
+    "617.14": {
+     "failed": 1,
+     "worked": 0
+    }
+   },
+   "name": "Last Hope",
+   "routes": {
+    "feeder": {
+     "failed": 1,
+     "worked": 0
+    }
+   }
+  },
   "lop-win64-shipping.exe": {
    "drivers": {
     "560.94": {
@@ -3902,6 +3921,6 @@
    }
   }
  },
- "generated": "2026-09-28T22:23:29Z",
- "reports": 329
+ "generated": "2026-09-29T00:25:12Z",
+ "reports": 330
 }
