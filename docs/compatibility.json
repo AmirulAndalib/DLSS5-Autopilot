@@ -11,6 +11,10 @@
     "failed": 1,
     "worked": 3
    },
+   "renodx": {
+    "failed": 0,
+    "worked": 1
+   },
    "standalone": {
     "failed": 1,
     "worked": 4
@@ -201,7 +205,7 @@
    },
    "renodx": {
     "failed": 1,
-    "worked": 4
+    "worked": 5
    },
    "standalone": {
     "failed": 1,
@@ -2596,7 +2600,7 @@
    "drivers": {
     "616.56": {
      "failed": 2,
-     "worked": 1
+     "worked": 2
     }
    },
    "name": "Mass Effect\u2122 Legendary Edition",
@@ -2607,6 +2611,10 @@
     },
     "feeder": {
      "failed": 1,
+     "worked": 1
+    },
+    "renodx": {
+     "failed": 0,
      "worked": 1
     }
    }
@@ -4125,6 +4133,6 @@
    }
   }
  },
- "generated": "2026-09-30T02:20:03Z",
- "reports": 356
+ "generated": "2026-09-30T04:27:40Z",
+ "reports": 357
 }
