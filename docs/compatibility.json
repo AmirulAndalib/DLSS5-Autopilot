@@ -27,7 +27,7 @@
    },
    "optiscaler": {
     "failed": 4,
-    "worked": 28
+    "worked": 29
    },
    "renodx": {
     "failed": 1,
@@ -281,7 +281,7 @@
    },
    "optiscaler": {
     "failed": 6,
-    "worked": 27
+    "worked": 28
    },
    "renodx": {
     "failed": 1,
@@ -1181,6 +1181,10 @@
     "616.92": {
      "failed": 0,
      "worked": 5
+    },
+    "617.14": {
+     "failed": 0,
+     "worked": 1
     }
    },
    "measured": {
@@ -1190,7 +1194,7 @@
      "res": 75
     }
    },
-   "name": "The Blood of Dawnwalker",
+   "name": "3042_The_Blood_of_Dawnwalker",
    "routes": {
     "feeder": {
      "failed": 0,
@@ -1198,7 +1202,7 @@
     },
     "optiscaler": {
      "failed": 0,
-     "worked": 7
+     "worked": 8
     },
     "renodx": {
      "failed": 1,
@@ -4113,6 +4117,6 @@
    }
   }
  },
- "generated": "2026-09-29T23:42:12Z",
- "reports": 354
+ "generated": "2026-09-30T00:25:07Z",
+ "reports": 355
 }
